@@ -1,0 +1,30 @@
+const missingEnvError = (name: string) =>
+  new Error(
+    `Missing required environment variable ${name}. Check your .env.local or Netlify environment settings.`,
+  );
+
+const getRequiredEnv = (name: string, value: string | undefined) => {
+  if (!value) {
+    throw missingEnvError(name);
+  }
+
+  return value;
+};
+
+export const getEnv = () => ({
+  NEXT_PUBLIC_APP_URL:
+    process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+  NEXT_PUBLIC_SUPABASE_URL: getRequiredEnv(
+    "NEXT_PUBLIC_SUPABASE_URL",
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+  ),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: getRequiredEnv(
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  ),
+  SUPABASE_PROJECT_REF: process.env.SUPABASE_PROJECT_REF,
+  SUPABASE_DB_PASSWORD: process.env.SUPABASE_DB_PASSWORD,
+});
+
+export const buildAuthRedirectUrl = (path = "/auth/callback") =>
+  new URL(path, getEnv().NEXT_PUBLIC_APP_URL).toString();

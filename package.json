@@ -1,0 +1,36 @@
+{
+  "name": "sailing-planner",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "supabase:start": "npx supabase start",
+    "supabase:stop": "npx supabase stop",
+    "supabase:status": "npx supabase status",
+    "supabase:link": "npx supabase link --project-ref $SUPABASE_PROJECT_REF",
+    "db:push": "npx supabase db push",
+    "db:reset": "npx supabase db reset",
+    "db:seed": "npx supabase db reset --no-rebuild",
+    "db:diff": "npx supabase db diff --schema public",
+    "db:types": "npx supabase gen types typescript --project-id $SUPABASE_PROJECT_REF --schema public > src/types/database.generated.ts"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.5.2",
+    "@supabase/supabase-js": "^2.49.8",
+    "next": "15.5.14",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.14",
+    "typescript": "^5"
+  }
+}
