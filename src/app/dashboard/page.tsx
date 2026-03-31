@@ -1,50 +1,26 @@
+import { LogoutButton } from "@/components/auth/logout-button";
+import { BoatSelector } from "@/components/boats/boat-selector";
+import { getAccessibleBoats, requireViewer } from "@/lib/boat-data";
 import { redirect } from "next/navigation";
 
-import { LogoutButton } from "@/components/auth/logout-button";
-import { createClient } from "@/lib/supabase/server";
-import type { Database } from "@/types/database";
-
-type ProfileSummary = Pick<
-  Database["public"]["Tables"]["profiles"]["Row"],
-  "display_name" | "is_superuser"
->;
-
-type BoatAccessSummary = Database["public"]["Views"]["boat_access_overview"]["Row"];
-
 export default async function DashboardPage() {
-  const supabase = await createClient();
+  const { user, viewer } = await requireViewer();
+  const boats = await getAccessibleBoats();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
+  if (boats.length === 1) {
+    redirect(`/boats/${boats[0].boat_id}/trip`);
   }
-
-  const [{ data: profileData }, { data: boatsData }] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("display_name, is_superuser")
-      .eq("id", user.id)
-      .maybeSingle(),
-    supabase
-      .from("boat_access_overview")
-      .select("boat_id, boat_name, permission_level, can_edit, can_manage_boat_users")
-      .order("boat_name"),
-  ]);
-
-  const profile = profileData as ProfileSummary | null;
-  const boats = (boatsData ?? []) as BoatAccessSummary[];
 
   return (
     <main className="shell">
       <header className="dashboard-header">
         <div>
-          <p className="eyebrow">Authenticated area</p>
-          <h1>Sailing Planner</h1>
+          <p className="eyebrow">Boat selection</p>
+          <h1>Choose your workspace</h1>
           <p className="muted">
-            Signed in as {profile?.display_name ?? user.email ?? user.id}.
+            Signed in as{" "}
+            {viewer.profile?.display_name ?? user.email ?? user.id}. Each boat keeps
+            its own seasons, trip plan, visits and availability.
           </p>
         </div>
         <LogoutButton />
@@ -55,7 +31,7 @@ export default async function DashboardPage() {
           <p className="eyebrow">Profile</p>
           <p>
             <span className="badge">
-              {profile?.is_superuser ? "Global superuser" : "Standard user"}
+              {viewer.isSuperuser ? "Global superuser" : "Boat-scoped user"}
             </span>
           </p>
           <p className="meta">
@@ -67,30 +43,29 @@ export default async function DashboardPage() {
         </article>
 
         <article className="dashboard-card">
-          <p className="eyebrow">Boat access</p>
+          <p className="eyebrow">What this V1 includes</p>
           <ul className="list">
-            {boats?.length ? (
-              boats.map((boat) => (
-                <li key={boat.boat_id}>
-                  <strong>{boat.boat_name}</strong>
-                  <p className="meta">
-                    Level: {boat.permission_level ?? "superuser"}
-                  </p>
-                  <p className="meta">
-                    Edit: {boat.can_edit ? "yes" : "no"} | Manage users:{" "}
-                    {boat.can_manage_boat_users ? "yes" : "no"}
-                  </p>
-                </li>
-              ))
-            ) : (
-              <li>
-                No boat permissions yet. Use the bootstrap steps from the README
-                to create the first boat and assignment.
-              </li>
-            )}
+            <li>Boat-specific trip planning with undefined periods and derived availability.</li>
+            <li>Visit management with filters, warnings and synchronized timeline.</li>
+            <li>Read-only versus editable workspace behavior driven by Supabase permissions.</li>
           </ul>
         </article>
       </section>
+
+      {boats.length ? (
+        <section className="dashboard-card">
+          <p className="eyebrow">Accessible boats</p>
+          <BoatSelector boats={boats} />
+        </section>
+      ) : (
+        <section className="dashboard-card">
+          <p className="eyebrow">No boats yet</p>
+          <p className="muted">
+            Your user still needs a `user_boat_permissions` assignment or a superuser
+            needs to create the first boat.
+          </p>
+        </section>
+      )}
     </main>
   );
 }

@@ -1,0 +1,310 @@
+import type { Database, PermissionLevel } from "@/types/database";
+
+type SeasonRow = Database["public"]["Tables"]["seasons"]["Row"];
+type BoatRow = Database["public"]["Tables"]["boats"]["Row"];
+type PermissionRow = Database["public"]["Tables"]["user_boat_permissions"]["Row"];
+type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
+
+export type TripSegmentView =
+  Database["public"]["Functions"]["get_season_trip_segments"]["Returns"][number];
+export type VisitView =
+  Database["public"]["Functions"]["get_season_visits"]["Returns"][number];
+
+export type BoatSummary = Database["public"]["Views"]["boat_access_overview"]["Row"] & {
+  description?: string | null;
+  home_port?: string | null;
+  model?: string | null;
+  year_built?: number | null;
+  is_active?: boolean;
+};
+
+export type ViewerContext = {
+  profile: ProfileRow | null;
+  isSuperuser: boolean;
+};
+
+export type BoatWorkspace = {
+  viewer: ViewerContext;
+  boat: BoatRow;
+  permission: PermissionRow | null;
+  boats: BoatSummary[];
+  seasons: SeasonRow[];
+  selectedSeason: SeasonRow | null;
+  tripSegments: TripSegmentView[];
+  visits: VisitView[];
+};
+
+export type AvailabilityStatus =
+  | "available"
+  | "occupied"
+  | "tentative"
+  | "undefined";
+
+export type AvailabilityBlock = {
+  start: string;
+  end: string;
+  status: AvailabilityStatus;
+  label: string;
+};
+
+export type VisitConflict = {
+  visitId: string;
+  severity: "warning";
+  message: string;
+};
+
+export const formatLongDate = (value: string) =>
+  new Intl.DateTimeFormat("en", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(parseDate(value));
+
+export const formatShortDate = (value: string) =>
+  new Intl.DateTimeFormat("en", {
+    day: "numeric",
+    month: "short",
+  }).format(parseDate(value));
+
+export const parseDate = (value: string) => {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+};
+
+export const toDateInputValue = (value: Date) =>
+  value.toISOString().slice(0, 10);
+
+export const addDays = (value: string, amount: number) => {
+  const date = parseDate(value);
+  date.setUTCDate(date.getUTCDate() + amount);
+  return toDateInputValue(date);
+};
+
+export const diffDaysInclusive = (start: string, end: string) =>
+  Math.max(
+    1,
+    Math.floor(
+      (parseDate(end).getTime() - parseDate(start).getTime()) / 86_400_000,
+    ) + 1,
+  );
+
+export const rangeIncludes = (start: string, end: string, point: string) =>
+  point >= start && point <= end;
+
+export const overlaps = (
+  leftStart: string,
+  leftEnd: string,
+  rightStart: string,
+  rightEnd: string,
+) => leftStart <= rightEnd && rightStart <= leftEnd;
+
+export const getPermissionLabel = (
+  level: PermissionLevel | null | undefined,
+  isSuperuser = false,
+) => {
+  if (isSuperuser && !level) {
+    return "superuser";
+  }
+
+  return level ?? "viewer";
+};
+
+export const computeAvailability = (
+  season: SeasonRow | null,
+  tripSegments: TripSegmentView[],
+  visits: VisitView[],
+) => {
+  if (!season) {
+    return [] as AvailabilityBlock[];
+  }
+
+  const dayStatuses: AvailabilityStatus[] = [];
+  const days = diffDaysInclusive(season.start_date, season.end_date);
+
+  for (let index = 0; index < days; index += 1) {
+    const day = addDays(season.start_date, index);
+    const hasSegment = tripSegments.some((segment) =>
+      rangeIncludes(segment.start_date, segment.end_date, day),
+    );
+    const hasConfirmedVisit = visits.some(
+      (visit) =>
+        visit.status === "confirmed" &&
+        rangeIncludes(visit.embark_date, visit.disembark_date, day),
+    );
+    const hasTentativeVisit = visits.some(
+      (visit) =>
+        visit.status === "tentative" &&
+        rangeIncludes(visit.embark_date, visit.disembark_date, day),
+    );
+
+    if (hasConfirmedVisit) {
+      dayStatuses.push("occupied");
+    } else if (!hasSegment) {
+      dayStatuses.push("undefined");
+    } else if (hasTentativeVisit) {
+      dayStatuses.push("tentative");
+    } else {
+      dayStatuses.push("available");
+    }
+  }
+
+  return compressStatusBlocks(season.start_date, dayStatuses);
+};
+
+const compressStatusBlocks = (
+  seasonStart: string,
+  dayStatuses: AvailabilityStatus[],
+) => {
+  if (!dayStatuses.length) {
+    return [] as AvailabilityBlock[];
+  }
+
+  const blocks: AvailabilityBlock[] = [];
+  let startIndex = 0;
+
+  for (let index = 1; index <= dayStatuses.length; index += 1) {
+    const previousStatus = dayStatuses[index - 1];
+    const nextStatus = dayStatuses[index];
+
+    if (nextStatus !== previousStatus) {
+      blocks.push({
+        start: addDays(seasonStart, startIndex),
+        end: addDays(seasonStart, index - 1),
+        status: previousStatus,
+        label: getAvailabilityLabel(previousStatus),
+      });
+      startIndex = index;
+    }
+  }
+
+  return blocks;
+};
+
+const getAvailabilityLabel = (status: AvailabilityStatus) => {
+  switch (status) {
+    case "available":
+      return "Available";
+    case "occupied":
+      return "Occupied";
+    case "tentative":
+      return "Tentative";
+    case "undefined":
+      return "Undefined";
+  }
+};
+
+export const computeVisitConflicts = (
+  season: SeasonRow | null,
+  tripSegments: TripSegmentView[],
+  visits: VisitView[],
+) => {
+  if (!season) {
+    return [] as VisitConflict[];
+  }
+
+  const conflicts: VisitConflict[] = [];
+
+  visits.forEach((visit, visitIndex) => {
+    if (
+      visit.embark_date < season.start_date ||
+      visit.disembark_date > season.end_date
+    ) {
+      conflicts.push({
+        visitId: visit.id,
+        severity: "warning",
+        message: `${visit.visitor_name ?? "Visit"} falls partly outside the selected season.`,
+      });
+    }
+
+    const embarkCovered = tripSegments.some((segment) =>
+      rangeIncludes(segment.start_date, segment.end_date, visit.embark_date),
+    );
+    const disembarkCovered = tripSegments.some((segment) =>
+      rangeIncludes(segment.start_date, segment.end_date, visit.disembark_date),
+    );
+
+    if (!embarkCovered) {
+      conflicts.push({
+        visitId: visit.id,
+        severity: "warning",
+        message: `${visit.visitor_name ?? "Visit"} embarks in a period without a trip segment.`,
+      });
+    }
+
+    if (!disembarkCovered) {
+      conflicts.push({
+        visitId: visit.id,
+        severity: "warning",
+        message: `${visit.visitor_name ?? "Visit"} disembarks in a period without a trip segment.`,
+      });
+    }
+
+    visits.slice(visitIndex + 1).forEach((otherVisit) => {
+      if (
+        visit.status === "confirmed" &&
+        otherVisit.status === "confirmed" &&
+        overlaps(
+          visit.embark_date,
+          visit.disembark_date,
+          otherVisit.embark_date,
+          otherVisit.disembark_date,
+        )
+      ) {
+        conflicts.push({
+          visitId: visit.id,
+          severity: "warning",
+          message: `${visit.visitor_name ?? "Visit"} overlaps with confirmed visit ${otherVisit.visitor_name ?? "another visit"}.`,
+        });
+      }
+    });
+  });
+
+  return conflicts;
+};
+
+export const getDefaultSeasonDraft = (boatId: string, year?: number) => {
+  const resolvedYear = year ?? new Date().getUTCFullYear();
+
+  return {
+    boat_id: boatId,
+    year: resolvedYear,
+    start_date: `${resolvedYear}-04-01`,
+    end_date: `${resolvedYear}-10-31`,
+    name: `${resolvedYear} Season`,
+    notes: "",
+  };
+};
+
+export const getEmptyTripSegmentDraft = (season: SeasonRow | null) => {
+  const fallbackStart =
+    season?.start_date ?? `${new Date().getUTCFullYear()}-04-01`;
+
+  return {
+    start_date: fallbackStart,
+    end_date: fallbackStart,
+    location_label: "",
+    location_type: "zone",
+    place_source: "manual",
+    status: "tentative",
+    public_notes: "",
+    private_notes: "",
+  };
+};
+
+export const getEmptyVisitDraft = (season: SeasonRow | null) => {
+  const fallbackStart =
+    season?.start_date ?? `${new Date().getUTCFullYear()}-04-01`;
+
+  return {
+    visitor_name: "",
+    embark_date: fallbackStart,
+    disembark_date: fallbackStart,
+    embark_place_label: "",
+    embark_place_source: "manual",
+    disembark_place_label: "",
+    disembark_place_source: "manual",
+    status: "tentative",
+    public_notes: "",
+    private_notes: "",
+  };
+};

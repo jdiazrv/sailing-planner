@@ -35,6 +35,9 @@ The project uses the Next.js App Router.
 - [`src/lib/supabase/middleware.ts`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/lib/supabase/middleware.ts) refreshes sessions and protects authenticated routes.
 - [`src/app/login/page.tsx`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/app/login/page.tsx) provides password login and magic-link sending.
 - [`src/app/auth/callback/route.ts`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/app/auth/callback/route.ts) exchanges auth codes for sessions.
+- [`src/app/dashboard/page.tsx`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/app/dashboard/page.tsx) acts as the post-login boat selection screen.
+- [`src/app/boats/[boatId]/trip/page.tsx`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/app/boats/[boatId]/trip/page.tsx) is the main Trip/Season workspace with a timeline and segment editor.
+- [`src/app/boats/[boatId]/visits/page.tsx`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/app/boats/[boatId]/visits/page.tsx) combines visit editing, filtering, warnings and a synchronized timeline.
 
 ## Environment variables
 
@@ -121,6 +124,7 @@ Suggested local flow:
 Main schema migration:
 
 - [`supabase/migrations/20260331132000_initial_schema.sql`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/supabase/migrations/20260331132000_initial_schema.sql)
+- [`supabase/migrations/20260331170000_master_requirements_alignment.sql`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/supabase/migrations/20260331170000_master_requirements_alignment.sql)
 
 Optional seed:
 
@@ -134,6 +138,21 @@ The seed creates:
 - one tentative visit
 - one confirmed visit
 - one example permission row for the first auth user if one exists
+
+## Current V1 product scope
+
+The current app already includes the core V1 workflow requested in the master specification:
+
+- login and protected routes
+- multi-boat selection after login
+- boat-scoped trip/season screen
+- boat-scoped visits screen
+- synchronized timeline with trip, visits and derived availability layers
+- season, trip segment and visit creation/update/delete flows for editors
+- read-only experience for non-editors
+- undefined periods shown as a first-class availability state
+- tentative versus confirmed visit handling
+- warning-oriented conflict detection for visits
 
 ## How to create the first superuser
 

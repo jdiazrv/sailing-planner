@@ -7,9 +7,19 @@ export type Json =
   | Json[];
 
 export type PermissionLevel = "viewer" | "editor" | "manager";
-export type TripSegmentStatus = "planned" | "active" | "completed" | "cancelled";
+export type TripSegmentStatus =
+  | "tentative"
+  | "planned"
+  | "confirmed"
+  | "active"
+  | "completed"
+  | "cancelled";
 export type VisitStatus = "tentative" | "confirmed" | "cancelled";
 export type LocationType =
+  | "zone"
+  | "island"
+  | "city"
+  | "airport"
   | "marina"
   | "anchorage"
   | "port"
@@ -30,6 +40,10 @@ export interface Database {
           id: string;
           name: string;
           description: string | null;
+          model: string | null;
+          year_built: number | null;
+          home_port: string | null;
+          notes: string | null;
           is_active: boolean;
           created_at: string;
           updated_at: string;
@@ -38,6 +52,10 @@ export interface Database {
           id?: string;
           name: string;
           description?: string | null;
+          model?: string | null;
+          year_built?: number | null;
+          home_port?: string | null;
+          notes?: string | null;
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
