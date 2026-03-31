@@ -1,5 +1,7 @@
 import { BoatNav } from "@/components/boats/boat-nav";
+import { MapPanel } from "@/components/planning/map-panel";
 import { Timeline } from "@/components/planning/timeline";
+import { PlaceAutocompleteField } from "@/components/places/place-autocomplete-field";
 import { getBoatWorkspace } from "@/lib/boat-data";
 import {
   formatLongDate,
@@ -48,6 +50,11 @@ export default async function BoatTripPage({
         />
 
         <aside className="stack">
+          <MapPanel
+            title="Trip and visit places"
+            tripSegments={workspace.tripSegments}
+            visits={workspace.visits}
+          />
           <article className="dashboard-card">
             <div className="card-header">
               <div>
@@ -187,7 +194,14 @@ export default async function BoatTripPage({
                   </label>
                   <label className="form-grid__wide">
                     <span>Location label</span>
-                    <input name="location_label" placeholder="Cyclades" required />
+                    <PlaceAutocompleteField
+                      externalIdName="external_place_id"
+                      labelName="location_label"
+                      latitudeName="latitude"
+                      longitudeName="longitude"
+                      placeholder="Cyclades, Paros port, Athens airport..."
+                      sourceName="place_source"
+                    />
                   </label>
                   <label>
                     <span>Precision</span>
@@ -223,89 +237,98 @@ export default async function BoatTripPage({
               </form>
             ) : null}
 
-            <div className="entity-stack">
-              {filteredSegments.length ? (
-                filteredSegments.map((segment) => (
-                  <form action={saveTripSegment} className="entity-card" key={segment.id}>
+            {filteredSegments.length ? (
+              <div className="data-sheet">
+                <div className="data-sheet__header data-sheet__header--trip">
+                  <span>Dates</span>
+                  <span>Location</span>
+                  <span>Type</span>
+                  <span>Status</span>
+                  <span>Public notes</span>
+                  <span>Private notes</span>
+                  <span>Actions</span>
+                </div>
+                {filteredSegments.map((segment) => (
+                  <form
+                    action={saveTripSegment}
+                    className="data-row data-row--trip"
+                    key={segment.id}
+                  >
                     <input name="boat_id" type="hidden" value={boatId} />
                     <input name="season_id" type="hidden" value={segment.season_id} />
                     <input name="segment_id" type="hidden" value={segment.id} />
-                    <div className="entity-card__top">
-                      <strong>{segment.location_label}</strong>
-                      <span className={`status-pill is-${segment.status}`}>
-                        {segment.status}
+                    <div className="table-stack">
+                      <input defaultValue={segment.start_date} name="start_date" type="date" />
+                      <input defaultValue={segment.end_date} name="end_date" type="date" />
+                    </div>
+                    <div className="table-stack">
+                      <PlaceAutocompleteField
+                        defaultExternalPlaceId={segment.external_place_id}
+                        defaultLabel={segment.location_label}
+                        defaultLatitude={segment.latitude}
+                        defaultLongitude={segment.longitude}
+                        externalIdName="external_place_id"
+                        labelName="location_label"
+                        latitudeName="latitude"
+                        longitudeName="longitude"
+                        sourceName="place_source"
+                      />
+                    </div>
+                    <div className="table-stack">
+                      <select defaultValue={segment.location_type} name="location_type">
+                        <option value="zone">Zone</option>
+                        <option value="island">Island</option>
+                        <option value="city">City</option>
+                        <option value="port">Port</option>
+                        <option value="airport">Airport</option>
+                        <option value="marina">Marina</option>
+                        <option value="anchorage">Anchorage</option>
+                        <option value="boatyard">Boatyard</option>
+                        <option value="other">Other</option>
+                      </select>
+                      <span className="meta">
+                        Source: {segment.place_source === "google_places" ? "Google Places" : segment.place_source}
                       </span>
                     </div>
-                    <div className="form-grid">
-                      <label>
-                        <span>Start</span>
-                        <input defaultValue={segment.start_date} name="start_date" type="date" />
-                      </label>
-                      <label>
-                        <span>End</span>
-                        <input defaultValue={segment.end_date} name="end_date" type="date" />
-                      </label>
-                      <label className="form-grid__wide">
-                        <span>Location</span>
-                        <input defaultValue={segment.location_label} name="location_label" />
-                      </label>
-                      <label>
-                        <span>Precision</span>
-                        <select defaultValue={segment.location_type} name="location_type">
-                          <option value="zone">Zone</option>
-                          <option value="island">Island</option>
-                          <option value="city">City</option>
-                          <option value="port">Port</option>
-                          <option value="airport">Airport</option>
-                          <option value="marina">Marina</option>
-                          <option value="anchorage">Anchorage</option>
-                          <option value="boatyard">Boatyard</option>
-                          <option value="other">Other</option>
-                        </select>
-                      </label>
-                      <label>
-                        <span>Status</span>
-                        <select defaultValue={segment.status} name="status">
-                          <option value="tentative">Tentative</option>
-                          <option value="planned">Planned</option>
-                          <option value="confirmed">Confirmed</option>
-                          <option value="active">Active</option>
-                          <option value="completed">Completed</option>
-                          <option value="cancelled">Cancelled</option>
-                        </select>
-                      </label>
-                      <label className="form-grid__wide">
-                        <span>Public notes</span>
-                        <textarea defaultValue={segment.public_notes ?? ""} name="public_notes" rows={2} />
-                      </label>
-                      <label className="form-grid__wide">
-                        <span>Private notes</span>
-                        <textarea defaultValue={segment.private_notes ?? ""} name="private_notes" rows={2} />
-                      </label>
+                    <select defaultValue={segment.status} name="status">
+                      <option value="tentative">Tentative</option>
+                      <option value="planned">Planned</option>
+                      <option value="confirmed">Confirmed</option>
+                      <option value="active">Active</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                    <textarea
+                      defaultValue={segment.public_notes ?? ""}
+                      name="public_notes"
+                      rows={3}
+                    />
+                    <textarea
+                      defaultValue={segment.private_notes ?? ""}
+                      name="private_notes"
+                      rows={3}
+                    />
+                    <div className="table-actions">
+                      <button className="link-button" type="submit">
+                        Save
+                      </button>
+                      <button
+                        className="link-button link-button--danger"
+                        formAction={deleteTripSegment}
+                        type="submit"
+                      >
+                        Delete
+                      </button>
                     </div>
-                    {canEdit ? (
-                      <div className="entity-card__actions">
-                        <button className="link-button" type="submit">
-                          Save changes
-                        </button>
-                        <button
-                          className="link-button link-button--danger"
-                          formAction={deleteTripSegment}
-                          type="submit"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    ) : null}
                   </form>
-                ))
-              ) : (
-                <p className="muted">
-                  No trip segments match the current filter. Undefined periods are
-                  still visible in the availability lane above.
-                </p>
-              )}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="muted">
+                No trip segments match the current filter. Undefined periods are
+                still visible in the availability lane above.
+              </p>
+            )}
           </article>
         </section>
       ) : null}

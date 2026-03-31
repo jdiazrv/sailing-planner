@@ -296,7 +296,11 @@ export interface Database {
           embark_date: string;
           disembark_date: string;
           embark_place_label: string | null;
+          embark_latitude: number | null;
+          embark_longitude: number | null;
           disembark_place_label: string | null;
+          disembark_latitude: number | null;
+          disembark_longitude: number | null;
           status: VisitStatus;
           public_notes: string | null;
           private_notes: string | null;

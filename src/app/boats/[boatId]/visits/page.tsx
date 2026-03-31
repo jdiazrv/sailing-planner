@@ -1,5 +1,7 @@
 import { BoatNav } from "@/components/boats/boat-nav";
+import { MapPanel } from "@/components/planning/map-panel";
 import { Timeline } from "@/components/planning/timeline";
+import { PlaceAutocompleteField } from "@/components/places/place-autocomplete-field";
 import { getBoatWorkspace } from "@/lib/boat-data";
 import { computeVisitConflicts, getEmptyVisitDraft } from "@/lib/planning";
 
@@ -57,6 +59,11 @@ export default async function BoatVisitsPage({
         />
 
         <aside className="stack">
+          <MapPanel
+            title="Embark and disembark places"
+            tripSegments={workspace.tripSegments}
+            visits={filteredVisits}
+          />
           <article className="dashboard-card">
             <div className="card-header">
               <div>
@@ -156,11 +163,25 @@ export default async function BoatVisitsPage({
                 </label>
                 <label>
                   <span>Embark place</span>
-                  <input defaultValue={visitDraft.embark_place_label} name="embark_place_label" />
+                  <PlaceAutocompleteField
+                    externalIdName="embark_external_place_id"
+                    labelName="embark_place_label"
+                    latitudeName="embark_latitude"
+                    longitudeName="embark_longitude"
+                    placeholder="Embark place"
+                    sourceName="embark_place_source"
+                  />
                 </label>
                 <label>
                   <span>Disembark place</span>
-                  <input defaultValue={visitDraft.disembark_place_label} name="disembark_place_label" />
+                  <PlaceAutocompleteField
+                    externalIdName="disembark_external_place_id"
+                    labelName="disembark_place_label"
+                    latitudeName="disembark_latitude"
+                    longitudeName="disembark_longitude"
+                    placeholder="Disembark place"
+                    sourceName="disembark_place_source"
+                  />
                 </label>
                 <label>
                   <span>Status</span>
@@ -185,116 +206,117 @@ export default async function BoatVisitsPage({
             </form>
           ) : null}
 
-          <div className="entity-stack">
-            {filteredVisits.length ? (
-              filteredVisits.map((visit) => (
-                <form action={saveVisit} className="entity-card" key={visit.id}>
+          {filteredVisits.length ? (
+            <div className="data-sheet">
+              <div className="data-sheet__header data-sheet__header--visits">
+                <span>Visitor</span>
+                <span>Dates</span>
+                <span>Places</span>
+                <span>Status</span>
+                <span>Public notes</span>
+                <span>Private notes</span>
+                <span>Actions</span>
+              </div>
+              {filteredVisits.map((visit) => (
+                <form action={saveVisit} className="data-row data-row--visits" key={visit.id}>
                   <input name="boat_id" type="hidden" value={boatId} />
                   <input name="season_id" type="hidden" value={visit.season_id} />
                   <input name="visit_id" type="hidden" value={visit.id} />
-                  <div className="entity-card__top">
-                    <strong>{visit.visitor_name ?? "Private visit"}</strong>
-                    <span className={`status-pill is-${visit.status}`}>
-                      {visit.status}
-                    </span>
+                  <div className="table-stack">
+                    <input
+                      defaultValue={visit.visitor_name ?? ""}
+                      disabled={!canEdit}
+                      name="visitor_name"
+                    />
                   </div>
-                  <div className="form-grid">
-                    <label className="form-grid__wide">
-                      <span>Visitor name</span>
-                      <input
-                        defaultValue={visit.visitor_name ?? ""}
-                        disabled={!canEdit}
-                        name="visitor_name"
-                      />
-                    </label>
-                    <label>
-                      <span>Embark date</span>
-                      <input
-                        defaultValue={visit.embark_date}
-                        disabled={!canEdit}
-                        name="embark_date"
-                        type="date"
-                      />
-                    </label>
-                    <label>
-                      <span>Disembark date</span>
-                      <input
-                        defaultValue={visit.disembark_date}
-                        disabled={!canEdit}
-                        name="disembark_date"
-                        type="date"
-                      />
-                    </label>
-                    <label>
-                      <span>Embark place</span>
-                      <input
-                        defaultValue={visit.embark_place_label ?? ""}
-                        disabled={!canEdit}
-                        name="embark_place_label"
-                      />
-                    </label>
-                    <label>
-                      <span>Disembark place</span>
-                      <input
-                        defaultValue={visit.disembark_place_label ?? ""}
-                        disabled={!canEdit}
-                        name="disembark_place_label"
-                      />
-                    </label>
-                    <label>
-                      <span>Status</span>
-                      <select
-                        defaultValue={visit.status}
-                        disabled={!canEdit}
-                        name="status"
-                      >
-                        <option value="tentative">Tentative</option>
-                        <option value="confirmed">Confirmed</option>
-                        <option value="cancelled">Cancelled</option>
-                      </select>
-                    </label>
-                    <label className="form-grid__wide">
-                      <span>Public notes</span>
-                      <textarea
-                        defaultValue={visit.public_notes ?? ""}
-                        disabled={!canEdit}
-                        name="public_notes"
-                        rows={2}
-                      />
-                    </label>
-                    <label className="form-grid__wide">
-                      <span>Private notes</span>
-                      <textarea
-                        defaultValue={visit.private_notes ?? ""}
-                        disabled={!canEdit}
-                        name="private_notes"
-                        rows={2}
-                      />
-                    </label>
+                  <div className="table-stack">
+                    <input
+                      defaultValue={visit.embark_date}
+                      disabled={!canEdit}
+                      name="embark_date"
+                      type="date"
+                    />
+                    <input
+                      defaultValue={visit.disembark_date}
+                      disabled={!canEdit}
+                      name="disembark_date"
+                      type="date"
+                    />
                   </div>
-                  {canEdit ? (
-                    <div className="entity-card__actions">
-                      <button className="link-button" type="submit">
-                        Save changes
-                      </button>
-                      <button
-                        className="link-button link-button--danger"
-                        formAction={deleteVisit}
-                        type="submit"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  ) : null}
+                  <div className="table-stack">
+                    <PlaceAutocompleteField
+                      defaultLabel={visit.embark_place_label}
+                      defaultLatitude={visit.embark_latitude}
+                      defaultLongitude={visit.embark_longitude}
+                      disabled={!canEdit}
+                      externalIdName="embark_external_place_id"
+                      labelName="embark_place_label"
+                      latitudeName="embark_latitude"
+                      longitudeName="embark_longitude"
+                      placeholder="Embark"
+                      sourceName="embark_place_source"
+                    />
+                    <PlaceAutocompleteField
+                      defaultLabel={visit.disembark_place_label}
+                      defaultLatitude={visit.disembark_latitude}
+                      defaultLongitude={visit.disembark_longitude}
+                      disabled={!canEdit}
+                      externalIdName="disembark_external_place_id"
+                      labelName="disembark_place_label"
+                      latitudeName="disembark_latitude"
+                      longitudeName="disembark_longitude"
+                      placeholder="Disembark"
+                      sourceName="disembark_place_source"
+                    />
+                  </div>
+                  <select
+                    defaultValue={visit.status}
+                    disabled={!canEdit}
+                    name="status"
+                  >
+                    <option value="tentative">Tentative</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                  <textarea
+                    defaultValue={visit.public_notes ?? ""}
+                    disabled={!canEdit}
+                    name="public_notes"
+                    rows={3}
+                  />
+                  <textarea
+                    defaultValue={visit.private_notes ?? ""}
+                    disabled={!canEdit}
+                    name="private_notes"
+                    rows={3}
+                  />
+                  <div className="table-actions">
+                    {canEdit ? (
+                      <>
+                        <button className="link-button" type="submit">
+                          Save
+                        </button>
+                        <button
+                          className="link-button link-button--danger"
+                          formAction={deleteVisit}
+                          type="submit"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    ) : (
+                      <span className={`status-pill is-${visit.status}`}>{visit.status}</span>
+                    )}
+                  </div>
                 </form>
-              ))
-            ) : (
-              <p className="muted">
-                No visits match the current filters. Confirmed visits will mark
-                occupied ranges in the timeline above.
-              </p>
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">
+              No visits match the current filters. Confirmed visits will mark
+              occupied ranges in the timeline above.
+            </p>
+          )}
         </article>
       </section>
     </>
