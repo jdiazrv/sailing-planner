@@ -31,10 +31,12 @@ export function TripSegmentsManager({
   const { t } = useI18n();
   const [addOpen, setAddOpen] = useState(false);
   const [editingSegment, setEditingSegment] = useState<TripSegmentView | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const handleSave = (formData: FormData) => {
     const isEdit = Boolean(formData.get("segment_id"));
+    setFormError(null);
     startTransition(async () => {
       try {
         await onSave(formData);
@@ -44,9 +46,10 @@ export function TripSegmentsManager({
         setAddOpen(false);
         setEditingSegment(null);
       } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : t("planning.saveSegmentError"),
-        );
+        const message =
+          error instanceof Error ? error.message : t("planning.saveSegmentError");
+        setFormError(message);
+        toast.error(message);
       }
     });
   };
@@ -83,7 +86,10 @@ export function TripSegmentsManager({
           <button
             className="primary-button"
             disabled={isPending}
-            onClick={() => setAddOpen(true)}
+            onClick={() => {
+              setFormError(null);
+              setAddOpen(true);
+            }}
             type="button"
           >
             + {t("planning.addSegment")}
@@ -168,12 +174,16 @@ export function TripSegmentsManager({
       )}
 
       <Dialog
-        onClose={() => setAddOpen(false)}
+        onClose={() => {
+          setFormError(null);
+          setAddOpen(false);
+        }}
         open={addOpen}
         title={t("planning.addTripSegment")}
       >
         <TripSegmentForm
           boatId={boatId}
+          errorMessage={formError}
           isPending={isPending}
           key="add"
           onSubmit={handleSave}
@@ -183,13 +193,17 @@ export function TripSegmentsManager({
       </Dialog>
 
       <Dialog
-        onClose={() => setEditingSegment(null)}
+        onClose={() => {
+          setFormError(null);
+          setEditingSegment(null);
+        }}
         open={!!editingSegment}
         title={t("planning.editTripSegment")}
       >
         {editingSegment && (
           <TripSegmentForm
             boatId={boatId}
+            errorMessage={formError}
             isPending={isPending}
             key={editingSegment.id}
             onSubmit={handleSave}
@@ -205,6 +219,7 @@ export function TripSegmentsManager({
 
 function TripSegmentForm({
   boatId,
+  errorMessage,
   seasonId,
   seasonStart,
   segment,
@@ -212,6 +227,7 @@ function TripSegmentForm({
   isPending,
 }: {
   boatId: string;
+  errorMessage?: string | null;
   seasonId: string;
   seasonStart: string;
   segment?: TripSegmentView;
@@ -235,6 +251,8 @@ function TripSegmentForm({
         type="hidden"
         value={segment?.sort_order ?? 0}
       />
+
+      {errorMessage ? <p className="feedback feedback--error">{errorMessage}</p> : null}
 
       <div className="form-grid">
         <label>

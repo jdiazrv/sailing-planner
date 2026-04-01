@@ -35,6 +35,7 @@ export function VisitsManager({
   const { t } = useI18n();
   const [addOpen, setAddOpen] = useState(false);
   const [editingVisit, setEditingVisit] = useState<VisitView | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   // Open edit dialog when triggered from outside (e.g. timeline click)
@@ -48,6 +49,7 @@ export function VisitsManager({
 
   const handleSave = (formData: FormData) => {
     const isEdit = Boolean(formData.get("visit_id"));
+    setFormError(null);
     startTransition(async () => {
       try {
         await onSave(formData);
@@ -55,7 +57,10 @@ export function VisitsManager({
         setAddOpen(false);
         setEditingVisit(null);
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Could not save visit");
+        const message =
+          error instanceof Error ? error.message : "Could not save visit";
+        setFormError(message);
+        toast.error(message);
       }
     });
   };
@@ -82,7 +87,10 @@ export function VisitsManager({
           <button
             className="primary-button"
             disabled={isPending}
-            onClick={() => setAddOpen(true)}
+            onClick={() => {
+              setFormError(null);
+              setAddOpen(true);
+            }}
             type="button"
           >
             + Add visit
@@ -146,9 +154,17 @@ export function VisitsManager({
         <p className="muted">No visits match the current filters.</p>
       )}
 
-      <Dialog onClose={() => setAddOpen(false)} open={addOpen} title="Add visit">
+      <Dialog
+        onClose={() => {
+          setFormError(null);
+          setAddOpen(false);
+        }}
+        open={addOpen}
+        title="Add visit"
+      >
         <VisitForm
           boatId={boatId}
+          errorMessage={formError}
           isPending={isPending}
           key="add"
           onSubmit={handleSave}
@@ -158,13 +174,17 @@ export function VisitsManager({
       </Dialog>
 
       <Dialog
-        onClose={() => setEditingVisit(null)}
+        onClose={() => {
+          setFormError(null);
+          setEditingVisit(null);
+        }}
         open={!!editingVisit}
         title="Edit visit"
       >
         {editingVisit && (
           <VisitForm
             boatId={boatId}
+            errorMessage={formError}
             isPending={isPending}
             key={editingVisit.id}
             onSubmit={handleSave}
@@ -180,6 +200,7 @@ export function VisitsManager({
 
 function VisitForm({
   boatId,
+  errorMessage,
   seasonId,
   seasonStart,
   visit,
@@ -187,6 +208,7 @@ function VisitForm({
   isPending,
 }: {
   boatId: string;
+  errorMessage?: string | null;
   seasonId: string;
   seasonStart: string;
   visit?: VisitView;
@@ -204,6 +226,8 @@ function VisitForm({
       <input name="boat_id" type="hidden" value={boatId} />
       <input name="season_id" type="hidden" value={seasonId} />
       {visit && <input name="visit_id" type="hidden" value={visit.id} />}
+
+      {errorMessage ? <p className="feedback feedback--error">{errorMessage}</p> : null}
 
       <div className="form-grid">
         <label className="form-grid__wide">
