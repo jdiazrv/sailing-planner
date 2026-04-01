@@ -10,7 +10,7 @@ type CookieMutation = {
   options?: Parameters<NextResponse["cookies"]["set"]>[2];
 };
 
-const protectedPrefixes = ["/dashboard"];
+const protectedPrefixes = ["/dashboard", "/boats", "/admin"];
 
 const isProtectedPath = (pathname: string) =>
   protectedPrefixes.some(
@@ -53,7 +53,10 @@ export const updateSession = async (request: NextRequest) => {
   if (!user && isProtectedPath(request.nextUrl.pathname)) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
-    loginUrl.searchParams.set("next", request.nextUrl.pathname);
+    loginUrl.searchParams.set(
+      "next",
+      `${request.nextUrl.pathname}${request.nextUrl.search}`,
+    );
 
     return NextResponse.redirect(loginUrl);
   }

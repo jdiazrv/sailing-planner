@@ -1,3 +1,4 @@
+import { getDocumentLocale, getIntlLocale } from "@/lib/i18n";
 import type { Database, PermissionLevel } from "@/types/database";
 
 type SeasonRow = Database["public"]["Tables"]["seasons"]["Row"];
@@ -15,7 +16,17 @@ export type BoatSummary = Database["public"]["Views"]["boat_access_overview"]["R
   home_port?: string | null;
   model?: string | null;
   year_built?: number | null;
+  image_path?: string | null;
+  image_url?: string | null;
   is_active?: boolean;
+};
+
+export type BoatDetails = BoatRow & {
+  image_url?: string | null;
+};
+
+export type UserAdminProfile = ProfileRow & {
+  permissions: PermissionRow[];
 };
 
 export type ViewerContext = {
@@ -25,7 +36,7 @@ export type ViewerContext = {
 
 export type BoatWorkspace = {
   viewer: ViewerContext;
-  boat: BoatRow;
+  boat: BoatDetails;
   permission: PermissionRow | null;
   boats: BoatSummary[];
   seasons: SeasonRow[];
@@ -53,15 +64,36 @@ export type VisitConflict = {
   message: string;
 };
 
+const isRangeFullyCovered = (
+  segments: TripSegmentView[],
+  start: string,
+  end: string,
+) => {
+  const totalDays = diffDaysInclusive(start, end);
+
+  for (let index = 0; index < totalDays; index += 1) {
+    const day = addDays(start, index);
+    const covered = segments.some((segment) =>
+      rangeIncludes(segment.start_date, segment.end_date, day),
+    );
+
+    if (!covered) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
 export const formatLongDate = (value: string) =>
-  new Intl.DateTimeFormat("en", {
+  new Intl.DateTimeFormat(getIntlLocale(getDocumentLocale()), {
     day: "numeric",
     month: "short",
     year: "numeric",
   }).format(parseDate(value));
 
 export const formatShortDate = (value: string) =>
-  new Intl.DateTimeFormat("en", {
+  new Intl.DateTimeFormat(getIntlLocale(getDocumentLocale()), {
     day: "numeric",
     month: "short",
   }).format(parseDate(value));
@@ -97,6 +129,38 @@ export const overlaps = (
   rightStart: string,
   rightEnd: string,
 ) => leftStart <= rightEnd && rightStart <= leftEnd;
+
+export const nauticalMilesBetweenPoints = (
+  startLatitude: number | null,
+  startLongitude: number | null,
+  endLatitude: number | null,
+  endLongitude: number | null,
+) => {
+  if (
+    typeof startLatitude !== "number" ||
+    typeof startLongitude !== "number" ||
+    typeof endLatitude !== "number" ||
+    typeof endLongitude !== "number"
+  ) {
+    return null;
+  }
+
+  const toRadians = (value: number) => (value * Math.PI) / 180;
+  const earthRadiusNauticalMiles = 3440.065;
+  const latitudeDelta = toRadians(endLatitude - startLatitude);
+  const longitudeDelta = toRadians(endLongitude - startLongitude);
+  const startLatitudeRad = toRadians(startLatitude);
+  const endLatitudeRad = toRadians(endLatitude);
+
+  const a =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(startLatitudeRad) *
+      Math.cos(endLatitudeRad) *
+      Math.sin(longitudeDelta / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return earthRadiusNauticalMiles * c;
+};
 
 export const getPermissionLabel = (
   level: PermissionLevel | null | undefined,
@@ -222,6 +286,11 @@ export const computeVisitConflicts = (
     const disembarkCovered = tripSegments.some((segment) =>
       rangeIncludes(segment.start_date, segment.end_date, visit.disembark_date),
     );
+    const fullRangeCovered = isRangeFullyCovered(
+      tripSegments,
+      visit.embark_date,
+      visit.disembark_date,
+    );
 
     if (!embarkCovered) {
       conflicts.push({
@@ -236,6 +305,14 @@ export const computeVisitConflicts = (
         visitId: visit.id,
         severity: "warning",
         message: `${visit.visitor_name ?? "Visit"} disembarks in a period without a trip segment.`,
+      });
+    }
+
+    if (embarkCovered && disembarkCovered && !fullRangeCovered) {
+      conflicts.push({
+        visitId: visit.id,
+        severity: "warning",
+        message: `${visit.visitor_name ?? "Visit"} crosses a gap without trip coverage.`,
       });
     }
 

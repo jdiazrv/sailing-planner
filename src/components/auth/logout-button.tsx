@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { useI18n } from "@/components/i18n/provider";
 import { createClient } from "@/lib/supabase/browser";
 
 export const LogoutButton = () => {
+  const { t } = useI18n();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -21,7 +23,7 @@ export const LogoutButton = () => {
 
   return (
     <button className="secondary-button" onClick={handleLogout} type="button">
-      {isLoading ? "Signing out..." : "Logout"}
+      {isLoading ? `${t("common.signOut")}...` : t("common.signOut")}
     </button>
   );
 };

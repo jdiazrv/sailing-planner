@@ -1,6 +1,7 @@
 "use server";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
@@ -11,6 +12,16 @@ import type {
   VisitStatus,
 } from "@/types/database";
 
+export async function trackLastBoat(boatId: string) {
+  const store = await cookies();
+  store.set("lastBoatId", boatId, {
+    path: "/",
+    maxAge: 30 * 24 * 60 * 60,
+    httpOnly: true,
+    sameSite: "lax",
+  });
+}
+
 const refreshBoatRoutes = (boatId: string) => {
   revalidatePath("/dashboard");
   revalidatePath(`/boats/${boatId}/trip`);
@@ -20,6 +31,25 @@ const refreshBoatRoutes = (boatId: string) => {
 const asOptionalString = (value: FormDataEntryValue | null) => {
   const normalized = value?.toString().trim();
   return normalized ? normalized : null;
+};
+
+const throwIfError = (error: { message?: string } | null) => {
+  if (error) {
+    throw new Error(error.message ?? "Unexpected Supabase error.");
+  }
+};
+
+const getNextTripSortOrder = async (db: any, seasonId: string) => {
+  const { data, error } = await db
+    .from("trip_segments")
+    .select("sort_order")
+    .eq("season_id", seasonId)
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  throwIfError(error);
+  return (data?.sort_order ?? 0) + 10;
 };
 
 export async function saveSeason(formData: FormData) {
@@ -38,9 +68,11 @@ export async function saveSeason(formData: FormData) {
   };
 
   if (seasonId) {
-    await db.from("seasons").update(payload).eq("id", seasonId);
+    const { error } = await db.from("seasons").update(payload).eq("id", seasonId);
+    throwIfError(error);
   } else {
-    await db.from("seasons").insert(payload);
+    const { error } = await db.from("seasons").insert(payload);
+    throwIfError(error);
   }
 
   refreshBoatRoutes(boatId);
@@ -52,7 +84,8 @@ export async function deleteSeason(formData: FormData) {
   const boatId = formData.get("boat_id")?.toString() ?? "";
   const seasonId = formData.get("season_id")?.toString() ?? "";
 
-  await db.from("seasons").delete().eq("id", seasonId);
+  const { error } = await db.from("seasons").delete().eq("id", seasonId);
+  throwIfError(error);
   refreshBoatRoutes(boatId);
 }
 
@@ -66,6 +99,9 @@ export async function saveTripSegment(formData: FormData) {
 
   const payload = {
     season_id: seasonId,
+    sort_order: segmentId
+      ? Number(formData.get("sort_order") ?? 0)
+      : await getNextTripSortOrder(db, seasonId),
     start_date: formData.get("start_date")?.toString() ?? "",
     end_date: formData.get("end_date")?.toString() ?? "",
     location_label: formData.get("location_label")?.toString() ?? "",
@@ -88,29 +124,86 @@ export async function saveTripSegment(formData: FormData) {
   let resolvedId = segmentId;
 
   if (segmentId) {
-    await db.from("trip_segments").update(payload).eq("id", segmentId);
+    const { error } = await db
+      .from("trip_segments")
+      .update(payload)
+      .eq("id", segmentId);
+    throwIfError(error);
   } else {
-    const { data } = await db
+    const { data, error } = await db
       .from("trip_segments")
       .insert(payload)
       .select("id")
       .single();
+    throwIfError(error);
     resolvedId = data?.id ?? null;
   }
 
   if (resolvedId) {
     if (privateNotes) {
-      await db.from("trip_segment_private_notes").upsert({
+      const { error } = await db.from("trip_segment_private_notes").upsert({
         trip_segment_id: resolvedId,
         private_notes: privateNotes,
       });
+      throwIfError(error);
     } else {
-      await db
+      const { error } = await db
         .from("trip_segment_private_notes")
         .delete()
         .eq("trip_segment_id", resolvedId);
+      throwIfError(error);
     }
   }
+
+  refreshBoatRoutes(boatId);
+}
+
+export async function moveTripSegment(formData: FormData) {
+  const supabase = await createClient();
+  const db = supabase as any;
+  const boatId = formData.get("boat_id")?.toString() ?? "";
+  const seasonId = formData.get("season_id")?.toString() ?? "";
+  const segmentId = formData.get("segment_id")?.toString() ?? "";
+  const direction = formData.get("direction")?.toString();
+
+  const { data: segments, error } = await db
+    .from("trip_segments")
+    .select("id, sort_order")
+    .eq("season_id", seasonId)
+    .order("sort_order", { ascending: true })
+    .order("start_date", { ascending: true });
+
+  throwIfError(error);
+
+  const ordered = (segments ?? []) as { id: string; sort_order: number }[];
+  const index = ordered.findIndex((segment) => segment.id === segmentId);
+  const targetIndex =
+    direction === "up" ? index - 1 : direction === "down" ? index + 1 : index;
+
+  if (index < 0 || targetIndex < 0 || targetIndex >= ordered.length) {
+    return;
+  }
+
+  const current = ordered[index];
+  const target = ordered[targetIndex];
+
+  const { error: firstError } = await db
+    .from("trip_segments")
+    .update({ sort_order: -1 })
+    .eq("id", current.id);
+  throwIfError(firstError);
+
+  const { error: secondError } = await db
+    .from("trip_segments")
+    .update({ sort_order: current.sort_order })
+    .eq("id", target.id);
+  throwIfError(secondError);
+
+  const { error: thirdError } = await db
+    .from("trip_segments")
+    .update({ sort_order: target.sort_order })
+    .eq("id", current.id);
+  throwIfError(thirdError);
 
   refreshBoatRoutes(boatId);
 }
@@ -121,19 +214,23 @@ export async function deleteTripSegment(formData: FormData) {
   const boatId = formData.get("boat_id")?.toString() ?? "";
   const segmentId = formData.get("segment_id")?.toString() ?? "";
 
-  await db.from("trip_segments").delete().eq("id", segmentId);
+  const { error } = await db.from("trip_segments").delete().eq("id", segmentId);
+  throwIfError(error);
   refreshBoatRoutes(boatId);
 }
 
 export async function saveVisit(formData: FormData) {
   const supabase = await createClient();
   const db = supabase as any;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const boatId = formData.get("boat_id")?.toString() ?? "";
   const visitId = asOptionalString(formData.get("visit_id"));
   const seasonId = formData.get("season_id")?.toString() ?? "";
   const privateNotes = asOptionalString(formData.get("private_notes"));
 
-  const payload = {
+  const basePayload = {
     season_id: seasonId,
     visitor_name: formData.get("visitor_name")?.toString() ?? "",
     embark_date: formData.get("embark_date")?.toString() ?? "",
@@ -173,24 +270,34 @@ export async function saveVisit(formData: FormData) {
   let resolvedId = visitId;
 
   if (visitId) {
-    await db.from("visits").update(payload).eq("id", visitId);
+    const { error } = await db.from("visits").update(basePayload).eq("id", visitId);
+    throwIfError(error);
   } else {
-    const { data } = await db
+    const { data, error } = await db
       .from("visits")
-      .insert(payload)
+      .insert({
+        ...basePayload,
+        owner_user_id: user?.id ?? null,
+      })
       .select("id")
       .single();
+    throwIfError(error);
     resolvedId = data?.id ?? null;
   }
 
   if (resolvedId) {
     if (privateNotes) {
-      await db.from("visit_private_notes").upsert({
+      const { error } = await db.from("visit_private_notes").upsert({
         visit_id: resolvedId,
         private_notes: privateNotes,
       });
+      throwIfError(error);
     } else {
-      await db.from("visit_private_notes").delete().eq("visit_id", resolvedId);
+      const { error } = await db
+        .from("visit_private_notes")
+        .delete()
+        .eq("visit_id", resolvedId);
+      throwIfError(error);
     }
   }
 
@@ -203,6 +310,7 @@ export async function deleteVisit(formData: FormData) {
   const boatId = formData.get("boat_id")?.toString() ?? "";
   const visitId = formData.get("visit_id")?.toString() ?? "";
 
-  await db.from("visits").delete().eq("id", visitId);
+  const { error } = await db.from("visits").delete().eq("id", visitId);
+  throwIfError(error);
   refreshBoatRoutes(boatId);
 }

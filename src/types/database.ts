@@ -31,6 +31,7 @@ export type PlaceSource =
   | "mapbox"
   | "openstreetmap"
   | "other";
+export type PreferredLanguage = "es" | "en";
 
 export interface Database {
   public: {
@@ -44,6 +45,7 @@ export interface Database {
           year_built: number | null;
           home_port: string | null;
           notes: string | null;
+          image_path: string | null;
           is_active: boolean;
           created_at: string;
           updated_at: string;
@@ -56,6 +58,7 @@ export interface Database {
           year_built?: number | null;
           home_port?: string | null;
           notes?: string | null;
+          image_path?: string | null;
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -66,14 +69,18 @@ export interface Database {
         Row: {
           id: string;
           display_name: string | null;
+          email: string | null;
           is_superuser: boolean;
+          preferred_language: PreferredLanguage;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id: string;
           display_name?: string | null;
+          email?: string | null;
           is_superuser?: boolean;
+          preferred_language?: PreferredLanguage;
           created_at?: string;
           updated_at?: string;
         };
@@ -141,6 +148,7 @@ export interface Database {
         Row: {
           id: string;
           season_id: string;
+          sort_order: number;
           start_date: string;
           end_date: string;
           location_label: string;
@@ -157,6 +165,7 @@ export interface Database {
         Insert: {
           id?: string;
           season_id: string;
+          sort_order?: number;
           start_date: string;
           end_date: string;
           location_label: string;
@@ -269,6 +278,7 @@ export interface Database {
         Returns: {
           id: string;
           season_id: string;
+          sort_order: number;
           start_date: string;
           end_date: string;
           location_label: string;

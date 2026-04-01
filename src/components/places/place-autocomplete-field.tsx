@@ -29,6 +29,14 @@ const isPlacePrediction = (
   prediction: google.maps.places.PlacePrediction | null,
 ): prediction is google.maps.places.PlacePrediction => Boolean(prediction);
 
+const trimPlaceLabel = (value: string) =>
+  value
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .slice(0, 1)
+    .join(", ");
+
 export const PlaceAutocompleteField = ({
   defaultLabel,
   defaultExternalPlaceId,
@@ -42,6 +50,7 @@ export const PlaceAutocompleteField = ({
   placeholder,
   disabled = false,
 }: PlaceAutocompleteFieldProps) => {
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const sessionRef = useRef<google.maps.places.AutocompleteSessionToken | null>(
     null,
   );
@@ -59,9 +68,11 @@ export const PlaceAutocompleteField = ({
   );
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
 
   useEffect(() => {
-    if (!hasGoogleMapsKey || disabled) {
+    if (!hasGoogleMapsKey || disabled || !hasUserInteracted || !isFocused) {
       return;
     }
 
@@ -104,11 +115,14 @@ export const PlaceAutocompleteField = ({
         .filter(isPlacePrediction)
         .map((prediction) => ({
           id: prediction.placeId,
-          primaryText: prediction.text?.toString() ?? prediction.placeId,
-          secondaryText:
+          primaryText: trimPlaceLabel(
+            prediction.text?.toString() ?? prediction.placeId,
+          ),
+          secondaryText: trimPlaceLabel(
             prediction.secondaryText?.toString() ??
-            prediction.text?.toString() ??
-            "",
+              prediction.text?.toString() ??
+              "",
+          ),
           placePrediction: prediction,
         }));
 
@@ -119,7 +133,7 @@ export const PlaceAutocompleteField = ({
     return () => {
       cancelled = true;
     };
-  }, [inputValue, disabled]);
+  }, [disabled, hasUserInteracted, inputValue, isFocused]);
 
   const markManual = (nextValue: string) => {
     setInputValue(nextValue);
@@ -141,10 +155,11 @@ export const PlaceAutocompleteField = ({
     });
 
     setInputValue(
-      place.formattedAddress ??
+      trimPlaceLabel(
         place.displayName ??
-        suggestion.secondaryText ??
-        suggestion.primaryText,
+          place.formattedAddress ??
+          suggestion.primaryText,
+      ),
     );
     setSource("google_places");
     setExternalId(place.id ?? suggestion.placePrediction.placeId);
@@ -156,18 +171,26 @@ export const PlaceAutocompleteField = ({
     );
     setSuggestions([]);
     setIsOpen(false);
+    inputRef.current?.blur();
   };
 
   return (
     <div className="place-field">
       <input
+        ref={inputRef}
         autoComplete="off"
         disabled={disabled}
         onBlur={() => {
+          setIsFocused(false);
           window.setTimeout(() => setIsOpen(false), 120);
         }}
         onChange={(event) => markManual(event.target.value)}
-        onFocus={() => setIsOpen(suggestions.length > 0)}
+        onFocus={() => {
+          setHasUserInteracted(true);
+          setIsFocused(true);
+          setIsOpen(suggestions.length > 0);
+        }}
+        onPointerDown={() => setHasUserInteracted(true)}
         placeholder={placeholder}
         type="text"
         value={inputValue}

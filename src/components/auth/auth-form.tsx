@@ -5,10 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { buildAuthRedirectUrl } from "@/lib/env";
 import { createClient } from "@/lib/supabase/browser";
+import { useI18n } from "@/components/i18n/provider";
 
 type Mode = "password" | "magic-link";
 
 export const AuthForm = () => {
+  const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/dashboard";
@@ -38,11 +40,13 @@ export const AuthForm = () => {
 
   const handleMagicLink = async () => {
     const supabase = createClient();
+    const redirectUrl = new URL(buildAuthRedirectUrl());
+    redirectUrl.searchParams.set("next", next);
 
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: buildAuthRedirectUrl(),
+        emailRedirectTo: redirectUrl.toString(),
       },
     });
 
@@ -50,7 +54,7 @@ export const AuthForm = () => {
       throw otpError;
     }
 
-    setMessage("Magic link sent. Check your inbox to finish signing in.");
+    setMessage(t("auth.magicSent"));
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -61,12 +65,12 @@ export const AuthForm = () => {
 
     try {
       if (!email) {
-        throw new Error("Email is required.");
+        throw new Error(t("auth.emailRequired"));
       }
 
       if (mode === "password") {
         if (!password) {
-          throw new Error("Password is required for password login.");
+          throw new Error(t("auth.passwordRequired"));
         }
 
         await handlePasswordLogin();
@@ -77,7 +81,7 @@ export const AuthForm = () => {
       setError(
         submitError instanceof Error
           ? submitError.message
-          : "Something went wrong while signing in.",
+          : t("auth.error"),
       );
     } finally {
       setIsLoading(false);
@@ -87,16 +91,13 @@ export const AuthForm = () => {
   return (
     <form className="auth-card" onSubmit={handleSubmit}>
       <div className="auth-card__header">
-        <p className="eyebrow">Supabase Auth</p>
-        <h1>Sign in to Sailing Planner</h1>
-        <p className="muted">
-          Password login is enabled now and magic link is already wired for the
-          same project.
-        </p>
+        <p className="eyebrow">Sailing Planner</p>
+        <h1>{t("auth.title")}</h1>
+        <p className="muted">{t("auth.subtitle")}</p>
       </div>
 
       <label className="field">
-        <span>Email</span>
+        <span>{t("auth.email")}</span>
         <input
           autoComplete="email"
           name="email"
@@ -108,7 +109,7 @@ export const AuthForm = () => {
       </label>
 
       <label className="field">
-        <span>Password</span>
+        <span>{t("auth.password")}</span>
         <input
           autoComplete="current-password"
           disabled={mode === "magic-link"}
@@ -120,14 +121,14 @@ export const AuthForm = () => {
         />
       </label>
 
-      <div className="segmented-control" role="tablist" aria-label="Login mode">
+      <div className="segmented-control" role="tablist" aria-label={t("auth.loginMode")}>
         <button
           aria-pressed={mode === "password"}
           className={mode === "password" ? "is-active" : undefined}
           onClick={() => setMode("password")}
           type="button"
         >
-          Password
+          {t("auth.passwordMode")}
         </button>
         <button
           aria-pressed={mode === "magic-link"}
@@ -135,7 +136,7 @@ export const AuthForm = () => {
           onClick={() => setMode("magic-link")}
           type="button"
         >
-          Magic link
+          {t("auth.magicMode")}
         </button>
       </div>
 
@@ -144,10 +145,10 @@ export const AuthForm = () => {
 
       <button className="primary-button" disabled={isLoading} type="submit">
         {isLoading
-          ? "Working..."
+          ? t("auth.working")
           : mode === "password"
-            ? "Sign in with password"
-            : "Send magic link"}
+            ? t("auth.signInPassword")
+            : t("auth.sendMagic")}
       </button>
     </form>
   );

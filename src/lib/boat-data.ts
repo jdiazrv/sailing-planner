@@ -4,9 +4,11 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
 import type {
+  BoatDetails,
   BoatSummary,
   BoatWorkspace,
   TripSegmentView,
+  UserAdminProfile,
   ViewerContext,
   VisitView,
 } from "@/lib/planning";
@@ -14,7 +16,23 @@ import type {
 type SeasonRow = Database["public"]["Tables"]["seasons"]["Row"];
 type BoatRow = Database["public"]["Tables"]["boats"]["Row"];
 type PermissionRow = Database["public"]["Tables"]["user_boat_permissions"]["Row"];
+type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 type BoatOverviewRow = Database["public"]["Views"]["boat_access_overview"]["Row"];
+
+const getBoatImageUrl = (
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  imagePath: string | null | undefined,
+  updatedAt?: string | null,
+) => {
+  if (!imagePath) {
+    return null;
+  }
+
+  const { data } = supabase.storage.from("boat-images").getPublicUrl(imagePath);
+  return updatedAt
+    ? `${data.publicUrl}?v=${encodeURIComponent(updatedAt)}`
+    : data.publicUrl;
+};
 
 export const requireViewer = async () => {
   const supabase = await createClient();
@@ -47,7 +65,9 @@ export const getAccessibleBoats = async () => {
 
   const { data } = await db
     .from("boats")
-    .select("id, name, description, is_active, model, year_built, home_port")
+    .select(
+      "id, name, description, is_active, model, year_built, home_port, image_path",
+    )
     .order("name");
 
   const { data: overviewData } = await db
@@ -79,10 +99,61 @@ export const getAccessibleBoats = async () => {
       Boolean(viewer.isSuperuser),
     description: boat.description,
     home_port: boat.home_port ?? null,
+    image_path: boat.image_path ?? null,
+    image_url: getBoatImageUrl(supabase, boat.image_path, boat.updated_at),
     model: boat.model ?? null,
     year_built: boat.year_built ?? null,
     is_active: boat.is_active,
   })) as BoatSummary[];
+};
+
+export const requireSuperuser = async () => {
+  const context = await requireViewer();
+
+  if (!context.viewer.isSuperuser) {
+    redirect("/dashboard");
+  }
+
+  return context;
+};
+
+export const getAdminBoats = async () => {
+  const { supabase } = await requireSuperuser();
+  const db = supabase as any;
+  const { data } = await db.from("boats").select("*").order("name");
+
+  return ((data ?? []) as BoatRow[]).map((boat) => ({
+    ...boat,
+    image_url: getBoatImageUrl(supabase, boat.image_path, boat.updated_at),
+  })) as BoatDetails[];
+};
+
+export const getAdminUsers = async () => {
+  const { supabase } = await requireSuperuser();
+  const db = supabase as any;
+
+  const [{ data: profilesData }, { data: permissionsData }] = await Promise.all([
+    db.from("profiles").select("*").order("display_name"),
+    db
+      .from("user_boat_permissions")
+      .select("*")
+      .order("boat_id")
+      .order("user_id"),
+  ]);
+
+  const permissions = (permissionsData ?? []) as PermissionRow[];
+  const permissionsByUser = new Map<string, PermissionRow[]>();
+
+  permissions.forEach((permission) => {
+    const existing = permissionsByUser.get(permission.user_id) ?? [];
+    existing.push(permission);
+    permissionsByUser.set(permission.user_id, existing);
+  });
+
+  return ((profilesData ?? []) as ProfileRow[]).map((profile) => ({
+    ...profile,
+    permissions: permissionsByUser.get(profile.id) ?? [],
+  })) as UserAdminProfile[];
 };
 
 export const getBoatWorkspace = async (
@@ -135,7 +206,14 @@ export const getBoatWorkspace = async (
 
   return {
     viewer,
-    boat: boatRowData as unknown as BoatRow,
+    boat: {
+      ...(boatRowData as BoatRow),
+      image_url: getBoatImageUrl(
+        supabase,
+        (boatRowData as BoatRow | null)?.image_path,
+        (boatRowData as BoatRow | null)?.updated_at,
+      ),
+    } as BoatDetails,
     permission: permissionData as PermissionRow | null,
     boats,
     seasons,
