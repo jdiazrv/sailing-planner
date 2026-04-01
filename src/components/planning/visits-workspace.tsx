@@ -128,25 +128,25 @@ export function VisitsWorkspace({
               )}
               <div className="form-grid">
                 <label className="form-grid__wide">
-                  <span>Search</span>
+                  <span>{t("planning.search")}</span>
                   <input
                     defaultValue={queryFilter ?? ""}
                     name="q"
-                    placeholder="Visitor, port or notes"
+                    placeholder={t("planning.searchVisitsPlaceholder")}
                   />
                 </label>
                 <label className="form-grid__wide">
-                  <span>Status</span>
+                  <span>{t("planning.status")}</span>
                   <select defaultValue={statusFilter ?? ""} name="status">
-                    <option value="">All statuses</option>
-                    <option value="tentative">Tentative</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="cancelled">Cancelled</option>
+                    <option value="">{t("planning.allStatuses")}</option>
+                    <option value="tentative">{t("status.tentative")}</option>
+                    <option value="confirmed">{t("status.confirmed")}</option>
+                    <option value="cancelled">{t("status.cancelled")}</option>
                   </select>
                 </label>
               </div>
               <button className="link-button" type="submit">
-                Apply filters
+                {t("planning.applyFilters")}
               </button>
             </form>
           )}
@@ -185,8 +185,8 @@ export function VisitsWorkspace({
             <article className="dashboard-card">
               <div className="card-header">
                 <div>
-                  <p className="eyebrow">Warnings</p>
-                  <h2>Review before confirming</h2>
+                  <p className="eyebrow">{t("planning.warnings")}</p>
+                  <h2>{t("planning.reviewBeforeConfirming")}</h2>
                 </div>
               </div>
               <ul className="list">

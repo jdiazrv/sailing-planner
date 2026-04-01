@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { recordCurrentUserAccess } from "@/app/actions";
 import { useI18n } from "@/components/i18n/provider";
 import { createClient } from "@/lib/supabase/browser";
 
@@ -80,6 +81,7 @@ export function SetPasswordForm() {
     }
 
     setMessage(text.success);
+    await recordCurrentUserAccess();
     router.replace("/dashboard");
     router.refresh();
   };

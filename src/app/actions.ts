@@ -9,6 +9,7 @@ import {
   LOCALE_COOKIE_NAME,
   type Locale,
 } from "@/lib/i18n";
+import { recordCurrentUserAccess as recordCurrentUserAccessInternal } from "@/lib/auth-audit";
 import { createClient } from "@/lib/supabase/server";
 
 export async function updateLanguagePreference(locale: Locale) {
@@ -36,4 +37,30 @@ export async function updateLanguagePreference(locale: Locale) {
   }
 
   revalidatePath("/", "layout");
+}
+
+export async function updateTimelineVisibility(isPublic: boolean) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("Authentication required.");
+  }
+
+  await (supabase as any)
+    .from("profiles")
+    .update({ is_timeline_public: isPublic })
+    .eq("id", user.id);
+
+  revalidatePath("/dashboard");
+  revalidatePath("/shared");
+  revalidatePath("/", "layout");
+}
+
+export async function recordCurrentUserAccess() {
+  await recordCurrentUserAccessInternal();
+  revalidatePath("/dashboard");
+  revalidatePath("/admin/users");
 }

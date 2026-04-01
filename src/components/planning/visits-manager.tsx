@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { useI18n } from "@/components/i18n/provider";
 import { Dialog } from "@/components/ui/dialog";
 import { PlaceAutocompleteField } from "@/components/places/place-autocomplete-field";
-import { formatShortDate } from "@/lib/planning";
+import { formatShortDate, hasVisitDateRange } from "@/lib/planning";
 import type { VisitView } from "@/lib/planning";
 
 type Props = {
@@ -53,12 +53,12 @@ export function VisitsManager({
     startTransition(async () => {
       try {
         await onSave(formData);
-        toast.success(isEdit ? "Visit updated" : "Visit added");
+        toast.success(isEdit ? t("planning.visitUpdated") : t("planning.visitAdded"));
         setAddOpen(false);
         setEditingVisit(null);
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : "Could not save visit";
+          error instanceof Error ? error.message : t("planning.saveVisitError");
         setFormError(message);
         toast.error(message);
       }
@@ -66,16 +66,24 @@ export function VisitsManager({
   };
 
   const handleDelete = (visit: VisitView) => {
-    if (!confirm(`Delete visit for "${visit.visitor_name ?? "this visitor"}"?`)) return;
+    if (
+      !confirm(
+        t("planning.deleteVisitConfirm").replace(
+          "{name}",
+          visit.visitor_name ?? t("planning.privateVisit"),
+        ),
+      )
+    )
+      return;
     const fd = new FormData();
     fd.set("boat_id", boatId);
     fd.set("visit_id", visit.id);
     startTransition(async () => {
       try {
         await onDelete(fd);
-        toast.success("Visit deleted");
+        toast.success(t("planning.visitDeleted"));
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Could not delete visit");
+        toast.error(error instanceof Error ? error.message : t("planning.deleteVisitError"));
       }
     });
   };
@@ -93,7 +101,7 @@ export function VisitsManager({
             }}
             type="button"
           >
-            + Add visit
+            + {t("planning.addVisit")}
           </button>
         </div>
       )}
@@ -101,26 +109,32 @@ export function VisitsManager({
       {visits.length ? (
         <div className="data-sheet">
           <div className="data-sheet__header data-sheet__header--visits">
-            <span>Visitor</span>
-            <span>Dates</span>
-            <span>Embark → Disembark</span>
-            <span>Status</span>
-            <span>Notes</span>
+            <span>{t("planning.visitor")}</span>
+            <span>{t("planning.dates")}</span>
+            <span>{t("planning.embarkDisembark")}</span>
+            <span>{t("planning.status")}</span>
+            <span>{t("planning.notes")}</span>
             {canEdit && <span></span>}
           </div>
           {visits.map((visit) => (
             <div className="data-row data-row--visits" key={visit.id}>
-              <div>{visit.visitor_name ?? <span className="muted">Private</span>}</div>
+              <div>{visit.visitor_name ?? <span className="muted">{t("planning.private")}</span>}</div>
               <div className="table-stack">
-                <span>{formatShortDate(visit.embark_date)}</span>
-                <span className="muted">{formatShortDate(visit.disembark_date)}</span>
+                {hasVisitDateRange(visit) ? (
+                  <>
+                    <span>{formatShortDate(visit.embark_date)}</span>
+                    <span className="muted">{formatShortDate(visit.disembark_date)}</span>
+                  </>
+                ) : (
+                  <span className="muted">{t("planning.restrictedVisitDates")}</span>
+                )}
               </div>
               <div className="table-stack">
                 <span>{visit.embark_place_label ?? <span className="muted">—</span>}</span>
                 <span className="muted">{visit.disembark_place_label ?? "—"}</span>
               </div>
               <div>
-                <span className={`status-pill is-${visit.status}`}>{visit.status}</span>
+                <span className={`status-pill is-${visit.status}`}>{t(`status.${visit.status}` as never)}</span>
               </div>
               <div className="cell-clamp muted">{visit.public_notes}</div>
               {canEdit && (
@@ -151,7 +165,7 @@ export function VisitsManager({
           ))}
         </div>
       ) : (
-        <p className="muted">No visits match the current filters.</p>
+        <p className="muted">{t("planning.noVisitsMatch")}</p>
       )}
 
       <Dialog
@@ -160,7 +174,7 @@ export function VisitsManager({
           setAddOpen(false);
         }}
         open={addOpen}
-        title="Add visit"
+        title={t("planning.addVisit")}
       >
         <VisitForm
           boatId={boatId}
@@ -179,7 +193,7 @@ export function VisitsManager({
           setEditingVisit(null);
         }}
         open={!!editingVisit}
-        title="Edit visit"
+        title={t("planning.editVisit")}
       >
         {editingVisit && (
           <VisitForm
@@ -215,6 +229,7 @@ function VisitForm({
   onSubmit: (fd: FormData) => void;
   isPending: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <form
       className="editor-form"
@@ -231,7 +246,7 @@ function VisitForm({
 
       <div className="form-grid">
         <label className="form-grid__wide">
-          <span>Visitor name</span>
+          <span>{t("planning.visitorName")}</span>
           <input
             defaultValue={visit?.visitor_name ?? ""}
             name="visitor_name"
@@ -240,7 +255,7 @@ function VisitForm({
           />
         </label>
         <label>
-          <span>Embark date</span>
+          <span>{t("planning.embarkDate")}</span>
           <input
             defaultValue={visit?.embark_date ?? seasonStart}
             name="embark_date"
@@ -249,7 +264,7 @@ function VisitForm({
           />
         </label>
         <label>
-          <span>Disembark date</span>
+          <span>{t("planning.disembarkDate")}</span>
           <input
             defaultValue={visit?.disembark_date ?? seasonStart}
             name="disembark_date"
@@ -258,7 +273,7 @@ function VisitForm({
           />
         </label>
         <label>
-          <span>Embark place</span>
+          <span>{t("planning.embarkPlace")}</span>
           <PlaceAutocompleteField
             defaultLabel={visit?.embark_place_label}
             defaultLatitude={visit?.embark_latitude}
@@ -267,12 +282,12 @@ function VisitForm({
             labelName="embark_place_label"
             latitudeName="embark_latitude"
             longitudeName="embark_longitude"
-            placeholder="Embark place"
+            placeholder={t("planning.embarkPlace")}
             sourceName="embark_place_source"
           />
         </label>
         <label>
-          <span>Disembark place</span>
+          <span>{t("planning.disembarkPlace")}</span>
           <PlaceAutocompleteField
             defaultLabel={visit?.disembark_place_label}
             defaultLatitude={visit?.disembark_latitude}
@@ -281,20 +296,20 @@ function VisitForm({
             labelName="disembark_place_label"
             latitudeName="disembark_latitude"
             longitudeName="disembark_longitude"
-            placeholder="Disembark place"
+            placeholder={t("planning.disembarkPlace")}
             sourceName="disembark_place_source"
           />
         </label>
         <label>
-          <span>Status</span>
+          <span>{t("planning.status")}</span>
           <select defaultValue={visit?.status ?? "tentative"} name="status">
-            <option value="tentative">Tentative</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="tentative">{t("status.tentative")}</option>
+            <option value="confirmed">{t("status.confirmed")}</option>
+            <option value="cancelled">{t("status.cancelled")}</option>
           </select>
         </label>
         <label className="form-grid__wide">
-          <span>Public notes</span>
+          <span>{t("planning.publicNotes")}</span>
           <textarea
             defaultValue={visit?.public_notes ?? ""}
             name="public_notes"
@@ -302,7 +317,7 @@ function VisitForm({
           />
         </label>
         <label className="form-grid__wide">
-          <span>Private notes</span>
+          <span>{t("planning.privateNotes")}</span>
           <textarea
             defaultValue={visit?.private_notes ?? ""}
             name="private_notes"
@@ -313,7 +328,7 @@ function VisitForm({
 
       <div className="modal__footer">
         <button className="primary-button" disabled={isPending} type="submit">
-          {isPending ? "Saving…" : visit ? "Save changes" : "Add visit"}
+          {isPending ? t("planning.saving") : visit ? t("planning.saveChanges") : t("planning.addVisit")}
         </button>
       </div>
     </form>

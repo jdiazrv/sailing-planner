@@ -31,8 +31,12 @@ export default async function RootLayout({
   const locale = await getRequestLocale();
 
   return (
-    <html lang={locale} className={`${bodyFont.variable} ${headingFont.variable}`}>
-      <body>
+    <html
+      lang={locale}
+      className={`${bodyFont.variable} ${headingFont.variable}`}
+      suppressHydrationWarning
+    >
+      <body suppressHydrationWarning>
         <I18nProvider locale={locale}>
           <div className="app-language">
             <LanguageSwitcher />

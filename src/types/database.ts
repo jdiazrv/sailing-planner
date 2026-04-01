@@ -71,6 +71,11 @@ export interface Database {
           display_name: string | null;
           email: string | null;
           is_superuser: boolean;
+          is_guest_user: boolean;
+          is_timeline_public: boolean;
+          created_by_user_id: string | null;
+          sign_in_count: number;
+          last_sign_in_at: string | null;
           preferred_language: PreferredLanguage;
           created_at: string;
           updated_at: string;
@@ -80,6 +85,11 @@ export interface Database {
           display_name?: string | null;
           email?: string | null;
           is_superuser?: boolean;
+          is_guest_user?: boolean;
+          is_timeline_public?: boolean;
+          created_by_user_id?: string | null;
+          sign_in_count?: number;
+          last_sign_in_at?: string | null;
           preferred_language?: PreferredLanguage;
           created_at?: string;
           updated_at?: string;
@@ -303,8 +313,8 @@ export interface Database {
           season_id: string;
           owner_user_id: string | null;
           visitor_name: string | null;
-          embark_date: string;
-          disembark_date: string;
+          embark_date: string | null;
+          disembark_date: string | null;
           embark_place_label: string | null;
           embark_latitude: number | null;
           embark_longitude: number | null;

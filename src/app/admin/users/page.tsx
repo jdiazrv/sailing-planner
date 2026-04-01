@@ -3,7 +3,7 @@ import Link from "next/link";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { UsersAdmin } from "@/components/admin/users-admin";
-import { getAdminBoats, getAdminUsers } from "@/lib/boat-data";
+import { getAdminBoats, getAdminUsers, requireUserAdminAccess } from "@/lib/boat-data";
 import { getEnv } from "@/lib/env";
 import { t } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n-server";
@@ -20,6 +20,7 @@ import {
 
 export default async function AdminUsersPage() {
   const locale = await getRequestLocale();
+  const access = await requireUserAdminAccess();
   const [boats, users] = await Promise.all([getAdminBoats(), getAdminUsers()]);
   const canInviteUsers = Boolean(getEnv().SUPABASE_SERVICE_ROLE_KEY);
 
@@ -44,6 +45,7 @@ export default async function AdminUsersPage() {
       <UsersAdmin
         boats={boats}
         canInviteUsers={canInviteUsers}
+        isSuperuser={access.viewer.isSuperuser}
         onDeletePermission={deleteUserBoatPermission}
         onDeleteUser={deleteUserAccount}
         onInviteUser={createUserAccount}

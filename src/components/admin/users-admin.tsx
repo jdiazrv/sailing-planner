@@ -19,6 +19,7 @@ type UsersAdminProps = {
   onDeleteUser: (fd: FormData) => Promise<void>;
   onUpdatePassword: (fd: FormData) => Promise<void>;
   canInviteUsers: boolean;
+  isSuperuser: boolean;
 };
 
 type InvitePermissionsState = {
@@ -72,6 +73,32 @@ const getPermissionPreset = (
   }
 };
 
+const tLabel = (
+  locale: "es" | "en",
+  key: "auth.email" | "admin.users.displayName",
+) =>
+  locale === "es"
+    ? key === "auth.email"
+      ? "Correo"
+      : "Nombre visible"
+    : key === "auth.email"
+      ? "Email"
+      : "Display name";
+
+const formatLastAccess = (
+  value: string | null | undefined,
+  locale: "es" | "en",
+) => {
+  if (!value) {
+    return locale === "es" ? "sin registros" : "no records";
+  }
+
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+};
+
 export function UsersAdmin({
   boats,
   users,
@@ -83,10 +110,23 @@ export function UsersAdmin({
   onDeleteUser,
   onUpdatePassword,
   canInviteUsers,
+  isSuperuser,
 }: UsersAdminProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [selectedUserId, setSelectedUserId] = useState(users[0]?.id ?? "");
   const { locale, t } = useI18n();
+  const sortedUsers = [...users].sort((a, b) =>
+    `${a.display_name ?? ""}${a.email ?? ""}`.localeCompare(
+      `${b.display_name ?? ""}${b.email ?? ""}`,
+      locale,
+    ),
+  );
+  const selectedUser =
+    sortedUsers.find((user) => user.id === selectedUserId) ??
+    users.find((user) => user.id === selectedUserId) ??
+    sortedUsers[0] ??
+    users[0];
 
   const inviteUser = (formData: FormData) => {
     startTransition(async () => {
@@ -104,7 +144,7 @@ export function UsersAdmin({
     startTransition(async () => {
       try {
         await onSendInvite(formData);
-        toast.success(locale === "es" ? "Invitación enviada" : "Invitation sent");
+        toast.success(t("admin.users.invitationSent"));
         router.refresh();
       } catch (error) {
         toast.error(error instanceof Error ? error.message : t("auth.error"));
@@ -127,55 +167,77 @@ export function UsersAdmin({
         <p className="muted">{t("admin.users.summaryBody")}</p>
       </article>
 
+      {isSuperuser && (
+        <article className="dashboard-card admin-card">
+          <div className="card-header">
+            <div>
+              <p className="eyebrow">{t("admin.users.newEyebrow")}</p>
+              <h2>{t("admin.users.newTitle")}</h2>
+            </div>
+          </div>
+          {canInviteUsers ? (
+            <form
+              className="editor-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                inviteUser(new FormData(event.currentTarget));
+                event.currentTarget.reset();
+              }}
+            >
+              <div className="form-grid">
+                <label>
+                  <span>{t("auth.email")}</span>
+                  <input name="email" placeholder="crew@example.com" required type="email" />
+                </label>
+                <label>
+                  <span>{t("admin.users.displayName")}</span>
+                  <input name="display_name" placeholder={t("admin.users.displayNamePlaceholder")} />
+                </label>
+                <label>
+                  <span>{t("auth.password")}</span>
+                  <input
+                    minLength={8}
+                    name="password"
+                    placeholder={t("admin.users.passwordPlaceholder")}
+                    required
+                    type="password"
+                  />
+                </label>
+                <label>
+                  <span>{t("admin.users.language")}</span>
+                  <select defaultValue="es" name="preferred_language">
+                    <option value="es">Español</option>
+                    <option value="en">English</option>
+                  </select>
+                </label>
+              </div>
+              <div className="modal__footer">
+                <button className="primary-button" disabled={isPending} type="submit">
+                  {isPending ? t("admin.users.creatingUser") : t("admin.users.createUser")}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <p className="muted">{t("admin.users.serviceRoleMissing")}</p>
+          )}
+        </article>
+      )}
+
       <article className="dashboard-card admin-card">
         <div className="card-header">
           <div>
-            <p className="eyebrow">{t("admin.users.newEyebrow")}</p>
-            <h2>{t("admin.users.newTitle")}</h2>
+            <p className="eyebrow">{t("admin.users.invitationEyebrow")}</p>
+            <h2>{t("admin.users.invitationTitle")}</h2>
           </div>
         </div>
         {canInviteUsers ? (
-          <form
-            className="editor-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              inviteUser(new FormData(event.currentTarget));
-              event.currentTarget.reset();
-            }}
-          >
-            <div className="form-grid">
-              <label>
-                <span>{t("auth.email")}</span>
-                <input name="email" placeholder="crew@example.com" required type="email" />
-              </label>
-              <label>
-                <span>{t("admin.users.displayName")}</span>
-                <input name="display_name" placeholder="Crew member" />
-              </label>
-              <label>
-                <span>{t("auth.password")}</span>
-                <input
-                  minLength={8}
-                  name="password"
-                  placeholder="At least 8 characters"
-                  required
-                  type="password"
-                />
-              </label>
-              <label>
-                <span>{t("admin.users.language")}</span>
-                <select defaultValue="es" name="preferred_language">
-                  <option value="es">Español</option>
-                  <option value="en">English</option>
-                </select>
-              </label>
-            </div>
-            <div className="modal__footer">
-              <button className="primary-button" disabled={isPending} type="submit">
-                {isPending ? t("admin.users.creatingUser") : t("admin.users.createUser")}
-              </button>
-            </div>
-          </form>
+          <InviteUserForm
+            boats={boats}
+            isPending={isPending}
+            isSuperuser={isSuperuser}
+            locale={locale}
+            onSubmit={sendInvite}
+          />
         ) : (
           <p className="muted">{t("admin.users.serviceRoleMissing")}</p>
         )}
@@ -184,29 +246,42 @@ export function UsersAdmin({
       <article className="dashboard-card admin-card">
         <div className="card-header">
           <div>
-            <p className="eyebrow">{locale === "es" ? "Invitación" : "Invitation"}</p>
-            <h2>{locale === "es" ? "Invitar usuario" : "Invite user"}</h2>
+            <p className="eyebrow">{t("admin.users.selectEyebrow")}</p>
+            <h2>{t("admin.users.selectTitle")}</h2>
+            <p className="muted">{t("admin.users.selectHelp")}</p>
           </div>
         </div>
-        {canInviteUsers ? (
-          <InviteUserForm boats={boats} isPending={isPending} locale={locale} onSubmit={sendInvite} />
-        ) : (
-          <p className="muted">{t("admin.users.serviceRoleMissing")}</p>
-        )}
+        <SearchableSelect
+          emptyText={t("admin.users.noUsersMatch")}
+          label={t("admin.users.user")}
+          onSelect={setSelectedUserId}
+          options={sortedUsers.map((user) => ({
+            id: user.id,
+            primary: user.display_name ?? user.email ?? user.id,
+            secondary: user.email ?? "—",
+            tertiary:
+              user.permissions[0]
+                ? boats.find((boat) => boat.id === user.permissions[0]?.boat_id)?.name ?? "—"
+                : t("admin.users.noAssignedBoat"),
+          }))}
+          placeholder={t("admin.users.searchUser")}
+          selectedId={selectedUser?.id ?? ""}
+        />
       </article>
 
-      {users.map((user) => (
+      {selectedUser ? (
         <UserEditorCard
           boats={boats}
-          key={user.id}
+          isSuperuser={isSuperuser}
+          key={selectedUser.id}
           onDeletePermission={onDeletePermission}
           onDeleteUser={onDeleteUser}
           onSavePermission={onSavePermission}
           onSaveProfile={onSaveProfile}
           onUpdatePassword={onUpdatePassword}
-          user={user}
+          user={selectedUser}
         />
-      ))}
+      ) : null}
     </section>
   );
 }
@@ -219,12 +294,15 @@ function InviteUserForm({
 }: {
   boats: BoatDetails[];
   isPending: boolean;
+  isSuperuser: boolean;
   locale: "es" | "en";
   onSubmit: (fd: FormData) => void;
 }) {
   const [permissions, setPermissions] = useState<InvitePermissionsState>(
     getPermissionPreset("viewer"),
   );
+  const [selectedBoatId, setSelectedBoatId] = useState(boats[0]?.id ?? "");
+  const sortedBoats = [...boats].sort((a, b) => a.name.localeCompare(b.name, locale));
 
   const text =
     locale === "es"
@@ -274,13 +352,18 @@ function InviteUserForm({
       }}
     >
       <div className="form-grid">
+        <input name="is_guest_user" type="hidden" value="on" />
+        <input name="boat_id" type="hidden" value={selectedBoatId} />
         <label>
-          <span>Email</span>
+          <span>{tLabel(locale, "auth.email")}</span>
           <input name="email" placeholder="crew@example.com" required type="email" />
         </label>
         <label>
-          <span>{locale === "es" ? "Nombre visible" : "Display name"}</span>
-          <input name="display_name" placeholder="Crew member" />
+          <span>{tLabel(locale, "admin.users.displayName")}</span>
+          <input
+            name="display_name"
+            placeholder={locale === "es" ? "Tripulación invitada" : "Invited crew"}
+          />
         </label>
         <label>
           <span>{locale === "es" ? "Idioma" : "Language"}</span>
@@ -289,16 +372,22 @@ function InviteUserForm({
             <option value="en">English</option>
           </select>
         </label>
-        <label>
-          <span>{text.boat}</span>
-          <select defaultValue={boats[0]?.id ?? ""} name="boat_id" required>
-            {boats.map((boat) => (
-              <option key={boat.id} value={boat.id}>
-                {boat.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="form-grid__wide">
+          <SearchableSelect
+            emptyText={locale === "es" ? "Ningún barco coincide con la búsqueda." : "No boats match the search."}
+            label={text.boat}
+            name="boat_id"
+            onSelect={setSelectedBoatId}
+            options={sortedBoats.map((boat) => ({
+              id: boat.id,
+              primary: boat.name,
+              secondary: boat.home_port ?? "—",
+              tertiary: boat.model ?? "",
+            }))}
+            placeholder={locale === "es" ? "Escribe para buscar un barco" : "Type to search a boat"}
+            selectedId={selectedBoatId}
+          />
+        </div>
         <label>
           <span>{text.level}</span>
           <input name="permission_level" type="hidden" value={permissions.permissionLevel} />
@@ -439,6 +528,7 @@ function InviteUserForm({
 function UserEditorCard({
   user,
   boats,
+  isSuperuser,
   onSaveProfile,
   onSavePermission,
   onDeletePermission,
@@ -447,6 +537,7 @@ function UserEditorCard({
 }: {
   user: UserAdminProfile;
   boats: BoatDetails[];
+  isSuperuser: boolean;
   onSaveProfile: (fd: FormData) => Promise<void>;
   onSavePermission: (fd: FormData) => Promise<void>;
   onDeletePermission: (fd: FormData) => Promise<void>;
@@ -455,7 +546,23 @@ function UserEditorCard({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [selectedBoatId, setSelectedBoatId] = useState(
+    user.permissions[0]?.boat_id ?? boats[0]?.id ?? "",
+  );
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const { locale, t } = useI18n();
+  const assignedBoatIds = user.permissions.map((entry) => entry.boat_id);
+  const sortedBoats = [...boats].sort((a, b) => a.name.localeCompare(b.name, locale));
+  const selectedBoat =
+    sortedBoats.find((boat) => boat.id === selectedBoatId) ??
+    boats.find((boat) => boat.id === selectedBoatId) ??
+    sortedBoats[0] ??
+    boats[0];
+  const accessSummary = isSuperuser
+    ? locale === "es"
+      ? `${user.sign_in_count} accesos · último acceso ${formatLastAccess(user.last_sign_in_at, locale)}`
+      : `${user.sign_in_count} sign-ins · last access ${formatLastAccess(user.last_sign_in_at, locale)}`
+    : null;
 
   const saveProfile = (formData: FormData) => {
     startTransition(async () => {
@@ -470,6 +577,15 @@ function UserEditorCard({
   };
 
   const changePassword = (formData: FormData) => {
+    const password = formData.get("password")?.toString() ?? "";
+    const confirmPassword = formData.get("confirm_password")?.toString() ?? "";
+    if (password !== confirmPassword) {
+      setPasswordError(
+        locale === "es" ? "Las contraseñas no coinciden." : "Passwords do not match.",
+      );
+      return;
+    }
+    setPasswordError(null);
     startTransition(async () => {
       try {
         await onUpdatePassword(formData);
@@ -531,7 +647,8 @@ function UserEditorCard({
       <div className="card-header">
         <div>
           <p className="eyebrow">{t("admin.users.userEyebrow")}</p>
-          <h2>{user.display_name ?? user.email ?? "Unnamed user"}</h2>
+          <h2>{user.display_name ?? user.email ?? t("admin.users.unnamedUser")}</h2>
+          <p className="muted">{user.email ?? "—"}</p>
         </div>
         <span className={`status-pill ${user.is_superuser ? "is-good" : "is-muted"}`}>
           {user.is_superuser ? t("admin.users.superuser") : t("admin.users.standardUser")}
@@ -568,10 +685,19 @@ function UserEditorCard({
           <label className="checkbox-field">
             <input
               defaultChecked={user.is_superuser}
+              disabled={!isSuperuser}
               name="is_superuser"
               type="checkbox"
             />
             <span>{t("admin.users.globalSuperuser")}</span>
+          </label>
+          <label className="checkbox-field">
+            <input
+              defaultChecked={user.is_timeline_public}
+              name="is_timeline_public"
+              type="checkbox"
+            />
+            <span>{t("admin.users.timelinePublic")}</span>
           </label>
         </div>
 
@@ -582,73 +708,180 @@ function UserEditorCard({
         </div>
       </form>
 
-      <form
-        className="editor-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          changePassword(new FormData(event.currentTarget));
-          event.currentTarget.reset();
-        }}
-      >
-        <input name="user_id" type="hidden" value={user.id} />
-        <div className="card-header">
-          <div>
-            <p className="eyebrow">{t("admin.users.passwordTitle")}</p>
-            <p className="muted">{t("admin.users.passwordHelp")}</p>
+      {isSuperuser ? (
+        <form
+          className="editor-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            changePassword(new FormData(event.currentTarget));
+            event.currentTarget.reset();
+          }}
+        >
+          <input name="user_id" type="hidden" value={user.id} />
+          <div className="card-header">
+            <div>
+              <p className="eyebrow">{t("admin.users.passwordTitle")}</p>
+              <p className="muted">{t("admin.users.passwordHelp")}</p>
+              {accessSummary ? <p className="muted">{accessSummary}</p> : null}
+            </div>
+            <button
+              className="link-button link-button--danger"
+              disabled={isPending}
+              onClick={deleteUser}
+              type="button"
+            >
+              {isPending ? t("admin.users.deleting") : t("admin.users.deleteUser")}
+            </button>
           </div>
-          <button
-            className="link-button link-button--danger"
-            disabled={isPending}
-            onClick={deleteUser}
-            type="button"
-          >
-            {isPending ? t("admin.users.deleting") : t("admin.users.deleteUser")}
-          </button>
-        </div>
-        <div className="form-grid">
-          <label className="form-grid__wide">
-            <span>{t("auth.password")}</span>
-            <input
-              minLength={8}
-              name="password"
-              placeholder={t("admin.users.passwordPlaceholder")}
-              required
-              type="password"
-            />
-          </label>
-        </div>
-        <div className="modal__footer">
-          <button className="secondary-button" disabled={isPending} type="submit">
-            {t("admin.users.changePassword")}
-          </button>
-        </div>
-      </form>
+          <div className="form-grid">
+            <label>
+              <span>{t("auth.password")}</span>
+              <input
+                minLength={8}
+                name="password"
+                placeholder={t("admin.users.passwordPlaceholder")}
+                required
+                type="password"
+              />
+            </label>
+            <label>
+              <span>{t("admin.users.confirmPassword")}</span>
+              <input
+                minLength={8}
+                name="confirm_password"
+                placeholder={t("admin.users.passwordPlaceholder")}
+                required
+                type="password"
+              />
+            </label>
+          </div>
+          {passwordError ? <p className="feedback feedback--error">{passwordError}</p> : null}
+          <div className="modal__footer">
+            <button className="secondary-button" disabled={isPending} type="submit">
+              {t("admin.users.changePassword")}
+            </button>
+          </div>
+        </form>
+      ) : null}
 
       <div className="card-header">
         <div>
           <p className="eyebrow">{t("admin.users.boatsSection")}</p>
+          {!user.is_superuser ? (
+            <p className="muted">{t("admin.users.singleBoatOnly")}</p>
+          ) : null}
         </div>
       </div>
 
-      <div className="permission-list">
-        {boats.map((boat) => {
-          const permission = user.permissions.find((entry) => entry.boat_id === boat.id);
+      <div className="admin-card">
+        <SearchableSelect
+          emptyText={t("admin.users.noBoatMatches")}
+          label={t("admin.users.selectBoat")}
+          onSelect={setSelectedBoatId}
+          options={sortedBoats.map((boat) => ({
+            id: boat.id,
+            primary: boat.name,
+            secondary: boat.home_port ?? "—",
+            tertiary: boat.model ?? "",
+          }))}
+          placeholder={t("admin.users.searchBoat")}
+          selectedId={selectedBoat?.id ?? ""}
+        />
 
-          return (
+        {assignedBoatIds.length > 0 ? (
+          <div className="assigned-boats">
+            <span className="muted">{t("admin.users.assignedBoats")}</span>
+            <div className="assigned-boats__list">
+              {boats
+                .filter((boat) => assignedBoatIds.includes(boat.id))
+                .map((boat) => (
+                  <span className="status-pill is-good" key={boat.id}>
+                    {boat.name}
+                  </span>
+                ))}
+            </div>
+          </div>
+        ) : null}
+
+        {selectedBoat ? (
+          <div className="permission-list">
             <PermissionEditorRow
-              boat={boat}
+              boat={selectedBoat}
               disabled={isPending}
-              key={boat.id}
+              key={selectedBoat.id}
               locale={locale}
-              onDelete={() => deletePermission(boat.id)}
+              onDelete={() => deletePermission(selectedBoat.id)}
               onSave={savePermission}
-              permission={permission}
+              permission={user.permissions.find((entry) => entry.boat_id === selectedBoat.id)}
               userId={user.id}
             />
-          );
-        })}
+          </div>
+        ) : null}
       </div>
     </article>
+  );
+}
+
+function SearchableSelect({
+  label,
+  placeholder,
+  options,
+  selectedId,
+  onSelect,
+  emptyText,
+  name,
+}: {
+  label: string;
+  placeholder: string;
+  options: { id: string; primary: string; secondary?: string; tertiary?: string }[];
+  selectedId: string;
+  onSelect: (id: string) => void;
+  emptyText: string;
+  name?: string;
+}) {
+  const [query, setQuery] = useState("");
+  const filtered = options.filter((option) =>
+    [option.primary, option.secondary, option.tertiary]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+      .includes(query.trim().toLowerCase()),
+  );
+  const selected = options.find((option) => option.id === selectedId) ?? filtered[0] ?? options[0];
+
+  return (
+    <div className="search-select">
+      {name ? <input name={name} type="hidden" value={selected?.id ?? ""} /> : null}
+      <label className="search-select__label">
+        <span>{label}</span>
+        <input
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={selected && !query ? `${selected.primary} · ${selected.secondary ?? ""}` : placeholder}
+          value={query}
+        />
+      </label>
+      <div className="search-select__list">
+        {filtered.length ? (
+          filtered.map((option) => (
+            <button
+              className={`search-select__option${option.id === selectedId ? " is-active" : ""}`}
+              key={option.id}
+              onClick={() => {
+                onSelect(option.id);
+                setQuery("");
+              }}
+              type="button"
+            >
+              <strong>{option.primary}</strong>
+              {option.secondary ? <span>{option.secondary}</span> : null}
+              {option.tertiary ? <span>{option.tertiary}</span> : null}
+            </button>
+          ))
+        ) : (
+          <p className="muted">{emptyText}</p>
+        )}
+      </div>
+    </div>
   );
 }
 

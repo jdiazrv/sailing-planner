@@ -8,6 +8,7 @@ import {
   diffDaysInclusive,
   formatLongDate,
   formatShortDate,
+  hasVisitDateRange,
   type AvailabilityBlock,
   type TripSegmentView,
   type VisitView,
@@ -27,6 +28,8 @@ type TimelineProps = {
   onVisitSelect?: (visit: VisitView) => void;
   onTripSegmentSelect?: (segment: TripSegmentView) => void;
   selectedEntityId?: string | null;
+  showVisits?: boolean;
+  showAvailability?: boolean;
 };
 
 const buildMonthMarkers = (season: SeasonRow) => {
@@ -100,6 +103,8 @@ export const Timeline = ({
   onVisitSelect,
   onTripSegmentSelect,
   selectedEntityId,
+  showVisits = true,
+  showAvailability = true,
 }: TimelineProps) => {
   const { t } = useI18n();
   const [expandedVisitId, setExpandedVisitId] = useState<string | null>(null);
@@ -202,32 +207,38 @@ export const Timeline = ({
         </TimelineLane>
 
         {/* One lane per visit */}
-        {visits.length === 0 && (
+        {showVisits && visits.length === 0 && (
           <TimelineLane label={t("planning.visit")}>
             <span />
           </TimelineLane>
         )}
-        {visits.map((visit) => (
+        {showVisits &&
+          visits.map((visit) => (
           <TimelineLane key={visit.id} label={getShortName(visit.visitor_name)}>
-            <button
-              aria-expanded={expandedVisitId === visit.id}
-              aria-label={`${t("planning.visit")}: ${visit.visitor_name ?? t("planning.private")}`}
-              className={`timeline-bar timeline-bar--btn is-${visit.status}${expandedVisitId === visit.id || selectedEntityId === visit.id ? " is-selected" : ""}`}
-              onClick={() => {
-                toggleVisit(visit.id);
-                onVisitSelect?.(visit);
-              }}
-              style={toBarStyle(season, visit.embark_date, visit.disembark_date)}
-              type="button"
-            >
-              <span>{visit.visitor_name ?? t("planning.visit")}</span>
-            </button>
+            {hasVisitDateRange(visit) ? (
+              <button
+                aria-expanded={expandedVisitId === visit.id}
+                aria-label={`${t("planning.visit")}: ${visit.visitor_name ?? t("planning.private")}`}
+                className={`timeline-bar timeline-bar--btn is-${visit.status}${expandedVisitId === visit.id || selectedEntityId === visit.id ? " is-selected" : ""}`}
+                onClick={() => {
+                  toggleVisit(visit.id);
+                  onVisitSelect?.(visit);
+                }}
+                style={toBarStyle(season, visit.embark_date, visit.disembark_date)}
+                type="button"
+              >
+                <span>{visit.visitor_name ?? t("planning.visit")}</span>
+              </button>
+            ) : (
+              <span className="muted">{t("planning.restrictedVisitDates")}</span>
+            )}
           </TimelineLane>
         ))}
 
         {/* Availability lane */}
-        <TimelineLane availability label={t("planning.availability")}>
-          {sortedAvailability.map((block, index) => (
+        {showAvailability && (
+          <TimelineLane availability label={t("planning.availability")}>
+            {sortedAvailability.map((block, index) => (
               <button
                 className={`timeline-bar timeline-bar--btn is-${block.status}${selectedAvailabilityIndex === index ? " is-selected" : ""}`}
                 key={`${block.status}-${index}-${block.start}`}
@@ -239,12 +250,13 @@ export const Timeline = ({
                 <span>{t(`status.${block.status}` as never)}</span>
               </button>
             ))}
-        </TimelineLane>
+          </TimelineLane>
+        )}
         </div>
       </div>
 
       {/* Expanded visit detail panel */}
-      {expandedVisit && (
+      {showVisits && expandedVisit && (
         <div className="visit-detail">
           <div className="visit-detail__header">
             <div className="visit-detail__title">
@@ -277,8 +289,9 @@ export const Timeline = ({
           </div>
           <div className="visit-detail__body">
             <span>
-              {formatShortDate(expandedVisit.embark_date)} –{" "}
-              {formatShortDate(expandedVisit.disembark_date)}
+              {hasVisitDateRange(expandedVisit)
+                ? `${formatShortDate(expandedVisit.embark_date)} – ${formatShortDate(expandedVisit.disembark_date)}`
+                : t("planning.restrictedVisitDates")}
             </span>
             {expandedVisit.embark_place_label && (
               <span>↑ {expandedVisit.embark_place_label}</span>
@@ -293,7 +306,7 @@ export const Timeline = ({
         </div>
       )}
 
-      {selectedAvailability && (
+      {showAvailability && selectedAvailability && (
         <div className="visit-detail">
           <div className="visit-detail__header">
             <div className="visit-detail__title">

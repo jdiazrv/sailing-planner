@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import { useI18n } from "@/components/i18n/provider";
 import { Dialog } from "@/components/ui/dialog";
 import { formatLongDate } from "@/lib/planning";
 import type { Database } from "@/types/database";
@@ -32,34 +33,42 @@ export function SeasonBar({
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const { t } = useI18n();
 
   const handleSave = (formData: FormData) => {
     const isEdit = Boolean(formData.get("season_id"));
     startTransition(async () => {
       try {
         await onSave(formData);
-        toast.success(isEdit ? "Season updated" : "Season created");
+        toast.success(
+          isEdit ? t("planning.seasonUpdated") : t("planning.seasonCreated"),
+        );
         setAddOpen(false);
         setEditOpen(false);
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Could not save season");
+        toast.error(error instanceof Error ? error.message : t("planning.saveSeasonError"));
       }
     });
   };
 
   const handleDelete = () => {
     if (!selected) return;
-    if (!confirm(`Delete "${selected.name}"? This will also delete all its trip segments and visits.`)) return;
+    if (
+      !confirm(
+        t("planning.deleteSeasonConfirm").replace("{name}", selected.name),
+      )
+    )
+      return;
     const fd = new FormData();
     fd.set("boat_id", boatId);
     fd.set("season_id", selected.id);
     startTransition(async () => {
       try {
         await onDelete(fd);
-        toast.success("Season deleted");
+        toast.success(t("planning.seasonDeleted"));
         setEditOpen(false);
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Could not delete season");
+        toast.error(error instanceof Error ? error.message : t("planning.deleteSeasonError"));
       }
     });
   };
@@ -76,7 +85,7 @@ export function SeasonBar({
             </span>
           </>
         ) : (
-          <span className="muted">No season — create one to start planning</span>
+          <span className="muted">{t("planning.noSeasonCreateHint")}</span>
         )}
       </div>
 
@@ -88,7 +97,7 @@ export function SeasonBar({
               onClick={() => setShowPicker((v) => !v)}
               type="button"
             >
-              Change ▾
+              {t("planning.changeSeason")} ▾
             </button>
             {showPicker && (
               <div className="season-picker-dropdown">
@@ -117,7 +126,7 @@ export function SeasonBar({
             onClick={() => setEditOpen(true)}
             type="button"
           >
-            Edit season
+            {t("planning.editSeason")}
           </button>
         )}
         {canEdit && (
@@ -127,12 +136,12 @@ export function SeasonBar({
             onClick={() => setAddOpen(true)}
             type="button"
           >
-            + New season
+            + {t("planning.newSeason")}
           </button>
         )}
       </div>
 
-      <Dialog onClose={() => setAddOpen(false)} open={addOpen} title="New season">
+      <Dialog onClose={() => setAddOpen(false)} open={addOpen} title={t("planning.newSeason")}>
         <SeasonForm
           boatId={boatId}
           isPending={isPending}
@@ -141,7 +150,7 @@ export function SeasonBar({
         />
       </Dialog>
 
-      <Dialog onClose={() => setEditOpen(false)} open={editOpen} title="Edit season">
+      <Dialog onClose={() => setEditOpen(false)} open={editOpen} title={t("planning.editSeason")}>
         {selected && (
           <SeasonForm
             boatId={boatId}
@@ -171,6 +180,7 @@ function SeasonForm({
   isPending: boolean;
 }) {
   const year = season?.year ?? new Date().getUTCFullYear();
+  const { t } = useI18n();
 
   return (
     <form
@@ -185,15 +195,15 @@ function SeasonForm({
 
       <div className="form-grid">
         <label className="form-grid__wide">
-          <span>Name</span>
+          <span>{t("planning.seasonName")}</span>
           <input
-            defaultValue={season?.name ?? `${year} Season`}
+            defaultValue={season?.name ?? `${year} ${t("planning.seasonLabelSuffix")}`}
             name="name"
             required
           />
         </label>
         <label>
-          <span>Year</span>
+          <span>{t("planning.seasonYear")}</span>
           <input
             defaultValue={season?.year ?? year}
             name="year"
@@ -202,7 +212,7 @@ function SeasonForm({
           />
         </label>
         <label>
-          <span>Start date</span>
+          <span>{t("planning.startDate")}</span>
           <input
             defaultValue={season?.start_date ?? `${year}-04-01`}
             name="start_date"
@@ -211,7 +221,7 @@ function SeasonForm({
           />
         </label>
         <label>
-          <span>End date</span>
+          <span>{t("planning.endDate")}</span>
           <input
             defaultValue={season?.end_date ?? `${year}-10-31`}
             name="end_date"
@@ -220,7 +230,7 @@ function SeasonForm({
           />
         </label>
         <label className="form-grid__wide">
-          <span>Notes</span>
+          <span>{t("planning.notes")}</span>
           <textarea defaultValue={season?.notes ?? ""} name="notes" rows={2} />
         </label>
       </div>
@@ -233,11 +243,15 @@ function SeasonForm({
             onClick={onDelete}
             type="button"
           >
-            Delete
+            {t("common.delete")}
           </button>
         )}
         <button className="primary-button" disabled={isPending} type="submit">
-          {isPending ? "Saving…" : season ? "Save changes" : "Create season"}
+          {isPending
+            ? t("planning.saving")
+            : season
+              ? t("planning.saveChanges")
+              : t("planning.createSeason")}
         </button>
       </div>
     </form>

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { recordCurrentUserAccess } from "@/lib/auth-audit";
 import { createClient } from "@/lib/supabase/server";
 
 const getSafeNextPath = (next: string | null) => {
@@ -18,6 +19,7 @@ export async function GET(request: Request) {
   if (code) {
     const supabase = await createClient();
     await supabase.auth.exchangeCodeForSession(code);
+    await recordCurrentUserAccess();
   }
 
   return NextResponse.redirect(new URL(next, requestUrl.origin));

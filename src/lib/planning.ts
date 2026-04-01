@@ -29,6 +29,13 @@ export type UserAdminProfile = ProfileRow & {
   permissions: PermissionRow[];
 };
 
+export type SharedTimelineBoat = {
+  boat: BoatDetails;
+  season: SeasonRow | null;
+  ownerDisplayName: string | null;
+  tripSegments: TripSegmentView[];
+};
+
 export type ViewerContext = {
   profile: ProfileRow | null;
   isSuperuser: boolean;
@@ -63,6 +70,13 @@ export type VisitConflict = {
   severity: "warning";
   message: string;
 };
+
+export const hasVisitDateRange = (
+  visit: Pick<VisitView, "embark_date" | "disembark_date">,
+): visit is Pick<VisitView, "embark_date" | "disembark_date"> & {
+  embark_date: string;
+  disembark_date: string;
+} => Boolean(visit.embark_date && visit.disembark_date);
 
 const isRangeFullyCovered = (
   segments: TripSegmentView[],
@@ -192,11 +206,13 @@ export const computeAvailability = (
     );
     const hasConfirmedVisit = visits.some(
       (visit) =>
+        hasVisitDateRange(visit) &&
         visit.status === "confirmed" &&
         rangeIncludes(visit.embark_date, visit.disembark_date, day),
     );
     const hasTentativeVisit = visits.some(
       (visit) =>
+        hasVisitDateRange(visit) &&
         visit.status === "tentative" &&
         rangeIncludes(visit.embark_date, visit.disembark_date, day),
     );
@@ -269,6 +285,15 @@ export const computeVisitConflicts = (
   const conflicts: VisitConflict[] = [];
 
   visits.forEach((visit, visitIndex) => {
+    if (!hasVisitDateRange(visit)) {
+      conflicts.push({
+        visitId: visit.id,
+        severity: "warning",
+        message: `${visit.visitor_name ?? "Visit"} has restricted dates and cannot be validated completely.`,
+      });
+      return;
+    }
+
     if (
       visit.embark_date < season.start_date ||
       visit.disembark_date > season.end_date
@@ -317,6 +342,9 @@ export const computeVisitConflicts = (
     }
 
     visits.slice(visitIndex + 1).forEach((otherVisit) => {
+      if (!hasVisitDateRange(otherVisit)) {
+        return;
+      }
       if (
         visit.status === "confirmed" &&
         otherVisit.status === "confirmed" &&

@@ -3,7 +3,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireSuperuser } from "@/lib/boat-data";
+import { requireSuperuser, requireUserAdminAccess } from "@/lib/boat-data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildAuthRedirectUrl } from "@/lib/env";
 import type { PermissionLevel, PreferredLanguage } from "@/types/database";
@@ -43,6 +43,12 @@ const buildBoatPermissionPayload = (formData: FormData, userId: string) => {
         ? true
         : toBoolean(formData.get("can_view_availability")),
   };
+};
+
+const assertManageableBoat = (manageableBoatIds: string[] | null, boatId: string) => {
+  if (manageableBoatIds && !manageableBoatIds.includes(boatId)) {
+    throw new Error("You can only manage users for boats assigned to you.");
+  }
 };
 
 const refreshAdminRoutes = (boatId?: string | null) => {
@@ -178,15 +184,22 @@ export async function removeBoatImage(formData: FormData) {
 }
 
 export async function saveUserProfile(formData: FormData) {
-  const { supabase } = await requireSuperuser();
+  const { supabase, viewer } = await requireUserAdminAccess();
   const db = supabase as any;
   const userId = formData.get("user_id")?.toString() ?? "";
+  const isSuperuser = toBoolean(formData.get("is_superuser"));
+  const isTimelinePublic = toBoolean(formData.get("is_timeline_public"));
+
+  if (!viewer.isSuperuser && isSuperuser) {
+    throw new Error("Only a superuser can grant superuser access.");
+  }
 
   const { error } = await db
     .from("profiles")
     .update({
       display_name: asOptionalString(formData.get("display_name")),
-      is_superuser: toBoolean(formData.get("is_superuser")),
+      is_superuser: viewer.isSuperuser ? isSuperuser : false,
+      is_timeline_public: isTimelinePublic,
       preferred_language:
         (formData.get("preferred_language")?.toString() as PreferredLanguage) ??
         "es",
@@ -194,14 +207,51 @@ export async function saveUserProfile(formData: FormData) {
     .eq("id", userId);
   throwIfError(error);
 
+  if (!isSuperuser) {
+    const { data: permissions, error: permissionsError } = await db
+      .from("user_boat_permissions")
+      .select("boat_id, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true });
+    throwIfError(permissionsError);
+
+    const permissionRows = (permissions ?? []) as { boat_id: string; created_at: string }[];
+    const [firstPermission, ...extraPermissions] = permissionRows;
+
+    if (firstPermission && extraPermissions.length > 0) {
+      const { error: deleteError } = await db
+        .from("user_boat_permissions")
+        .delete()
+        .eq("user_id", userId)
+        .neq("boat_id", firstPermission.boat_id);
+      throwIfError(deleteError);
+    }
+  }
+
   refreshAdminRoutes();
 }
 
 export async function saveUserBoatPermission(formData: FormData) {
-  const { supabase } = await requireSuperuser();
+  const { supabase, manageableBoatIds } = await requireUserAdminAccess();
   const db = supabase as any;
   const userId = formData.get("user_id")?.toString() ?? "";
   const boatId = formData.get("boat_id")?.toString() ?? "";
+  assertManageableBoat(manageableBoatIds, boatId);
+  const { data: profile, error: profileError } = await db
+    .from("profiles")
+    .select("is_superuser")
+    .eq("id", userId)
+    .single();
+  throwIfError(profileError);
+
+  if (!profile?.is_superuser) {
+    const { error: cleanupError } = await db
+      .from("user_boat_permissions")
+      .delete()
+      .eq("user_id", userId)
+      .neq("boat_id", boatId);
+    throwIfError(cleanupError);
+  }
 
   const { error } = await db.from("user_boat_permissions").upsert(
     {
@@ -225,10 +275,11 @@ export async function saveUserBoatPermission(formData: FormData) {
 }
 
 export async function deleteUserBoatPermission(formData: FormData) {
-  const { supabase } = await requireSuperuser();
+  const { supabase, manageableBoatIds } = await requireUserAdminAccess();
   const db = supabase as any;
   const userId = formData.get("user_id")?.toString() ?? "";
   const boatId = formData.get("boat_id")?.toString() ?? "";
+  assertManageableBoat(manageableBoatIds, boatId);
 
   const { error } = await db
     .from("user_boat_permissions")
@@ -241,7 +292,7 @@ export async function deleteUserBoatPermission(formData: FormData) {
 }
 
 export async function createUserAccount(formData: FormData) {
-  await requireSuperuser();
+  const { supabase, user, viewer, manageableBoatIds } = await requireUserAdminAccess();
   const admin = createAdminClient();
 
   if (!admin) {
@@ -253,8 +304,12 @@ export async function createUserAccount(formData: FormData) {
   const email = formData.get("email")?.toString().trim() ?? "";
   const displayName = asOptionalString(formData.get("display_name"));
   const password = formData.get("password")?.toString() ?? "";
+  const boatId = asOptionalString(formData.get("boat_id"));
   const preferredLanguage =
     (formData.get("preferred_language")?.toString() as PreferredLanguage) ?? "es";
+  const isGuestUser = viewer.isSuperuser
+    ? toBoolean(formData.get("is_guest_user"))
+    : true;
 
   if (!email) {
     throw new Error("Email is required.");
@@ -262,6 +317,14 @@ export async function createUserAccount(formData: FormData) {
 
   if (!password || password.length < 8) {
     throw new Error("Password must be at least 8 characters.");
+  }
+
+  if (isGuestUser && !boatId) {
+    throw new Error("Boat is required for guest users.");
+  }
+
+  if (boatId) {
+    assertManageableBoat(manageableBoatIds, boatId);
   }
 
   const { data, error } = await admin.auth.admin.createUser({
@@ -279,19 +342,36 @@ export async function createUserAccount(formData: FormData) {
   }
 
   if (data.user?.id) {
-    const { supabase } = await requireSuperuser();
-    const { error: profileError } = await (supabase as any)
+    const db = supabase as any;
+    const { error: profileError } = await db
       .from("profiles")
-      .update({ preferred_language: preferredLanguage })
+      .update({
+        preferred_language: preferredLanguage,
+        is_guest_user: isGuestUser,
+        created_by_user_id: user.id,
+      })
       .eq("id", data.user.id);
     throwIfError(profileError);
+
+    if (boatId) {
+      const { error: permissionError } = await db
+        .from("user_boat_permissions")
+        .upsert(
+          {
+            ...buildBoatPermissionPayload(formData, data.user.id),
+            can_manage_boat_users: false,
+          },
+          { onConflict: "user_id,boat_id" },
+        );
+      throwIfError(permissionError);
+    }
   }
 
-  refreshAdminRoutes();
+  refreshAdminRoutes(boatId);
 }
 
 export async function inviteUserAccount(formData: FormData) {
-  const { supabase } = await requireSuperuser();
+  const { supabase, user, viewer, manageableBoatIds } = await requireUserAdminAccess();
   const admin = createAdminClient();
 
   if (!admin) {
@@ -302,11 +382,23 @@ export async function inviteUserAccount(formData: FormData) {
 
   const email = formData.get("email")?.toString().trim() ?? "";
   const displayName = asOptionalString(formData.get("display_name"));
+  const boatId = asOptionalString(formData.get("boat_id"));
   const preferredLanguage =
     (formData.get("preferred_language")?.toString() as PreferredLanguage) ?? "es";
+  const isGuestUser = viewer.isSuperuser
+    ? toBoolean(formData.get("is_guest_user"))
+    : true;
 
   if (!email) {
     throw new Error("Email is required.");
+  }
+
+  if (isGuestUser && !boatId) {
+    throw new Error("Boat is required for guest users.");
+  }
+
+  if (boatId) {
+    assertManageableBoat(manageableBoatIds, boatId);
   }
 
   const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
@@ -328,19 +420,29 @@ export async function inviteUserAccount(formData: FormData) {
       .update({
         display_name: displayName,
         preferred_language: preferredLanguage,
+        is_guest_user: isGuestUser,
+        created_by_user_id: user.id,
       })
       .eq("id", data.user.id);
     throwIfError(profileError);
 
-    const { error: permissionError } = await db
-      .from("user_boat_permissions")
-      .upsert(buildBoatPermissionPayload(formData, data.user.id), {
-        onConflict: "user_id,boat_id",
-      });
-    throwIfError(permissionError);
+    if (boatId) {
+      const { error: permissionError } = await db
+        .from("user_boat_permissions")
+        .upsert(
+          {
+            ...buildBoatPermissionPayload(formData, data.user.id),
+            can_manage_boat_users: false,
+          },
+          {
+            onConflict: "user_id,boat_id",
+          },
+        );
+      throwIfError(permissionError);
+    }
   }
 
-  refreshAdminRoutes(formData.get("boat_id")?.toString());
+  refreshAdminRoutes(boatId);
 }
 
 export async function updateUserPassword(formData: FormData) {

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { recordCurrentUserAccess } from "@/app/actions";
 import { buildAuthRedirectUrl } from "@/lib/env";
 import { createClient } from "@/lib/supabase/browser";
 import { useI18n } from "@/components/i18n/provider";
@@ -34,6 +35,7 @@ export const AuthForm = () => {
       throw signInError;
     }
 
+    await recordCurrentUserAccess();
     router.replace(next);
     router.refresh();
   };

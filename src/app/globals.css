@@ -756,6 +756,23 @@ textarea {
   margin: 0.75rem 0 1.25rem;
 }
 
+.boat-selector-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0.75rem 0 1.25rem;
+}
+
+.boat-list-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.boat-list-row.is-active {
+  outline: 2px solid rgba(0, 95, 115, 0.22);
+}
+
 .boat-card {
   padding: 0.65rem 0.75rem;
   border: 1px solid var(--border);
@@ -1193,6 +1210,28 @@ textarea {
   min-height: 280px;
 }
 
+.map-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+}
+
+.map-toolbar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+}
+
+.map-toolbar select {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-strong);
+  padding: 0.4rem 0.65rem;
+}
+
 .map-panel--tall .map-canvas,
 .map-panel--tall .map-google {
   min-height: 420px;
@@ -1453,9 +1492,80 @@ textarea {
   gap: 1rem;
 }
 
+.assigned-boats {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.assigned-boats__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.shared-boat-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin-bottom: 1rem;
+}
+
 .admin-card {
   display: grid;
   gap: 1rem;
+}
+
+.search-select {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.search-select__label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.search-select__label span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.search-select__list {
+  display: grid;
+  gap: 0.45rem;
+  max-height: 16rem;
+  overflow: auto;
+  padding-right: 0.15rem;
+}
+
+.search-select__option {
+  display: grid;
+  gap: 0.12rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.search-select__option strong {
+  font-size: 0.92rem;
+}
+
+.search-select__option span {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.search-select__option.is-active {
+  border-color: rgba(0, 95, 115, 0.35);
+  background: rgba(0, 95, 115, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(0, 95, 115, 0.12);
 }
 
 .admin-boat-grid {
@@ -1473,6 +1583,8 @@ textarea {
   display: inline-flex;
   gap: 0.55rem;
   align-items: center;
+  justify-self: start;
+  white-space: nowrap;
   font-size: 0.85rem;
 }
 

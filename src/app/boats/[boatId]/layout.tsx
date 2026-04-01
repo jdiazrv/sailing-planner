@@ -18,6 +18,8 @@ export default async function BoatLayout({
   const locale = await getRequestLocale();
   const workspace = await getBoatWorkspace(boatId);
   const isSuperuser = workspace.viewer.isSuperuser;
+  const canManageUsers =
+    isSuperuser || Boolean(workspace.permission?.can_manage_boat_users);
 
   return (
     <main className="shell">
@@ -44,7 +46,7 @@ export default async function BoatLayout({
               {t(locale, "boatLayout.editBoats")}
             </Link>
           )}
-          {isSuperuser && (
+          {canManageUsers && (
             <Link className="secondary-button" href="/admin/users">
               {t(locale, "boatLayout.editUsers")}
             </Link>
@@ -54,6 +56,9 @@ export default async function BoatLayout({
               {t(locale, "boatLayout.switchBoat")}
             </Link>
           )}
+          <Link className="secondary-button" href="/shared">
+            {t(locale, "boatLayout.sharedTimelines")}
+          </Link>
           <LogoutButton />
         </div>
       </header>

@@ -4,9 +4,11 @@ import { redirect } from "next/navigation";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { BoatSelector } from "@/components/boats/boat-selector";
+import { TimelineVisibilityPanel } from "@/components/shared/timeline-visibility-panel";
 import { getAccessibleBoats, requireViewer } from "@/lib/boat-data";
 import { t } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n-server";
+import { getReleaseLabel } from "@/lib/release";
 
 export default async function DashboardPage({
   searchParams,
@@ -17,6 +19,7 @@ export default async function DashboardPage({
   const { viewer } = await requireViewer();
   const boats = await getAccessibleBoats();
   const { change } = await searchParams;
+  const releaseLabel = getReleaseLabel();
 
   // Single-boat users go directly to their boat
   if (boats.length === 1) {
@@ -40,6 +43,7 @@ export default async function DashboardPage({
         <div>
           <p className="eyebrow">Sailing Planner</p>
           <h1>{viewer.isSuperuser ? t(locale, "dashboard.titleAll") : t(locale, "dashboard.titleOwn")}</h1>
+          <p className="meta">{releaseLabel}</p>
           {viewer.isSuperuser && (
             <p className="muted">
               {boats.length} {t(locale, "dashboard.boatsCount")} ·{" "}
@@ -72,6 +76,10 @@ export default async function DashboardPage({
           <p className="muted">{t(locale, "dashboard.noBoatsBody")}</p>
         </section>
       )}
+
+      <section style={{ marginTop: "1rem" }}>
+        <TimelineVisibilityPanel isPublic={Boolean(viewer.profile?.is_timeline_public)} />
+      </section>
 
       {viewer.isSuperuser && boats.length > 0 && (
         <section className="dashboard-grid" style={{ marginTop: "1rem" }}>

@@ -34,6 +34,8 @@ type MapPanelProps = {
   selectedEntityId?: string | null;
 };
 
+type GoogleBaseMap = "roadmap" | "satellite" | "hybrid";
+
 const BOUNDS = {
   minLat: 30,
   maxLat: 47,
@@ -197,6 +199,8 @@ export const MapPanel = ({
   const [mapReady, setMapReady] = useState(false);
   const [googleAvailable, setGoogleAvailable] = useState(hasGoogleMapsKey);
   const [mapMessage, setMapMessage] = useState(t("planning.loadingMap"));
+  const [baseMap, setBaseMap] = useState<GoogleBaseMap>("roadmap");
+  const [showSeamarks, setShowSeamarks] = useState(false);
   const sequenceBySegment = useMemo(
     () => buildSequenceBySegment(tripSegments),
     [tripSegments],
@@ -247,10 +251,27 @@ export const MapPanel = ({
         center,
         zoom: markers.length + zones.length > 1 ? 5 : 6,
         mapTypeControl: false,
+        mapTypeId: baseMap,
         streetViewControl: false,
         fullscreenControl: false,
         gestureHandling: "greedy",
       });
+
+      if (showSeamarks) {
+        map.overlayMapTypes.clear();
+        map.overlayMapTypes.push(
+          new maps.maps.ImageMapType({
+            getTileUrl(coord, zoom) {
+              return `https://tiles.openseamap.org/seamark/${zoom}/${coord.x}/${coord.y}.png`;
+            },
+            tileSize: new maps.maps.Size(256, 256),
+            name: "OpenSeaMap",
+            opacity: 0.8,
+          }),
+        );
+      } else {
+        map.overlayMapTypes.clear();
+      }
 
       const bounds = new maps.maps.LatLngBounds();
       markers.forEach((marker) => {
@@ -365,7 +386,7 @@ export const MapPanel = ({
       detached = true;
       window.gm_authFailure = previousAuthFailure;
     };
-  }, [markers, selectedEntityId, t, zones]);
+  }, [baseMap, markers, selectedEntityId, showSeamarks, t, zones]);
 
   return (
     <article className={`dashboard-card map-panel${tall ? " map-panel--tall" : ""}`}>
@@ -374,6 +395,28 @@ export const MapPanel = ({
           <p className="eyebrow">{t("planning.map")}</p>
           <h2>{title}</h2>
         </div>
+      </div>
+
+      <div className="map-toolbar">
+        <label>
+          <span>{t("planning.mapBase")}</span>
+          <select
+            onChange={(event) => setBaseMap(event.target.value as GoogleBaseMap)}
+            value={baseMap}
+          >
+            <option value="roadmap">{t("planning.mapRoadmap")}</option>
+            <option value="satellite">{t("planning.mapSatellite")}</option>
+            <option value="hybrid">{t("planning.mapHybrid")}</option>
+          </select>
+        </label>
+        <label className="checkbox-field">
+          <input
+            checked={showSeamarks}
+            onChange={(event) => setShowSeamarks(event.target.checked)}
+            type="checkbox"
+          />
+          <span>{t("planning.mapSeamarks")}</span>
+        </label>
       </div>
 
       {hasGoogleMapsKey && googleAvailable ? (
