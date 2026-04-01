@@ -1515,6 +1515,44 @@ textarea {
   gap: 1rem;
 }
 
+.admin-card--section {
+  padding: 0.85rem;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.editor-sections-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.editor-sections-nav__item {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--ink);
+  padding: 0.38rem 0.75rem;
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+.editor-sections-nav__item:hover {
+  transform: translateY(-1px);
+}
+
+.editor-sections-nav__item.is-active {
+  border-color: rgba(0, 95, 115, 0.35);
+  background: rgba(0, 95, 115, 0.1);
+  color: var(--accent);
+}
+
 .search-select {
   display: grid;
   gap: 0.6rem;
@@ -1579,13 +1617,22 @@ textarea {
   gap: 0.8rem;
 }
 
+.form-grid label.checkbox-field,
+.editor-form label.checkbox-field,
 .checkbox-field {
   display: inline-flex;
   gap: 0.55rem;
   align-items: center;
   justify-self: start;
-  white-space: nowrap;
+  white-space: normal;
   font-size: 0.85rem;
+}
+
+.form-grid label.checkbox-field span,
+.editor-form label.checkbox-field span,
+.checkbox-field span {
+  font-size: 0.85rem;
+  line-height: 1.25;
 }
 
 .checkbox-field input {

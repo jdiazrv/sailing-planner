@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getEnv } from "@/lib/env";
+import { SEASON_ACCESS_COOKIE_NAME } from "@/lib/season-access";
 import type { Database } from "@/types/database";
 
 type CookieMutation = {
@@ -11,6 +12,7 @@ type CookieMutation = {
 };
 
 const protectedPrefixes = ["/dashboard", "/boats", "/admin"];
+const guestProtectedPrefixes = ["/guest"];
 
 const isProtectedPath = (pathname: string) =>
   protectedPrefixes.some(
@@ -22,6 +24,20 @@ export const updateSession = async (request: NextRequest) => {
   let response = NextResponse.next({
     request,
   });
+
+  if (
+    guestProtectedPrefixes.some(
+      (prefix) =>
+        request.nextUrl.pathname === prefix ||
+        request.nextUrl.pathname.startsWith(`${prefix}/`),
+    ) &&
+    !request.cookies.get(SEASON_ACCESS_COOKIE_NAME)?.value
+  ) {
+    const guestErrorUrl = request.nextUrl.clone();
+    guestErrorUrl.pathname = "/season-access/error";
+    guestErrorUrl.searchParams.set("reason", "missing");
+    return NextResponse.redirect(guestErrorUrl);
+  }
 
   const supabase = createServerClient<Database>(
     env.NEXT_PUBLIC_SUPABASE_URL,

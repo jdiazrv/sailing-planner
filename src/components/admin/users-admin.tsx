@@ -33,6 +33,8 @@ type InvitePermissionsState = {
   canViewAvailability: boolean;
 };
 
+type UserEditorSection = "global" | "boat" | "security";
+
 const getPermissionPreset = (
   level: PermissionLevel,
 ): InvitePermissionsState => {
@@ -563,6 +565,18 @@ function UserEditorCard({
       ? `${user.sign_in_count} accesos · último acceso ${formatLastAccess(user.last_sign_in_at, locale)}`
       : `${user.sign_in_count} sign-ins · last access ${formatLastAccess(user.last_sign_in_at, locale)}`
     : null;
+  const [activeSection, setActiveSection] = useState<UserEditorSection>("global");
+
+  const sectionOptions: Array<{
+    id: UserEditorSection;
+    label: string;
+  }> = [
+    { id: "global", label: t("admin.users.sectionGlobal") },
+    { id: "boat", label: t("admin.users.sectionBoat") },
+    ...(isSuperuser
+      ? ([{ id: "security", label: t("admin.users.sectionSecurity") }] as const)
+      : []),
+  ];
 
   const saveProfile = (formData: FormData) => {
     startTransition(async () => {
@@ -655,169 +669,202 @@ function UserEditorCard({
         </span>
       </div>
 
-      <form
-        className="editor-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          saveProfile(new FormData(event.currentTarget));
-        }}
-      >
-        <input name="user_id" type="hidden" value={user.id} />
-        <div className="form-grid">
-          <label>
-            <span>{t("admin.users.displayName")}</span>
-            <input defaultValue={user.display_name ?? ""} name="display_name" />
-          </label>
-          <label>
-            <span>{t("auth.email")}</span>
-            <input defaultValue={user.email ?? ""} disabled readOnly />
-          </label>
-          <label>
-            <span>{t("admin.users.language")}</span>
-            <select
-              defaultValue={user.preferred_language ?? "es"}
-              name="preferred_language"
-            >
-              <option value="es">Español</option>
-              <option value="en">English</option>
-            </select>
-          </label>
-          <label className="checkbox-field">
-            <input
-              defaultChecked={user.is_superuser}
-              disabled={!isSuperuser}
-              name="is_superuser"
-              type="checkbox"
-            />
-            <span>{t("admin.users.globalSuperuser")}</span>
-          </label>
-          <label className="checkbox-field">
-            <input
-              defaultChecked={user.is_timeline_public}
-              name="is_timeline_public"
-              type="checkbox"
-            />
-            <span>{t("admin.users.timelinePublic")}</span>
-          </label>
-        </div>
-
-        <div className="modal__footer">
-          <button className="primary-button" disabled={isPending} type="submit">
-            {isPending ? t("admin.users.saving") : t("admin.users.saveProfile")}
+      <div className="editor-sections-nav" role="tablist" aria-label={t("admin.users.sectionNav")}>
+        {sectionOptions.map((section) => (
+          <button
+            aria-selected={activeSection === section.id}
+            className={`editor-sections-nav__item${activeSection === section.id ? " is-active" : ""}`}
+            key={section.id}
+            onClick={() => setActiveSection(section.id)}
+            role="tab"
+            type="button"
+          >
+            {section.label}
           </button>
-        </div>
-      </form>
+        ))}
+      </div>
 
-      {isSuperuser ? (
-        <form
-          className="editor-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            changePassword(new FormData(event.currentTarget));
-            event.currentTarget.reset();
-          }}
-        >
-          <input name="user_id" type="hidden" value={user.id} />
+      {activeSection === "global" && (
+        <article className="admin-card admin-card--section">
           <div className="card-header">
             <div>
-              <p className="eyebrow">{t("admin.users.passwordTitle")}</p>
-              <p className="muted">{t("admin.users.passwordHelp")}</p>
-              {accessSummary ? <p className="muted">{accessSummary}</p> : null}
+              <p className="eyebrow">{t("admin.users.sectionGlobal")}</p>
+              <p className="muted">{t("admin.users.sectionGlobalHelp")}</p>
             </div>
-            <button
-              className="link-button link-button--danger"
-              disabled={isPending}
-              onClick={deleteUser}
-              type="button"
-            >
-              {isPending ? t("admin.users.deleting") : t("admin.users.deleteUser")}
-            </button>
           </div>
-          <div className="form-grid">
-            <label>
-              <span>{t("auth.password")}</span>
-              <input
-                minLength={8}
-                name="password"
-                placeholder={t("admin.users.passwordPlaceholder")}
-                required
-                type="password"
-              />
-            </label>
-            <label>
-              <span>{t("admin.users.confirmPassword")}</span>
-              <input
-                minLength={8}
-                name="confirm_password"
-                placeholder={t("admin.users.passwordPlaceholder")}
-                required
-                type="password"
-              />
-            </label>
-          </div>
-          {passwordError ? <p className="feedback feedback--error">{passwordError}</p> : null}
-          <div className="modal__footer">
-            <button className="secondary-button" disabled={isPending} type="submit">
-              {t("admin.users.changePassword")}
-            </button>
-          </div>
-        </form>
+          <form
+            className="editor-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              saveProfile(new FormData(event.currentTarget));
+            }}
+          >
+            <input name="user_id" type="hidden" value={user.id} />
+            <div className="form-grid">
+              <label>
+                <span>{t("admin.users.displayName")}</span>
+                <input defaultValue={user.display_name ?? ""} name="display_name" />
+              </label>
+              <label>
+                <span>{t("auth.email")}</span>
+                <input defaultValue={user.email ?? ""} disabled readOnly />
+              </label>
+              <label>
+                <span>{t("admin.users.language")}</span>
+                <select
+                  defaultValue={user.preferred_language ?? "es"}
+                  name="preferred_language"
+                >
+                  <option value="es">Español</option>
+                  <option value="en">English</option>
+                </select>
+              </label>
+              <label className="checkbox-field">
+                <input
+                  defaultChecked={user.is_superuser}
+                  disabled={!isSuperuser}
+                  name="is_superuser"
+                  type="checkbox"
+                />
+                <span>{t("admin.users.globalSuperuser")}</span>
+              </label>
+              <label className="checkbox-field">
+                <input
+                  defaultChecked={user.is_timeline_public}
+                  name="is_timeline_public"
+                  type="checkbox"
+                />
+                <span>{t("admin.users.timelinePublic")}</span>
+              </label>
+            </div>
+
+            <div className="modal__footer">
+              <button className="primary-button" disabled={isPending} type="submit">
+                {isPending ? t("admin.users.saving") : t("admin.users.saveProfile")}
+              </button>
+            </div>
+          </form>
+        </article>
+      )}
+
+      {activeSection === "security" && isSuperuser ? (
+        <article className="admin-card admin-card--section">
+          <form
+            className="editor-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              changePassword(new FormData(event.currentTarget));
+              event.currentTarget.reset();
+            }}
+          >
+            <input name="user_id" type="hidden" value={user.id} />
+            <div className="card-header">
+              <div>
+                <p className="eyebrow">{t("admin.users.passwordTitle")}</p>
+                <p className="muted">{t("admin.users.sectionSecurityHelp")}</p>
+                <p className="muted">{t("admin.users.passwordHelp")}</p>
+                {accessSummary ? <p className="muted">{accessSummary}</p> : null}
+              </div>
+              <button
+                className="link-button link-button--danger"
+                disabled={isPending}
+                onClick={deleteUser}
+                type="button"
+              >
+                {isPending ? t("admin.users.deleting") : t("admin.users.deleteUser")}
+              </button>
+            </div>
+            <div className="form-grid">
+              <label>
+                <span>{t("auth.password")}</span>
+                <input
+                  minLength={8}
+                  name="password"
+                  placeholder={t("admin.users.passwordPlaceholder")}
+                  required
+                  type="password"
+                />
+              </label>
+              <label>
+                <span>{t("admin.users.confirmPassword")}</span>
+                <input
+                  minLength={8}
+                  name="confirm_password"
+                  placeholder={t("admin.users.passwordPlaceholder")}
+                  required
+                  type="password"
+                />
+              </label>
+            </div>
+            {passwordError ? <p className="feedback feedback--error">{passwordError}</p> : null}
+            <div className="modal__footer">
+              <button className="secondary-button" disabled={isPending} type="submit">
+                {t("admin.users.changePassword")}
+              </button>
+            </div>
+          </form>
+        </article>
       ) : null}
 
-      <div className="card-header">
-        <div>
-          <p className="eyebrow">{t("admin.users.boatsSection")}</p>
-          {!user.is_superuser ? (
-            <p className="muted">{t("admin.users.singleBoatOnly")}</p>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="admin-card">
-        <SearchableSelect
-          emptyText={t("admin.users.noBoatMatches")}
-          label={t("admin.users.selectBoat")}
-          onSelect={setSelectedBoatId}
-          options={sortedBoats.map((boat) => ({
-            id: boat.id,
-            primary: boat.name,
-            secondary: boat.home_port ?? "—",
-            tertiary: boat.model ?? "",
-          }))}
-          placeholder={t("admin.users.searchBoat")}
-          selectedId={selectedBoat?.id ?? ""}
-        />
-
-        {assignedBoatIds.length > 0 ? (
-          <div className="assigned-boats">
-            <span className="muted">{t("admin.users.assignedBoats")}</span>
-            <div className="assigned-boats__list">
-              {boats
-                .filter((boat) => assignedBoatIds.includes(boat.id))
-                .map((boat) => (
-                  <span className="status-pill is-good" key={boat.id}>
-                    {boat.name}
-                  </span>
-                ))}
+      {activeSection === "boat" && (
+        <article className="admin-card admin-card--section">
+          <div className="card-header">
+            <div>
+              <p className="eyebrow">{t("admin.users.boatsSection")}</p>
+              <p className="muted">{t("admin.users.sectionBoatHelp")}</p>
+              {!user.is_superuser ? (
+                <p className="muted">{t("admin.users.singleBoatOnly")}</p>
+              ) : null}
             </div>
           </div>
-        ) : null}
 
-        {selectedBoat ? (
-          <div className="permission-list">
-            <PermissionEditorRow
-              boat={selectedBoat}
-              disabled={isPending}
-              key={selectedBoat.id}
-              locale={locale}
-              onDelete={() => deletePermission(selectedBoat.id)}
-              onSave={savePermission}
-              permission={user.permissions.find((entry) => entry.boat_id === selectedBoat.id)}
-              userId={user.id}
+          <div className="admin-card">
+            <SearchableSelect
+              emptyText={t("admin.users.noBoatMatches")}
+              label={t("admin.users.selectBoat")}
+              onSelect={setSelectedBoatId}
+              options={sortedBoats.map((boat) => ({
+                id: boat.id,
+                primary: boat.name,
+                secondary: boat.home_port ?? "—",
+                tertiary: boat.model ?? "",
+              }))}
+              placeholder={t("admin.users.searchBoat")}
+              selectedId={selectedBoat?.id ?? ""}
             />
+
+            {assignedBoatIds.length > 0 ? (
+              <div className="assigned-boats">
+                <span className="muted">{t("admin.users.assignedBoats")}</span>
+                <div className="assigned-boats__list">
+                  {boats
+                    .filter((boat) => assignedBoatIds.includes(boat.id))
+                    .map((boat) => (
+                      <span className="status-pill is-good" key={boat.id}>
+                        {boat.name}
+                      </span>
+                    ))}
+                </div>
+              </div>
+            ) : null}
+
+            {selectedBoat ? (
+              <div className="permission-list">
+                <PermissionEditorRow
+                  boat={selectedBoat}
+                  disabled={isPending}
+                  key={selectedBoat.id}
+                  locale={locale}
+                  onDelete={() => deletePermission(selectedBoat.id)}
+                  onSave={savePermission}
+                  permission={user.permissions.find((entry) => entry.boat_id === selectedBoat.id)}
+                  userId={user.id}
+                />
+              </div>
+            ) : null}
           </div>
-        ) : null}
-      </div>
+        </article>
+      )}
     </article>
   );
 }

@@ -32,6 +32,7 @@ export type PlaceSource =
   | "openstreetmap"
   | "other";
 export type PreferredLanguage = "es" | "en";
+export type SeasonAccessWindow = "season_end" | "season_plus_7";
 
 export interface Database {
   public: {
@@ -153,6 +154,33 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["seasons"]["Insert"]>;
+      };
+      season_access_links: {
+        Row: {
+          id: string;
+          boat_id: string;
+          season_id: string;
+          token_hash: string;
+          created_by_user_id: string;
+          created_at: string;
+          expires_at: string;
+          revoked_at: string | null;
+          last_access_at: string | null;
+          access_count: number;
+        };
+        Insert: {
+          id?: string;
+          boat_id: string;
+          season_id: string;
+          token_hash: string;
+          created_by_user_id: string;
+          created_at?: string;
+          expires_at: string;
+          revoked_at?: string | null;
+          last_access_at?: string | null;
+          access_count?: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["season_access_links"]["Insert"]>;
       };
       trip_segments: {
         Row: {
@@ -328,6 +356,12 @@ export interface Database {
           created_at: string;
           updated_at: string;
         }[];
+      };
+      record_season_access_link_hit: {
+        Args: {
+          p_link_id: string;
+        };
+        Returns: undefined;
       };
     };
     Enums: {

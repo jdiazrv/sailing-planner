@@ -1,12 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { redirect } from "next/navigation";
 
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { requireSeasonGuestSession } from "@/lib/season-access-server";
 import type { Database } from "@/types/database";
 import type {
   BoatDetails,
   BoatSummary,
   BoatWorkspace,
+  SeasonAccessLinkSummary,
   SharedTimelineBoat,
   TripSegmentView,
   UserAdminProfile,
@@ -19,6 +22,8 @@ type BoatRow = Database["public"]["Tables"]["boats"]["Row"];
 type PermissionRow = Database["public"]["Tables"]["user_boat_permissions"]["Row"];
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 type BoatOverviewRow = Database["public"]["Views"]["boat_access_overview"]["Row"];
+type SeasonAccessLinkRow =
+  Database["public"]["Tables"]["season_access_links"]["Row"];
 
 const getBoatImageUrl = (
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -55,6 +60,7 @@ export const requireViewer = async () => {
   const viewer: ViewerContext = {
     profile,
     isSuperuser: Boolean(profile?.is_superuser),
+    isSeasonGuest: false,
   };
 
   return { supabase, user, viewer };
@@ -417,4 +423,126 @@ export const getBoatWorkspace = async (
     tripSegments,
     visits,
   } satisfies BoatWorkspace;
+};
+
+export const getSeasonGuestWorkspace = async (boatId: string) => {
+  const session = await requireSeasonGuestSession(boatId);
+  const admin = createAdminClient();
+
+  if (!admin) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for season guest access.");
+  }
+
+  const db = admin as any;
+  const [{ data: tripData, error: tripError }, { data: visitsData, error: visitsError }] =
+    await Promise.all([
+      db
+        .from("trip_segments")
+        .select(
+          "id, season_id, sort_order, start_date, end_date, location_label, location_type, place_source, external_place_id, latitude, longitude, status, public_notes, created_at, updated_at",
+        )
+        .eq("season_id", session.season.id)
+        .order("start_date")
+        .order("end_date"),
+      db
+        .from("visits")
+        .select(
+          "id, season_id, owner_user_id, visitor_name, embark_date, disembark_date, embark_place_label, embark_latitude, embark_longitude, disembark_place_label, disembark_latitude, disembark_longitude, status, public_notes, created_at, updated_at",
+        )
+        .eq("season_id", session.season.id)
+        .order("embark_date")
+        .order("disembark_date"),
+    ]);
+
+  if (tripError) {
+    throw new Error(tripError.message);
+  }
+
+  if (visitsError) {
+    throw new Error(visitsError.message);
+  }
+
+  const tripSegments = ((tripData ?? []) as any[]).map((segment) => ({
+    ...segment,
+    private_notes: null,
+  })) as TripSegmentView[];
+
+  const visits = ((visitsData ?? []) as any[]).map((visit) => ({
+    ...visit,
+    private_notes: null,
+    blocks_availability: visit.status === "confirmed",
+  })) as VisitView[];
+
+  return {
+    viewer: {
+      profile: null,
+      isSuperuser: false,
+      isSeasonGuest: true,
+    },
+    boat: {
+      ...session.boat,
+      image_url: getBoatImageUrl(admin as any, session.boat.image_path, session.boat.updated_at),
+    } as BoatDetails,
+    permission: null,
+    boats: [
+      {
+        boat_id: session.boat.id,
+        boat_name: session.boat.name,
+        permission_level: "viewer",
+        can_edit: false,
+        can_manage_boat_users: false,
+        description: session.boat.description,
+        home_port: session.boat.home_port,
+        image_path: session.boat.image_path,
+        image_url: getBoatImageUrl(admin as any, session.boat.image_path, session.boat.updated_at),
+        model: session.boat.model,
+        year_built: session.boat.year_built,
+        is_active: session.boat.is_active,
+      },
+    ] as BoatSummary[],
+    seasons: [session.season],
+    selectedSeason: session.season,
+    tripSegments,
+    visits,
+  } satisfies BoatWorkspace;
+};
+
+export const getSeasonAccessLinkStatus = async (
+  boatId: string,
+  seasonId: string,
+) => {
+  const { supabase, manageableBoatIds } = await requireUserAdminAccess();
+  assertManageableBoat(manageableBoatIds, boatId);
+  const db = supabase as any;
+
+  const { data, error } = await db
+    .from("season_access_links")
+    .select("*, creator:profiles!season_access_links_created_by_user_id_fkey(display_name)")
+    .eq("boat_id", boatId)
+    .eq("season_id", seasonId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const now = Date.now();
+  const rows = ((data ?? []) as (SeasonAccessLinkRow & {
+    creator?: { display_name?: string | null } | null;
+  })[]).map((row) => ({
+    ...row,
+    is_active: !row.revoked_at && new Date(row.expires_at).getTime() > now,
+    creator_name: row.creator?.display_name ?? null,
+  })) as SeasonAccessLinkSummary[];
+
+  return {
+    activeLink: rows.find((row) => row.is_active) ?? null,
+    latestLink: rows[0] ?? null,
+  };
+};
+
+const assertManageableBoat = (manageableBoatIds: string[] | null, boatId: string) => {
+  if (manageableBoatIds && !manageableBoatIds.includes(boatId)) {
+    throw new Error("You can only manage links for boats assigned to you.");
+  }
 };

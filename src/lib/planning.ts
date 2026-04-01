@@ -5,6 +5,7 @@ type SeasonRow = Database["public"]["Tables"]["seasons"]["Row"];
 type BoatRow = Database["public"]["Tables"]["boats"]["Row"];
 type PermissionRow = Database["public"]["Tables"]["user_boat_permissions"]["Row"];
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
+type SeasonAccessLinkRow = Database["public"]["Tables"]["season_access_links"]["Row"];
 
 export type TripSegmentView =
   Database["public"]["Functions"]["get_season_trip_segments"]["Returns"][number];
@@ -39,6 +40,7 @@ export type SharedTimelineBoat = {
 export type ViewerContext = {
   profile: ProfileRow | null;
   isSuperuser: boolean;
+  isSeasonGuest?: boolean;
 };
 
 export type BoatWorkspace = {
@@ -50,6 +52,11 @@ export type BoatWorkspace = {
   selectedSeason: SeasonRow | null;
   tripSegments: TripSegmentView[];
   visits: VisitView[];
+};
+
+export type SeasonAccessLinkSummary = SeasonAccessLinkRow & {
+  is_active: boolean;
+  creator_name?: string | null;
 };
 
 export type AvailabilityStatus =

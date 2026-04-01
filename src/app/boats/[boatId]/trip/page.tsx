@@ -1,8 +1,9 @@
+import { SeasonAccessPanel } from "@/components/admin/season-access-panel";
 import { BoatNav } from "@/components/boats/boat-nav";
 import { TripOverview } from "@/components/planning/trip-overview";
 import { SeasonBar } from "@/components/planning/season-bar";
 import { TripSegmentsManager } from "@/components/planning/trip-segments-manager";
-import { getBoatWorkspace } from "@/lib/boat-data";
+import { getBoatWorkspace, getSeasonAccessLinkStatus } from "@/lib/boat-data";
 import { t } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n-server";
 
@@ -12,6 +13,10 @@ import {
   saveSeason,
   saveTripSegment,
 } from "../actions";
+import {
+  generateSeasonAccessLink,
+  revokeSeasonAccessLink,
+} from "@/app/admin/actions";
 
 export default async function BoatTripPage({
   params,
@@ -26,6 +31,13 @@ export default async function BoatTripPage({
   const workspace = await getBoatWorkspace(boatId, requestedSeasonId);
   const canEdit =
     workspace.viewer.isSuperuser || Boolean(workspace.permission?.can_edit);
+  const canManageUsers =
+    workspace.viewer.isSuperuser ||
+    Boolean(workspace.permission?.can_manage_boat_users);
+  const seasonAccess =
+    canManageUsers && workspace.selectedSeason
+      ? await getSeasonAccessLinkStatus(boatId, workspace.selectedSeason.id)
+      : null;
   const filteredSegments = [...workspace.tripSegments]
     .filter((s) => (status ? s.status === status : true))
     .sort(
@@ -47,6 +59,17 @@ export default async function BoatTripPage({
         seasons={workspace.seasons}
         selected={workspace.selectedSeason}
       />
+
+      {workspace.selectedSeason && canManageUsers && seasonAccess ? (
+        <SeasonAccessPanel
+          activeLink={seasonAccess.activeLink}
+          boatId={boatId}
+          latestLink={seasonAccess.latestLink}
+          onGenerate={generateSeasonAccessLink}
+          onRevoke={revokeSeasonAccessLink}
+          seasonId={workspace.selectedSeason.id}
+        />
+      ) : null}
 
       {workspace.selectedSeason && (
           <TripOverview

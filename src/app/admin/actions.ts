@@ -6,6 +6,13 @@ import { revalidatePath } from "next/cache";
 import { requireSuperuser, requireUserAdminAccess } from "@/lib/boat-data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildAuthRedirectUrl } from "@/lib/env";
+import {
+  buildSeasonAccessUrl,
+  generateSeasonAccessToken,
+  getSeasonAccessExpiry,
+  hashSeasonAccessToken,
+  type SeasonAccessWindow,
+} from "@/lib/season-access";
 import type { PermissionLevel, PreferredLanguage } from "@/types/database";
 
 const asOptionalString = (value: FormDataEntryValue | null) => {
@@ -518,4 +525,77 @@ export async function deleteUserAccount(formData: FormData) {
   }
 
   refreshAdminRoutes();
+}
+
+export async function generateSeasonAccessLink(formData: FormData) {
+  const { supabase, user, manageableBoatIds } = await requireUserAdminAccess();
+  const db = supabase as any;
+  const boatId = formData.get("boat_id")?.toString() ?? "";
+  const seasonId = formData.get("season_id")?.toString() ?? "";
+  const window =
+    (formData.get("access_window")?.toString() as SeasonAccessWindow) ?? "season_end";
+
+  assertManageableBoat(manageableBoatIds, boatId);
+
+  const { data: season, error: seasonError } = await db
+    .from("seasons")
+    .select("id, boat_id, end_date")
+    .eq("id", seasonId)
+    .eq("boat_id", boatId)
+    .single();
+  throwIfError(seasonError);
+
+  const { error: revokeExistingError } = await db
+    .from("season_access_links")
+    .update({ revoked_at: new Date().toISOString() })
+    .eq("boat_id", boatId)
+    .eq("season_id", seasonId)
+    .is("revoked_at", null);
+  throwIfError(revokeExistingError);
+
+  const token = generateSeasonAccessToken();
+  const expiresAt = getSeasonAccessExpiry(season.end_date, window);
+  const { data, error } = await db
+    .from("season_access_links")
+    .insert({
+      boat_id: boatId,
+      season_id: seasonId,
+      token_hash: hashSeasonAccessToken(token),
+      created_by_user_id: user.id,
+      expires_at: expiresAt,
+    })
+    .select("id, expires_at")
+    .single();
+  throwIfError(error);
+
+  refreshAdminRoutes(boatId);
+
+  return {
+    id: data.id,
+    expiresAt: data.expires_at,
+    url: buildSeasonAccessUrl(token),
+  };
+}
+
+export async function revokeSeasonAccessLink(formData: FormData) {
+  const { supabase, manageableBoatIds } = await requireUserAdminAccess();
+  const db = supabase as any;
+  const boatId = formData.get("boat_id")?.toString() ?? "";
+  const linkId = formData.get("link_id")?.toString() ?? "";
+
+  if (!boatId || !linkId) {
+    throw new Error("Boat and link are required.");
+  }
+
+  assertManageableBoat(manageableBoatIds, boatId);
+
+  const { error } = await db
+    .from("season_access_links")
+    .update({ revoked_at: new Date().toISOString() })
+    .eq("id", linkId)
+    .eq("boat_id", boatId)
+    .is("revoked_at", null);
+  throwIfError(error);
+
+  refreshAdminRoutes(boatId);
 }

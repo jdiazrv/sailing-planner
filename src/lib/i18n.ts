@@ -239,6 +239,16 @@ const dictionary = {
     "admin.users.searchUser": "Escribe para buscar nombre, correo o barco",
     "admin.users.noUsersMatch": "No hay usuarios que coincidan con la búsqueda.",
     "admin.users.noAssignedBoat": "Sin barco asignado",
+    "admin.users.sectionNav": "Secciones de edición",
+    "admin.users.sectionGlobal": "Perfil global",
+    "admin.users.sectionBoat": "Acceso por barco",
+    "admin.users.sectionSecurity": "Seguridad",
+    "admin.users.sectionGlobalHelp":
+      "Estos cambios afectan al perfil del usuario en toda la plataforma.",
+    "admin.users.sectionBoatHelp":
+      "Estos permisos solo afectan al barco seleccionado.",
+    "admin.users.sectionSecurityHelp":
+      "Acciones sensibles: contraseña y eliminación de cuenta.",
     "admin.users.userEyebrow": "Usuario",
     "admin.users.superuser": "Superusuario",
     "admin.users.standardUser": "Usuario estándar",
@@ -518,6 +528,16 @@ const dictionary = {
     "admin.users.searchUser": "Type to search name, email or boat",
     "admin.users.noUsersMatch": "No users match the search.",
     "admin.users.noAssignedBoat": "No assigned boat",
+    "admin.users.sectionNav": "Editing sections",
+    "admin.users.sectionGlobal": "Global profile",
+    "admin.users.sectionBoat": "Per-boat access",
+    "admin.users.sectionSecurity": "Security",
+    "admin.users.sectionGlobalHelp":
+      "These changes affect the user profile across the whole platform.",
+    "admin.users.sectionBoatHelp":
+      "These permissions only affect the selected boat.",
+    "admin.users.sectionSecurityHelp":
+      "Sensitive actions: password and account deletion.",
     "admin.users.userEyebrow": "User",
     "admin.users.superuser": "Superuser",
     "admin.users.standardUser": "Standard user",
