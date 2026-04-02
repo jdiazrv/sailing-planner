@@ -319,9 +319,9 @@ export const MapPanel = ({
           map,
           path: routePoints,
           geodesic: true,
-          strokeColor: "#005f73",
-          strokeOpacity: 0.78,
-          strokeWeight: 3,
+          strokeColor: "#f4c542",
+          strokeOpacity: 0.85,
+          strokeWeight: 2,
         });
       }
 
@@ -519,12 +519,12 @@ export const MapPanel = ({
                     return `${point.x},${point.y}`;
                   })
                   .join(" ")}
-                stroke="#005f73"
+                stroke="#f4c542"
                 strokeDasharray="0"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeOpacity="0.78"
-                strokeWidth="0.6"
+                strokeOpacity="0.85"
+                strokeWidth="0.4"
                 vectorEffect="non-scaling-stroke"
               />
             </svg>
