@@ -32,7 +32,12 @@ export type PlaceSource =
   | "openstreetmap"
   | "other";
 export type PreferredLanguage = "es" | "en";
-export type SeasonAccessWindow = "season_end" | "season_plus_7";
+export type SeasonAccessWindow =
+  | "one_use"
+  | "one_day"
+  | "one_week"
+  | "season_end"
+  | "season_plus_7";
 
 export interface Database {
   public: {
@@ -161,10 +166,13 @@ export interface Database {
           boat_id: string;
           season_id: string;
           token_hash: string;
+          invitee_name: string | null;
           created_by_user_id: string;
           created_at: string;
           expires_at: string;
           can_view_visits: boolean;
+          single_use: boolean;
+          redeemed_at: string | null;
           revoked_at: string | null;
           last_access_at: string | null;
           access_count: number;
@@ -174,10 +182,13 @@ export interface Database {
           boat_id: string;
           season_id: string;
           token_hash: string;
+          invitee_name?: string | null;
           created_by_user_id: string;
           created_at?: string;
           expires_at: string;
           can_view_visits?: boolean;
+          single_use?: boolean;
+          redeemed_at?: string | null;
           revoked_at?: string | null;
           last_access_at?: string | null;
           access_count?: number;

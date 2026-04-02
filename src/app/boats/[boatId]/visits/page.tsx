@@ -42,8 +42,6 @@ export default async function BoatVisitsPage({
 
   return (
     <>
-      <BoatNav active="visits" boatId={boatId} />
-
       <SeasonBar
         basePath={`/boats/${boatId}/visits`}
         boatId={boatId}
@@ -53,6 +51,8 @@ export default async function BoatVisitsPage({
         seasons={workspace.seasons}
         selected={workspace.selectedSeason}
       />
+
+      <BoatNav active="visits" boatId={boatId} />
 
       <VisitsWorkspace
         boatId={boatId}

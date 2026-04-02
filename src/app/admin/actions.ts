@@ -105,6 +105,10 @@ export async function saveBoat(formData: FormData) {
   }
 
   refreshAdminRoutes(resolvedBoatId);
+
+  if (!boatId && resolvedBoatId) {
+    return { id: resolvedBoatId };
+  }
 }
 
 export async function deleteBoat(formData: FormData) {
@@ -534,6 +538,7 @@ export async function generateSeasonAccessLink(formData: FormData) {
     const db = supabase as any;
     const boatId = formData.get("boat_id")?.toString() ?? "";
     const seasonId = formData.get("season_id")?.toString() ?? "";
+    const inviteeName = asOptionalString(formData.get("invitee_name"));
     const canViewVisits = formData.get("can_view_visits")?.toString() !== "off";
     const window =
       (formData.get("access_window")?.toString() as SeasonAccessWindow) ?? "season_end";
@@ -548,25 +553,20 @@ export async function generateSeasonAccessLink(formData: FormData) {
       .single();
     throwIfError(seasonError);
 
-    const { error: revokeExistingError } = await db
-      .from("season_access_links")
-      .update({ revoked_at: new Date().toISOString() })
-      .eq("boat_id", boatId)
-      .eq("season_id", seasonId)
-      .is("revoked_at", null);
-    throwIfError(revokeExistingError);
-
     const token = generateSeasonAccessToken();
     const expiresAt = getSeasonAccessExpiry(season.end_date, window);
+    const singleUse = window === "one_use";
     const baseInsert = {
       boat_id: boatId,
       season_id: seasonId,
       token_hash: hashSeasonAccessToken(token),
+      invitee_name: inviteeName,
       created_by_user_id: user.id,
       expires_at: expiresAt,
+      single_use: singleUse,
     };
 
-    let data: { id: string; expires_at: string } | null = null;
+    let data: { id: string; expires_at: string; invitee_name?: string | null } | null = null;
 
     const withVisibility = await db
       .from("season_access_links")
@@ -574,14 +574,14 @@ export async function generateSeasonAccessLink(formData: FormData) {
         ...baseInsert,
         can_view_visits: canViewVisits,
       })
-      .select("id, expires_at")
+      .select("id, expires_at, invitee_name")
       .single();
 
     if (withVisibility.error?.message?.includes("can_view_visits")) {
       const legacyInsert = await db
         .from("season_access_links")
         .insert(baseInsert)
-        .select("id, expires_at")
+        .select("id, expires_at, invitee_name")
         .single();
       throwIfError(legacyInsert.error);
       data = legacyInsert.data;
@@ -595,7 +595,9 @@ export async function generateSeasonAccessLink(formData: FormData) {
     // Build the absolute URL using the real request origin (reliable in all envs).
     const headerStore = await headers();
     const host = headerStore.get("host") ?? "";
-    const proto = headerStore.get("x-forwarded-proto") ?? "https";
+    const forwardedProto = headerStore.get("x-forwarded-proto");
+    const isLocalhost = host.startsWith("localhost") || host.startsWith("127.0.0.1");
+    const proto = forwardedProto ?? (isLocalhost ? "http" : "https");
     const origin = host ? `${proto}://${host}` : "";
     const tokenPath = `/season-access/${token}`;
     const url = origin ? `${origin}${tokenPath}` : buildSeasonAccessUrl(token);
@@ -603,6 +605,7 @@ export async function generateSeasonAccessLink(formData: FormData) {
     return {
       id: data?.id ?? "",
       expiresAt: data?.expires_at ?? expiresAt,
+      inviteeName: data?.invitee_name ?? inviteeName,
       url,
     };
   } catch (error) {

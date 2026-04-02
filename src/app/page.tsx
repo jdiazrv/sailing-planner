@@ -14,14 +14,6 @@ export default async function Home() {
             <p className="eyebrow">Sailing Planner</p>
             <strong className="landing__brand">{t(locale, "landing.brand")}</strong>
           </div>
-          <div className="landing__nav-actions">
-            <Link className="secondary-button" href="/dashboard">
-              {t(locale, "landing.navDashboard")}
-            </Link>
-            <Link className="primary-button" href="/login">
-              {t(locale, "landing.navSignIn")}
-            </Link>
-          </div>
         </div>
 
         <div className="landing__hero-grid">
@@ -30,11 +22,8 @@ export default async function Home() {
             <h1>{t(locale, "landing.title")}</h1>
             <p className="landing__lead">{t(locale, "landing.lead")}</p>
             <div className="landing__actions">
-              <Link className="primary-button" href="/login">
-                {t(locale, "common.signIn")}
-              </Link>
-              <Link className="secondary-button" href="/dashboard">
-                {t(locale, "landing.openDashboard")}
+              <Link className="primary-button" href="/dashboard">
+                {t(locale, "landing.openApp")}
               </Link>
             </div>
             <div className="landing__stats">
@@ -151,19 +140,33 @@ export default async function Home() {
         </div>
         <div className="landing__cards">
           <article className="landing__card">
+            <span className="landing__card-icon" aria-hidden="true">
+              Route
+            </span>
             <strong>{t(locale, "landing.card1.title")}</strong>
             <p>{t(locale, "landing.card1.body")}</p>
           </article>
           <article className="landing__card">
+            <span className="landing__card-icon" aria-hidden="true">
+              Fleet
+            </span>
             <strong>{t(locale, "landing.card2.title")}</strong>
             <p>{t(locale, "landing.card2.body")}</p>
           </article>
           <article className="landing__card">
+            <span className="landing__card-icon" aria-hidden="true">
+              Crew
+            </span>
             <strong>{t(locale, "landing.card3.title")}</strong>
             <p>{t(locale, "landing.card3.body")}</p>
           </article>
         </div>
       </section>
+
+      <footer className="landing__footer">
+        <span>Sailing Planner</span>
+        <a href="mailto:hello@sailingplanner.app">hello@sailingplanner.app</a>
+      </footer>
     </main>
   );
 }

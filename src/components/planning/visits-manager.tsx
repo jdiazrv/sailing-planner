@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { useI18n } from "@/components/i18n/provider";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog } from "@/components/ui/dialog";
 import { PlaceAutocompleteField } from "@/components/places/place-autocomplete-field";
 import { formatShortDate, hasVisitDateRange } from "@/lib/planning";
@@ -19,6 +20,7 @@ type Props = {
   onDelete: (fd: FormData) => Promise<void>;
   externalEditVisit?: VisitView | null;
   onExternalEditHandled?: () => void;
+  emptyMessage?: string;
 };
 
 export function VisitsManager({
@@ -31,10 +33,12 @@ export function VisitsManager({
   onDelete,
   externalEditVisit,
   onExternalEditHandled,
+  emptyMessage,
 }: Props) {
   const { t } = useI18n();
   const [addOpen, setAddOpen] = useState(false);
   const [editingVisit, setEditingVisit] = useState<VisitView | null>(null);
+  const [visitToDelete, setVisitToDelete] = useState<VisitView | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -65,23 +69,18 @@ export function VisitsManager({
     });
   };
 
-  const handleDelete = (visit: VisitView) => {
-    if (
-      !confirm(
-        t("planning.deleteVisitConfirm").replace(
-          "{name}",
-          visit.visitor_name ?? t("planning.privateVisit"),
-        ),
-      )
-    )
+  const confirmDelete = () => {
+    if (!visitToDelete) {
       return;
+    }
     const fd = new FormData();
     fd.set("boat_id", boatId);
-    fd.set("visit_id", visit.id);
+    fd.set("visit_id", visitToDelete.id);
     startTransition(async () => {
       try {
         await onDelete(fd);
         toast.success(t("planning.visitDeleted"));
+        setVisitToDelete(null);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : t("planning.deleteVisitError"));
       }
@@ -90,7 +89,7 @@ export function VisitsManager({
 
   return (
     <>
-      {canEdit && (
+      {canEdit && visits.length > 0 && (
         <div className="panel-toolbar">
           <button
             className="primary-button"
@@ -149,14 +148,14 @@ export function VisitsManager({
                   >
                     <span aria-hidden="true">✎</span>
                   </button>
-                  <button
-                    aria-label={t("common.delete")}
-                    className="icon-button icon-button--danger"
-                    disabled={isPending}
-                    onClick={() => handleDelete(visit)}
-                    title={t("common.delete")}
-                    type="button"
-                  >
+                    <button
+                      aria-label={t("common.delete")}
+                      className="icon-button icon-button--danger"
+                      disabled={isPending}
+                      onClick={() => setVisitToDelete(visit)}
+                      title={t("common.delete")}
+                      type="button"
+                    >
                     <span aria-hidden="true">🗑</span>
                   </button>
                 </div>
@@ -165,7 +164,19 @@ export function VisitsManager({
           ))}
         </div>
       ) : (
-        <p className="muted">{t("planning.noVisitsMatch")}</p>
+        <div className="empty-state">
+          <p className="muted">{emptyMessage ?? t("planning.noVisitsEmpty")}</p>
+          {canEdit ? (
+            <button
+              className="primary-button"
+              disabled={isPending}
+              onClick={() => setAddOpen(true)}
+              type="button"
+            >
+              + {t("planning.addVisit")}
+            </button>
+          ) : null}
+        </div>
       )}
 
       <Dialog
@@ -208,6 +219,25 @@ export function VisitsManager({
           />
         )}
       </Dialog>
+
+      <ConfirmDialog
+        cancelLabel={t("planning.cancelAction")}
+        confirmLabel={t("common.delete")}
+        description={
+          visitToDelete
+            ? t("planning.deleteVisitConfirm").replace(
+                "{name}",
+                visitToDelete.visitor_name ?? t("planning.privateVisit"),
+              )
+            : ""
+        }
+        destructive
+        onCancel={() => setVisitToDelete(null)}
+        onConfirm={confirmDelete}
+        open={Boolean(visitToDelete)}
+        pending={isPending}
+        title={t("planning.confirmDeleteTitle")}
+      />
     </>
   );
 }

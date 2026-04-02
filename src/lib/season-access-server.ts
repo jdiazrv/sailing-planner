@@ -21,6 +21,7 @@ export type SeasonGuestSession = SeasonAccessCookiePayload & {
   link: SeasonAccessLinkRow;
   season: SeasonRow;
   boat: BoatRow;
+  creatorName: string | null;
 };
 
 export const setSeasonAccessCookie = async (payload: SeasonAccessCookiePayload) => {
@@ -62,7 +63,7 @@ export const getSeasonGuestSession = async (
   const db = admin as any;
   const { data: linkData, error } = await db
     .from("season_access_links")
-    .select("*, season:seasons(*), boat:boats(*)")
+    .select("*, season:seasons(*), boat:boats(*), creator:profiles!season_access_links_created_by_user_id_fkey(display_name)")
     .eq("id", payload.linkId)
     .maybeSingle();
 
@@ -77,6 +78,7 @@ export const getSeasonGuestSession = async (
   const link = linkData as SeasonAccessLinkRow & {
     season: SeasonRow;
     boat: BoatRow;
+    creator?: { display_name?: string | null } | null;
   };
 
   const isExpired = new Date(link.expires_at).getTime() <= Date.now();
@@ -99,6 +101,7 @@ export const getSeasonGuestSession = async (
     link,
     season: link.season,
     boat: link.boat,
+    creatorName: link.creator?.display_name ?? null,
   };
 };
 

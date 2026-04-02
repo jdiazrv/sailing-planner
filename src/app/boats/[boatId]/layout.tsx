@@ -25,8 +25,11 @@ export default async function BoatLayout({
     <main className="shell">
       <LastBoatTracker boatId={boatId} />
       <header className="workspace-header">
-        <div>
-          <p className="eyebrow">{t(locale, "boatLayout.eyebrow")}</p>
+        <div className="workspace-header__title">
+          <div className="workspace-header__eyebrow">
+            <span className="workspace-header__eyebrow-mark" aria-hidden="true" />
+            <p className="eyebrow">{t(locale, "boatLayout.eyebrow")}</p>
+          </div>
           <h1>{workspace.boat.name}</h1>
           <p className="muted">
             {workspace.boat.description ??

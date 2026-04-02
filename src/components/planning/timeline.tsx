@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 import { useI18n } from "@/components/i18n/provider";
 import {
@@ -31,6 +31,12 @@ type TimelineProps = {
   showVisits?: boolean;
   showAvailability?: boolean;
 };
+
+type TimelineTooltipState = {
+  content: string;
+  x: number;
+  y: number;
+} | null;
 
 const buildMonthMarkers = (season: SeasonRow) => {
   const markers: { label: string; offset: number }[] = [];
@@ -112,6 +118,8 @@ export const Timeline = ({
     null,
   );
   const [zoom, setZoom] = useState(1);
+  const [tooltip, setTooltip] = useState<TimelineTooltipState>(null);
+  const tooltipTimeoutRef = useRef<number | null>(null);
 
   if (!season) {
     return (
@@ -132,12 +140,54 @@ export const Timeline = ({
       availabilityOrder.indexOf(a.status) - availabilityOrder.indexOf(b.status),
   );
   const { markers: monthMarkers, dayMarkers } = buildMonthMarkers(season);
+  const isTimelineEmpty = tripSegments.length === 0 && visits.length === 0;
   const expandedVisit = visits.find((v) => v.id === expandedVisitId) ?? null;
   const selectedAvailability =
     selectedAvailabilityIndex == null ? null : sortedAvailability[selectedAvailabilityIndex] ?? null;
 
   const toggleVisit = (visitId: string) => {
     setExpandedVisitId((prev) => (prev === visitId ? null : visitId));
+  };
+
+  const showTooltip = (
+    event: ReactPointerEvent<HTMLButtonElement>,
+    content: string,
+  ) => {
+    if (tooltipTimeoutRef.current) {
+      window.clearTimeout(tooltipTimeoutRef.current);
+    }
+
+    const x = event.clientX + 14;
+    const y = event.clientY - 12;
+
+    tooltipTimeoutRef.current = window.setTimeout(() => {
+      setTooltip({
+        content,
+        x,
+        y,
+      });
+      tooltipTimeoutRef.current = null;
+    }, 500);
+  };
+
+  const moveTooltip = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    setTooltip((current) =>
+      current
+        ? {
+            ...current,
+            x: event.clientX + 14,
+            y: event.clientY - 12,
+          }
+        : current,
+    );
+  };
+
+  const hideTooltip = () => {
+    if (tooltipTimeoutRef.current) {
+      window.clearTimeout(tooltipTimeoutRef.current);
+      tooltipTimeoutRef.current = null;
+    }
+    setTooltip(null);
   };
 
   return (
@@ -169,89 +219,123 @@ export const Timeline = ({
 
       <div className="timeline">
         <div className="timeline__inner" style={{ width: `${zoom * 100}%` }}>
-        <div className="timeline__scale">
-          {monthMarkers.map((marker) => (
-            <span
-              key={`${marker.label}-${marker.offset}`}
-              style={{ left: `${marker.offset}%` }}
-            >
-              {marker.label}
-            </span>
-          ))}
-        </div>
-        <div className="timeline__day-scale">
-          {dayMarkers.map((marker) => (
-            <span
-              key={`${marker.label}-${marker.offset}`}
-              style={{ left: `${marker.offset}%` }}
-            >
-              {marker.label}
-            </span>
-          ))}
-        </div>
+          {isTimelineEmpty ? (
+            <div className="timeline__empty">
+              <div className="timeline__empty-range">
+                <span>{formatShortDate(season.start_date)}</span>
+                <span>{formatShortDate(season.end_date)}</span>
+              </div>
+              <div className="timeline__empty-body">
+                <strong>{t("planning.noTripSegments")}</strong>
+                <p>{t("planning.emptyTimelineHint")}</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="timeline__scale">
+                {monthMarkers.map((marker) => (
+                  <span
+                    key={`${marker.label}-${marker.offset}`}
+                    style={{ left: `${marker.offset}%` }}
+                  >
+                    {marker.label}
+                  </span>
+                ))}
+              </div>
+              <div className="timeline__day-scale">
+                {dayMarkers.map((marker) => (
+                  <span
+                    key={`${marker.label}-${marker.offset}`}
+                    style={{ left: `${marker.offset}%` }}
+                  >
+                    {marker.label}
+                  </span>
+                ))}
+              </div>
 
-        {/* Trip plan — one shared lane */}
-        <TimelineLane highlight label={t("planning.tripPlan")}>
-          {tripSegments.map((segment) => (
-            <button
-              className={`timeline-bar timeline-bar--btn is-${segment.status}${selectedEntityId === segment.id ? " is-selected" : ""}`}
-              key={segment.id}
-              onClick={() => onTripSegmentSelect?.(segment)}
-              style={toBarStyle(season, segment.start_date, segment.end_date)}
-              title={`${segment.location_label} · ${t(`status.${segment.status}` as never)} · ${formatShortDate(segment.start_date)} – ${formatShortDate(segment.end_date)}`}
-              type="button"
-            >
-              <span>{segment.location_label}</span>
-            </button>
-          ))}
-        </TimelineLane>
+              <TimelineLane highlight label={t("planning.tripPlan")}>
+                {tripSegments.map((segment) => (
+                  <button
+                    className={`timeline-bar timeline-bar--btn is-${segment.status}${selectedEntityId === segment.id ? " is-selected" : ""}`}
+                    key={segment.id}
+                    onPointerEnter={(event) =>
+                      showTooltip(
+                        event,
+                        `${segment.location_label} · ${t(`status.${segment.status}` as never)} · ${formatShortDate(segment.start_date)} – ${formatShortDate(segment.end_date)}`,
+                      )
+                    }
+                    onPointerLeave={hideTooltip}
+                    onPointerMove={moveTooltip}
+                    onClick={() => onTripSegmentSelect?.(segment)}
+                    style={toBarStyle(season, segment.start_date, segment.end_date)}
+                    type="button"
+                  >
+                    <span>{segment.location_label}</span>
+                  </button>
+                ))}
+              </TimelineLane>
 
-        {/* One lane per visit */}
-        {showVisits && visits.length === 0 && (
-          <TimelineLane label={t("planning.visit")}>
-            <span />
-          </TimelineLane>
-        )}
-        {showVisits &&
-          visits.map((visit) => (
-          <TimelineLane key={visit.id} label={getShortName(visit.visitor_name)}>
-            {hasVisitDateRange(visit) ? (
-              <button
-                aria-expanded={expandedVisitId === visit.id}
-                aria-label={`${t("planning.visit")}: ${visit.visitor_name ?? t("planning.private")}`}
-                className={`timeline-bar timeline-bar--btn is-${visit.status}${expandedVisitId === visit.id || selectedEntityId === visit.id ? " is-selected" : ""}`}
-                onClick={() => {
-                  toggleVisit(visit.id);
-                  onVisitSelect?.(visit);
-                }}
-                style={toBarStyle(season, visit.embark_date, visit.disembark_date)}
-                type="button"
-              >
-                <span>{visit.visitor_name ?? t("planning.visit")}</span>
-              </button>
-            ) : (
-              <span className="muted">{t("planning.restrictedVisitDates")}</span>
-            )}
-          </TimelineLane>
-        ))}
+              {showVisits && visits.length === 0 && (
+                <TimelineLane label={t("planning.visit")}>
+                  <span />
+                </TimelineLane>
+              )}
+              {showVisits &&
+                visits.map((visit) => (
+                  <TimelineLane key={visit.id} label={getShortName(visit.visitor_name)}>
+                    {hasVisitDateRange(visit) ? (
+                      <button
+                        aria-expanded={expandedVisitId === visit.id}
+                        aria-label={`${t("planning.visit")}: ${visit.visitor_name ?? t("planning.private")}`}
+                        className={`timeline-bar timeline-bar--btn is-${visit.status}${expandedVisitId === visit.id || selectedEntityId === visit.id ? " is-selected" : ""}`}
+                        onPointerEnter={(event) =>
+                          showTooltip(
+                            event,
+                            `${visit.visitor_name ?? t("planning.visit")} · ${t(`status.${visit.status}` as never)} · ${formatShortDate(visit.embark_date)} – ${formatShortDate(visit.disembark_date)}`,
+                          )
+                        }
+                        onPointerLeave={hideTooltip}
+                        onPointerMove={moveTooltip}
+                        onClick={() => {
+                          toggleVisit(visit.id);
+                          onVisitSelect?.(visit);
+                        }}
+                        style={toBarStyle(season, visit.embark_date, visit.disembark_date)}
+                        type="button"
+                      >
+                        <span>{visit.visitor_name ?? t("planning.visit")}</span>
+                      </button>
+                    ) : (
+                      <span className="muted">{t("planning.restrictedVisitDates")}</span>
+                    )}
+                  </TimelineLane>
+                ))}
 
-        {/* Availability lane */}
-        {showAvailability && (
-          <TimelineLane availability label={t("planning.availability")}>
-            {sortedAvailability.map((block, index) => (
-              <button
-                className={`timeline-bar timeline-bar--btn is-${block.status}${selectedAvailabilityIndex === index ? " is-selected" : ""}`}
-                key={`${block.status}-${index}-${block.start}`}
-                onClick={() => setSelectedAvailabilityIndex(index)}
-                style={toBarStyle(season, block.start, block.end)}
-                title={`${t(`status.${block.status}` as never)} · ${formatShortDate(block.start)} – ${formatShortDate(block.end)}`}
-                type="button"
-              >
-                <span>{t(`status.${block.status}` as never)}</span>
-              </button>
-            ))}
-          </TimelineLane>
-        )}
+              {showAvailability && (
+                <TimelineLane availability label={t("planning.availability")}>
+                  {sortedAvailability.map((block, index) => (
+                    <button
+                      className={`timeline-bar timeline-bar--btn is-${block.status}${selectedAvailabilityIndex === index ? " is-selected" : ""}`}
+                      key={`${block.status}-${index}-${block.start}`}
+                      onPointerEnter={(event) =>
+                        showTooltip(
+                          event,
+                          `${t(`status.${block.status}` as never)} · ${formatShortDate(block.start)} – ${formatShortDate(block.end)}`,
+                        )
+                      }
+                      onPointerLeave={hideTooltip}
+                      onPointerMove={moveTooltip}
+                      onClick={() => setSelectedAvailabilityIndex(index)}
+                      style={toBarStyle(season, block.start, block.end)}
+                      type="button"
+                    >
+                      <span>{t(`status.${block.status}` as never)}</span>
+                    </button>
+                  ))}
+                </TimelineLane>
+              )}
+            </>
+          )}
         </div>
       </div>
 
@@ -329,6 +413,15 @@ export const Timeline = ({
           </div>
         </div>
       )}
+
+      {tooltip ? (
+        <div
+          className="timeline-tooltip"
+          style={{ left: tooltip.x, top: tooltip.y }}
+        >
+          {tooltip.content}
+        </div>
+      ) : null}
     </article>
   );
 };

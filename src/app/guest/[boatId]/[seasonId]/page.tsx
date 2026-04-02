@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { GuestWelcomeModal } from "@/components/guest/guest-welcome-modal";
 import { TripOverview } from "@/components/planning/trip-overview";
 import { TripSegmentsManager } from "@/components/planning/trip-segments-manager";
 import { VisitsWorkspace } from "@/components/planning/visits-workspace";
@@ -17,13 +18,25 @@ export default async function GuestSeasonPage({
   searchParams,
 }: {
   params: Promise<{ boatId: string; seasonId: string }>;
-  searchParams: Promise<{ view?: string }>;
+  searchParams: Promise<{ view?: string; welcome?: string }>;
 }) {
   const { boatId } = await params;
-  const { view } = await searchParams;
+  const { view, welcome } = await searchParams;
   const workspace = await getSeasonGuestWorkspace(boatId);
   const canViewVisits = workspace.viewer.seasonGuestCanViewVisits !== false;
   const currentView = view === "visits" && canViewVisits ? "visits" : "trip";
+  const shouldShowWelcome = welcome === "1";
+  const creatorName = workspace.viewer.seasonGuestCreatorName?.trim() || "Alguien";
+  const seasonName = workspace.selectedSeason?.name || "esta temporada";
+  const expiresAt = workspace.viewer.seasonGuestExpiresAt
+    ? new Intl.DateTimeFormat("es-ES", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date(workspace.viewer.seasonGuestExpiresAt))
+    : null;
 
   const conflicts = computeVisitConflicts(
     workspace.selectedSeason,
@@ -33,6 +46,22 @@ export default async function GuestSeasonPage({
 
   return (
     <main>
+      {shouldShowWelcome ? (
+        <GuestWelcomeModal
+          canViewVisits={canViewVisits}
+          creatorName={creatorName}
+          expiresAt={expiresAt}
+          seasonName={seasonName}
+        />
+      ) : null}
+
+      <section className="guest-banner">
+        <strong>Estas viendo el plan de temporada de {workspace.boat.name}</strong>
+        <span className="muted">
+          Explore tramos, timeline y, si el enlace lo permite, tambien las visitas previstas.
+        </span>
+      </section>
+
       <header className="boat-header">
         <div className="boat-header__title">
           <h1>{workspace.boat.name}</h1>
@@ -40,7 +69,7 @@ export default async function GuestSeasonPage({
             <p className="muted">{workspace.selectedSeason.name}</p>
           )}
         </div>
-        <span className="status-pill is-muted">Solo lectura</span>
+        <span className="status-pill status-pill--readonly">Solo lectura</span>
       </header>
 
       <nav className="section-nav" aria-label="Vista">
@@ -61,7 +90,10 @@ export default async function GuestSeasonPage({
       </nav>
 
       {!canViewVisits ? (
-        <p className="muted">Este enlace solo permite ver tramos de viaje.</p>
+        <p className="muted">
+          Este enlace solo permite ver tramos de viaje. El timeline sigue mostrando la temporada de
+          forma completa para facilitar el seguimiento.
+        </p>
       ) : null}
 
       {currentView === "trip" ? (

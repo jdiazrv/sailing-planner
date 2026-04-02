@@ -587,6 +587,8 @@ export const getSeasonGuestWorkspace = async (boatId: string) => {
       isSuperuser: false,
       isSeasonGuest: true,
       seasonGuestCanViewVisits: canViewVisits,
+      seasonGuestCreatorName: session.creatorName,
+      seasonGuestExpiresAt: session.link.expires_at,
     },
     boat: {
       ...session.boat,
@@ -640,13 +642,15 @@ export const getSeasonAccessLinkStatus = async (
     creator?: { display_name?: string | null } | null;
   })[]).map((row) => ({
     ...row,
-    is_active: !row.revoked_at && new Date(row.expires_at).getTime() > now,
+    is_active:
+      !row.revoked_at &&
+      new Date(row.expires_at).getTime() > now &&
+      !(row.single_use && row.redeemed_at),
     creator_name: row.creator?.display_name ?? null,
   })) as SeasonAccessLinkSummary[];
 
   return {
-    activeLink: rows.find((row) => row.is_active) ?? null,
-    latestLink: rows[0] ?? null,
+    links: rows,
   };
 };
 

@@ -6,11 +6,12 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { useI18n } from "@/components/i18n/provider";
+import { BoatPlaceholder } from "@/components/ui/boat-placeholder";
 import type { BoatDetails } from "@/lib/planning";
 
 type BoatsAdminProps = {
   boats: BoatDetails[];
-  onSave: (fd: FormData) => Promise<void>;
+  onSave: (fd: FormData) => Promise<void | { id: string }>;
   onUploadImage: (fd: FormData) => Promise<void>;
   onRemoveImage: (fd: FormData) => Promise<void>;
   onDelete: (fd: FormData) => Promise<void>;
@@ -161,7 +162,7 @@ function BoatEditorCard({
 }: {
   boat: BoatEditorValue;
   title: string;
-  onSave: (fd: FormData) => Promise<void>;
+  onSave: (fd: FormData) => Promise<void | { id: string }>;
   onUploadImage?: (fd: FormData) => Promise<void>;
   onRemoveImage?: (fd: FormData) => Promise<void>;
   onDelete: (fd: FormData) => Promise<void>;
@@ -329,7 +330,10 @@ function BoatEditorCard({
           {boat.image_url ? (
             <img alt={boat.name} className="boat-image" src={boat.image_url} />
           ) : (
-            <div className="boat-image boat-image--empty">{text.noImage}</div>
+            <BoatPlaceholder
+              className="boat-image boat-image--empty"
+              title={text.noImage}
+            />
           )}
 
           {boat.id && onUploadImage ? (

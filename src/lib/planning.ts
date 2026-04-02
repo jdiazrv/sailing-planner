@@ -42,6 +42,8 @@ export type ViewerContext = {
   isSuperuser: boolean;
   isSeasonGuest?: boolean;
   seasonGuestCanViewVisits?: boolean;
+  seasonGuestCreatorName?: string | null;
+  seasonGuestExpiresAt?: string | null;
 };
 
 export type BoatWorkspace = {
@@ -109,15 +111,16 @@ const isRangeFullyCovered = (
 
 export const formatLongDate = (value: string) =>
   new Intl.DateTimeFormat(getIntlLocale(getDocumentLocale()), {
-    day: "numeric",
-    month: "short",
+    day: "2-digit",
+    month: "2-digit",
     year: "numeric",
   }).format(parseDate(value));
 
 export const formatShortDate = (value: string) =>
   new Intl.DateTimeFormat(getIntlLocale(getDocumentLocale()), {
-    day: "numeric",
-    month: "short",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
   }).format(parseDate(value));
 
 export const parseDate = (value: string) => {

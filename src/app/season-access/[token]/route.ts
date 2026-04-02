@@ -26,7 +26,7 @@ export async function GET(
 
   const { data: link, error } = await db
     .from("season_access_links")
-    .select("id, boat_id, season_id, expires_at, revoked_at")
+    .select("id, boat_id, season_id, expires_at, revoked_at, can_view_visits, single_use, redeemed_at, access_count, season:seasons(name), creator:profiles!season_access_links_created_by_user_id_fkey(display_name)")
     .eq("token_hash", tokenHash)
     .maybeSingle();
 
@@ -34,12 +34,25 @@ export async function GET(
     return NextResponse.redirect(getSeasonAccessErrorUrl("not_found").toString());
   }
 
-  if (link.revoked_at || new Date(link.expires_at) <= new Date()) {
+  if (
+    link.revoked_at ||
+    new Date(link.expires_at) <= new Date() ||
+    (link.single_use && link.redeemed_at)
+  ) {
     return NextResponse.redirect(getSeasonAccessErrorUrl("expired").toString());
   }
 
-  // Record access async (non-blocking — best-effort)
-  void db.rpc("record_season_access_link_hit", { p_link_id: link.id });
+  const now = new Date().toISOString();
+  const firstAccess = Number(link.access_count ?? 0) === 0;
+
+  await db
+    .from("season_access_links")
+    .update({
+      access_count: Number(link.access_count ?? 0) + 1,
+      last_access_at: now,
+      redeemed_at: link.single_use ? now : link.redeemed_at,
+    })
+    .eq("id", link.id);
 
   const payload = {
     v: 1 as const,
@@ -63,6 +76,10 @@ export async function GET(
       `/guest/${link.boat_id}/${link.season_id}`,
       request.nextUrl.origin,
     );
+  }
+
+  if (firstAccess) {
+    destination.searchParams.set("welcome", "1");
   }
 
   const response = NextResponse.redirect(destination.toString());

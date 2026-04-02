@@ -159,6 +159,9 @@ export function VisitsWorkspace({
             <VisitsManager
               boatId={boatId}
               canEdit={canEdit}
+              emptyMessage={
+                statusFilter || queryFilter ? t("planning.noVisitsMatch") : t("planning.noVisitsEmpty")
+              }
               externalEditVisit={timelineEditVisit}
               onDelete={onDelete}
               onExternalEditHandled={() => setTimelineEditVisit(null)}

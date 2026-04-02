@@ -70,13 +70,22 @@ export const PlaceAutocompleteField = ({
   const [isOpen, setIsOpen] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [debouncedInputValue, setDebouncedInputValue] = useState(inputValue);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedInputValue(inputValue);
+    }, 180);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [inputValue]);
 
   useEffect(() => {
     if (!hasGoogleMapsKey || disabled || !hasUserInteracted || !isFocused) {
       return;
     }
 
-    const trimmed = inputValue.trim();
+    const trimmed = debouncedInputValue.trim();
     if (trimmed.length < 3) {
       setSuggestions([]);
       setIsOpen(false);
@@ -133,7 +142,7 @@ export const PlaceAutocompleteField = ({
     return () => {
       cancelled = true;
     };
-  }, [disabled, hasUserInteracted, inputValue, isFocused]);
+  }, [debouncedInputValue, disabled, hasUserInteracted, isFocused]);
 
   const markManual = (nextValue: string) => {
     setInputValue(nextValue);

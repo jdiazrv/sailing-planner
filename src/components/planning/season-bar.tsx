@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { useI18n } from "@/components/i18n/provider";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog } from "@/components/ui/dialog";
 import { formatLongDate } from "@/lib/planning";
 import type { Database } from "@/types/database";
@@ -13,7 +14,7 @@ type SeasonRow = Database["public"]["Tables"]["seasons"]["Row"];
 type Props = {
   seasons: SeasonRow[];
   selected: SeasonRow | null;
-  basePath: string; // e.g. "/boats/abc/trip" or "/boats/abc/visits"
+  basePath: string;
   boatId: string;
   canEdit: boolean;
   onSave: (fd: FormData) => Promise<void>;
@@ -32,8 +33,12 @@ export function SeasonBar({
   const [showPicker, setShowPicker] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { t } = useI18n();
+
+  const buildSeasonHref = (seasonId: string) =>
+    `${basePath}${basePath.includes("?") ? "&" : "?"}season=${seasonId}`;
 
   const handleSave = (formData: FormData) => {
     const isEdit = Boolean(formData.get("season_id"));
@@ -53,12 +58,6 @@ export function SeasonBar({
 
   const handleDelete = () => {
     if (!selected) return;
-    if (
-      !confirm(
-        t("planning.deleteSeasonConfirm").replace("{name}", selected.name),
-      )
-    )
-      return;
     const fd = new FormData();
     fd.set("boat_id", boatId);
     fd.set("season_id", selected.id);
@@ -67,6 +66,7 @@ export function SeasonBar({
         await onDelete(fd);
         toast.success(t("planning.seasonDeleted"));
         setEditOpen(false);
+        setConfirmDeleteOpen(false);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : t("planning.deleteSeasonError"));
       }
@@ -104,7 +104,7 @@ export function SeasonBar({
                 {seasons.map((season) => (
                   <a
                     className={`season-picker-item${season.id === selected?.id ? " is-active" : ""}`}
-                    href={`${basePath}?season=${season.id}`}
+                    href={buildSeasonHref(season.id)}
                     key={season.id}
                     onClick={() => setShowPicker(false)}
                   >
@@ -156,12 +156,28 @@ export function SeasonBar({
             boatId={boatId}
             isPending={isPending}
             key={selected.id}
-            onDelete={handleDelete}
+            onDelete={() => setConfirmDeleteOpen(true)}
             onSubmit={handleSave}
             season={selected}
           />
         )}
       </Dialog>
+
+      <ConfirmDialog
+        cancelLabel={t("planning.cancelAction")}
+        confirmLabel={t("common.delete")}
+        description={
+          selected
+            ? t("planning.deleteSeasonConfirm").replace("{name}", selected.name)
+            : ""
+        }
+        destructive
+        onCancel={() => setConfirmDeleteOpen(false)}
+        onConfirm={handleDelete}
+        open={confirmDeleteOpen}
+        pending={isPending}
+        title={t("planning.confirmDeleteTitle")}
+      />
     </div>
   );
 }

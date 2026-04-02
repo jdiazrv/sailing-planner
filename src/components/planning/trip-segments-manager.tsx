@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { useI18n } from "@/components/i18n/provider";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog } from "@/components/ui/dialog";
 import { PlaceAutocompleteField } from "@/components/places/place-autocomplete-field";
 import { formatShortDate, nauticalMilesBetweenPoints } from "@/lib/planning";
@@ -31,6 +32,7 @@ export function TripSegmentsManager({
   const { t } = useI18n();
   const [addOpen, setAddOpen] = useState(false);
   const [editingSegment, setEditingSegment] = useState<TripSegmentView | null>(null);
+  const [segmentToDelete, setSegmentToDelete] = useState<TripSegmentView | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -54,20 +56,18 @@ export function TripSegmentsManager({
     });
   };
 
-  const handleDelete = (segment: TripSegmentView) => {
-    if (
-      !confirm(
-        t("planning.deleteSegmentConfirm").replace("{name}", segment.location_label),
-      )
-    )
+  const confirmDelete = () => {
+    if (!segmentToDelete) {
       return;
+    }
     const fd = new FormData();
     fd.set("boat_id", boatId);
-    fd.set("segment_id", segment.id);
+    fd.set("segment_id", segmentToDelete.id);
     startTransition(async () => {
       try {
         await onDelete(fd);
         toast.success(t("planning.segmentDeleted"));
+        setSegmentToDelete(null);
       } catch (error) {
         toast.error(
           error instanceof Error ? error.message : t("planning.deleteSegmentError"),
@@ -81,7 +81,7 @@ export function TripSegmentsManager({
 
   return (
     <>
-      {canEdit && (
+      {canEdit && segments.length > 0 && (
         <div className="panel-toolbar">
           <button
             className="primary-button"
@@ -102,7 +102,7 @@ export function TripSegmentsManager({
           <div className="data-sheet__header data-sheet__header--trip">
             <span>#</span>
             <span>{t("planning.dates")}</span>
-            <span>NM</span>
+            <span title="Millas nauticas">Millas nauticas</span>
             <span>{t("planning.location")}</span>
             <span>{t("planning.status")}</span>
             <span>{t("planning.notes")}</span>
@@ -157,7 +157,7 @@ export function TripSegmentsManager({
                       aria-label={t("common.delete")}
                       className="icon-button icon-button--danger"
                       disabled={isPending}
-                      onClick={() => handleDelete(segment)}
+                      onClick={() => setSegmentToDelete(segment)}
                       title={t("common.delete")}
                       type="button"
                     >
@@ -170,7 +170,19 @@ export function TripSegmentsManager({
           })}
         </div>
       ) : (
-        <p className="muted">{t("planning.noTripSegments")}</p>
+        <div className="empty-state">
+          <p className="muted">{t("planning.noTripSegments")}</p>
+          {canEdit ? (
+            <button
+              className="primary-button"
+              disabled={isPending}
+              onClick={() => setAddOpen(true)}
+              type="button"
+            >
+              + {t("planning.addSegment")}
+            </button>
+          ) : null}
+        </div>
       )}
 
       <Dialog
@@ -213,6 +225,22 @@ export function TripSegmentsManager({
           />
         )}
       </Dialog>
+
+      <ConfirmDialog
+        cancelLabel={t("planning.cancelAction")}
+        confirmLabel={t("common.delete")}
+        description={
+          segmentToDelete
+            ? t("planning.deleteSegmentConfirm").replace("{name}", segmentToDelete.location_label)
+            : ""
+        }
+        destructive
+        onCancel={() => setSegmentToDelete(null)}
+        onConfirm={confirmDelete}
+        open={Boolean(segmentToDelete)}
+        pending={isPending}
+        title={t("planning.confirmDeleteTitle")}
+      />
     </>
   );
 }

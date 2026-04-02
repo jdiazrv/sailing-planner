@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -10,19 +10,26 @@ import type { SeasonAccessLinkSummary } from "@/lib/planning";
 type Props = {
   boatId: string;
   seasonId: string;
-  activeLink: SeasonAccessLinkSummary | null;
-  latestLink: SeasonAccessLinkSummary | null;
+  links: SeasonAccessLinkSummary[];
   onGenerate: (
     fd: FormData,
-  ) => Promise<{ id: string; expiresAt: string; url: string } | { error: string }>;
+  ) => Promise<
+    { id: string; expiresAt: string; inviteeName?: string | null; url: string } | { error: string }
+  >;
   onRevoke: (fd: FormData) => Promise<void>;
 };
+
+type GeneratedLinkState = {
+  id: string;
+  inviteeName: string | null;
+  expiresAt: string;
+  url: string;
+} | null;
 
 export function SeasonAccessPanel({
   boatId,
   seasonId,
-  activeLink,
-  latestLink,
+  links,
   onGenerate,
   onRevoke,
 }: Props) {
@@ -30,85 +37,107 @@ export function SeasonAccessPanel({
   const { locale } = useI18n();
   const [isPending, startTransition] = useTransition();
   const [showActions, setShowActions] = useState(false);
-  const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
+  const [generatedLink, setGeneratedLink] = useState<GeneratedLinkState>(null);
   const [canViewVisits, setCanViewVisits] = useState(true);
-  const [accessWindow, setAccessWindow] = useState<"season_end" | "season_plus_7">(
-
-    "season_end",
-  );
+  const [inviteeName, setInviteeName] = useState("");
+  const [accessWindow, setAccessWindow] = useState<
+    "one_use" | "one_day" | "one_week" | "season_end" | "season_plus_7"
+  >("season_end");
 
   const text =
     locale === "es"
       ? {
-          eyebrow: "Enlace de temporada",
-          title: "Acceso temporal de solo lectura",
+          eyebrow: "Enlaces de temporada",
+          title: "Acceso temporal para invitados",
           body:
-            "Genera un enlace temporal para compartir esta temporada sin crear usuarios nuevos.",
-          openActions: "Gestionar enlace",
+            "Genera varios enlaces de solo lectura para compartir esta temporada con distintos invitados sin crear usuarios nuevos.",
+          openActions: "Gestionar enlaces",
           hideActions: "Ocultar",
+          generate: "Generar enlace",
+          generating: "Generando...",
+          revoke: "Revocar",
+          revoking: "Revocando...",
+          generated: "Enlace temporal generado.",
+          revoked: "Enlace temporal revocado.",
+          copy: "Copiar enlace",
+          copied: "Enlace copiado",
+          urlLabel: "URL del enlace",
+          invitee: "Invitado",
+          inviteePlaceholder: "Ana, Pedro, Familia Ruiz...",
           status: "Estado",
           active: "Activo",
           inactive: "Inactivo",
           expiresAt: "Expira en",
+          createdAt: "Creado",
           lastAccess: "Último acceso",
           accessCount: "Accesos",
-          revokedAt: "Revocado",
           creator: "Creado por",
           visibility: "Visibilidad",
-          tripOnly: "Solo tramos de viaje",
+          tripOnly: "Solo tramos",
           tripAndVisits: "Tramos y visitas",
-          includeVisits: "Incluir visitas en el enlace",
-          copy: "Copiar enlace",
-          copied: "Enlace copiado",
-          generate: "Generar enlace",
-          regenerate: "Regenerar",
-          revoke: "Revocar",
-          generating: "Generando...",
-          revoking: "Revocando...",
-          invalidated: "El enlace anterior ha quedado invalidado.",
-          generated: "Enlace temporal generado.",
-          revoked: "Enlace temporal revocado.",
+          includeVisits: "Permitir ver visitas",
+          visibilityHint:
+            "Si activas las visitas, la persona invitada también verá fechas y lugares de embarque y desembarque.",
+          oneTime: "El enlace completo solo se muestra una vez, justo después de generarlo.",
+          empty: "Todavía no has generado enlaces para esta temporada.",
+          noAccess: "Sin registros",
+          latest: "Enlace recién generado",
+          linksTitle: "Enlaces generados",
+          activeCount: "activos",
+          totalCount: "totales",
           defaultWindow: "Hasta fin de temporada",
           plusSeven: "Fin de temporada + 7 días",
-          oneTime: "El enlace completo solo se muestra una vez tras generar o regenerar.",
-          notAvailable: "Todavía no hay enlace activo para esta temporada.",
-          noAccess: "Sin registros",
+          oneUse: "Un uso",
+          oneDay: "Un día",
+          oneWeek: "Una semana",
         }
       : {
-          eyebrow: "Season link",
-          title: "Temporary read-only access",
+          eyebrow: "Season links",
+          title: "Temporary guest access",
           body:
-            "Generate a temporary link to share this season without creating new users.",
-          openActions: "Manage link",
+            "Generate multiple read-only links for different guests without creating new users.",
+          openActions: "Manage links",
           hideActions: "Hide",
+          generate: "Generate link",
+          generating: "Generating...",
+          revoke: "Revoke",
+          revoking: "Revoking...",
+          generated: "Temporary link generated.",
+          revoked: "Temporary link revoked.",
+          copy: "Copy link",
+          copied: "Link copied",
+          urlLabel: "Link URL",
+          invitee: "Guest",
+          inviteePlaceholder: "Ana, Pedro, Ruiz family...",
           status: "Status",
           active: "Active",
           inactive: "Inactive",
           expiresAt: "Expires at",
+          createdAt: "Created",
           lastAccess: "Last access",
           accessCount: "Accesses",
-          revokedAt: "Revoked",
           creator: "Created by",
           visibility: "Visibility",
           tripOnly: "Trip segments only",
           tripAndVisits: "Trip segments and visits",
-          includeVisits: "Include visits in shared link",
-          copy: "Copy link",
-          copied: "Link copied",
-          generate: "Generate link",
-          regenerate: "Regenerate",
-          revoke: "Revoke",
-          generating: "Generating...",
-          revoking: "Revoking...",
-          invalidated: "The previous link has been invalidated.",
-          generated: "Temporary link generated.",
-          revoked: "Temporary link revoked.",
+          includeVisits: "Allow visits",
+          visibilityHint:
+            "If enabled, guests will also see embarkation and disembarkation dates and places.",
+          oneTime: "The full link is shown only once, right after generating it.",
+          empty: "No links have been generated for this season yet.",
+          noAccess: "No records",
+          latest: "Latest generated link",
+          linksTitle: "Generated links",
+          activeCount: "active",
+          totalCount: "total",
           defaultWindow: "Until season end",
           plusSeven: "Season end + 7 days",
-          oneTime: "The full link is only shown once after generating or regenerating it.",
-          notAvailable: "There is no active link for this season yet.",
-          noAccess: "No records",
+          oneUse: "One use",
+          oneDay: "One day",
+          oneWeek: "One week",
         };
+
+  const activeLinks = useMemo(() => links.filter((link) => link.is_active), [links]);
 
   const handleGenerate = () => {
     const formData = new FormData();
@@ -116,6 +145,9 @@ export function SeasonAccessPanel({
     formData.set("season_id", seasonId);
     formData.set("access_window", accessWindow);
     formData.set("can_view_visits", canViewVisits ? "on" : "off");
+    if (inviteeName.trim()) {
+      formData.set("invitee_name", inviteeName.trim());
+    }
 
     startTransition(async () => {
       try {
@@ -124,8 +156,14 @@ export function SeasonAccessPanel({
           toast.error(result.error);
           return;
         }
-        setGeneratedUrl(result.url);
-        toast.success(activeLink ? text.invalidated : text.generated);
+        setGeneratedLink({
+          id: result.id,
+          inviteeName: result.inviteeName ?? (inviteeName.trim() || null),
+          expiresAt: result.expiresAt,
+          url: result.url,
+        });
+        setInviteeName("");
+        toast.success(text.generated);
         router.refresh();
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Unexpected error");
@@ -133,19 +171,17 @@ export function SeasonAccessPanel({
     });
   };
 
-  const handleRevoke = () => {
-    if (!activeLink) {
-      return;
-    }
-
+  const handleRevoke = (linkId: string) => {
     const formData = new FormData();
     formData.set("boat_id", boatId);
-    formData.set("link_id", activeLink.id);
+    formData.set("link_id", linkId);
 
     startTransition(async () => {
       try {
         await onRevoke(formData);
-        setGeneratedUrl(null);
+        if (generatedLink?.id === linkId) {
+          setGeneratedLink(null);
+        }
         toast.success(text.revoked);
         router.refresh();
       } catch (error) {
@@ -155,22 +191,23 @@ export function SeasonAccessPanel({
   };
 
   const handleCopy = async () => {
-    if (!generatedUrl) {
+    if (!generatedLink?.url) {
       return;
     }
-    await navigator.clipboard.writeText(generatedUrl);
+    await navigator.clipboard.writeText(generatedLink.url);
     toast.success(text.copied);
   };
 
   const renderDate = (value: string | null) =>
     value
       ? new Intl.DateTimeFormat(locale, {
-          dateStyle: "medium",
-          timeStyle: "short",
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
         }).format(new Date(value))
       : text.noAccess;
-
-  const statusLink = activeLink ?? latestLink;
 
   return (
     <article className="dashboard-card admin-card">
@@ -181,9 +218,14 @@ export function SeasonAccessPanel({
           <p className="muted">{text.body}</p>
         </div>
         <div className="card-header__actions">
-          <span className={`status-pill ${activeLink ? "is-good" : "is-muted"}`}>
-            {activeLink ? text.active : text.inactive}
-          </span>
+          <div className="season-access-summary">
+            <span className={`status-pill ${activeLinks.length ? "is-good" : "is-muted"}`}>
+              {activeLinks.length} {text.activeCount}
+            </span>
+            <span className="status-pill is-muted">
+              {links.length} {text.totalCount}
+            </span>
+          </div>
           <button
             className="secondary-button secondary-button--small"
             onClick={() => setShowActions((v) => !v)}
@@ -194,50 +236,35 @@ export function SeasonAccessPanel({
         </div>
       </div>
 
-      {showActions && (
+      {showActions ? (
         <>
-          <div className="season-access-grid">
-            <div className="data-row">
-              <strong>{text.status}</strong>
-              <div className="muted">{activeLink ? text.active : text.inactive}</div>
-            </div>
-            <div className="data-row">
-              <strong>{text.expiresAt}</strong>
-              <div className="muted">{renderDate(statusLink?.expires_at ?? null)}</div>
-            </div>
-            <div className="data-row">
-              <strong>{text.lastAccess}</strong>
-              <div className="muted">{renderDate(statusLink?.last_access_at ?? null)}</div>
-            </div>
-            <div className="data-row">
-              <strong>{text.accessCount}</strong>
-              <div className="muted">{statusLink?.access_count ?? 0}</div>
-            </div>
-            <div className="data-row">
-              <strong>{text.revokedAt}</strong>
-              <div className="muted">{renderDate(statusLink?.revoked_at ?? null)}</div>
-            </div>
-            <div className="data-row">
-              <strong>{text.creator}</strong>
-              <div className="muted">{statusLink?.creator_name ?? text.noAccess}</div>
-            </div>
-            <div className="data-row">
-              <strong>{text.visibility}</strong>
-              <div className="muted">
-                {statusLink?.can_view_visits === false ? text.tripOnly : text.tripAndVisits}
-              </div>
-            </div>
-          </div>
-
-          <div className="editor-form editor-form--dense">
+          <div className="editor-form editor-form--dense season-access-form">
+            <label className="form-grid__wide">
+              <span>{text.invitee}</span>
+              <input
+                onChange={(event) => setInviteeName(event.target.value)}
+                placeholder={text.inviteePlaceholder}
+                value={inviteeName}
+              />
+            </label>
             <label>
               <span>{text.expiresAt}</span>
               <select
                 onChange={(event) =>
-                  setAccessWindow(event.target.value as "season_end" | "season_plus_7")
+                  setAccessWindow(
+                    event.target.value as
+                      | "one_use"
+                      | "one_day"
+                      | "one_week"
+                      | "season_end"
+                      | "season_plus_7",
+                  )
                 }
                 value={accessWindow}
               >
+                <option value="one_use">{text.oneUse}</option>
+                <option value="one_day">{text.oneDay}</option>
+                <option value="one_week">{text.oneWeek}</option>
                 <option value="season_end">{text.defaultWindow}</option>
                 <option value="season_plus_7">{text.plusSeven}</option>
               </select>
@@ -250,23 +277,29 @@ export function SeasonAccessPanel({
               />
               <span>{text.includeVisits}</span>
             </label>
+            <p className="muted season-access-note">{text.visibilityHint}</p>
             <p className="muted">{text.oneTime}</p>
           </div>
 
-          {generatedUrl ? (
-            <div className="editor-form editor-form--dense">
+          {generatedLink ? (
+            <div className="editor-form editor-form--dense season-access-url">
+              <div className="season-access-generated-head">
+                <strong>{text.latest}</strong>
+                {generatedLink.inviteeName ? (
+                  <span className="status-pill is-good">{generatedLink.inviteeName}</span>
+                ) : null}
+              </div>
               <label className="form-grid__wide">
-                <span>URL</span>
-                <input readOnly value={generatedUrl} />
+                <span>{text.urlLabel}</span>
+                <input className="code-input" readOnly value={generatedLink.url} />
               </label>
               <div className="inline-actions">
                 <button className="secondary-button" onClick={handleCopy} type="button">
                   {text.copy}
                 </button>
+                <span className="muted">{renderDate(generatedLink.expiresAt)}</span>
               </div>
             </div>
-          ) : !activeLink ? (
-            <p className="muted">{text.notAvailable}</p>
           ) : null}
 
           <div className="inline-actions">
@@ -276,21 +309,69 @@ export function SeasonAccessPanel({
               onClick={handleGenerate}
               type="button"
             >
-              {isPending ? text.generating : activeLink ? text.regenerate : text.generate}
+              {isPending ? text.generating : text.generate}
             </button>
-            {activeLink ? (
-              <button
-                className="link-button link-button--danger"
-                disabled={isPending}
-                onClick={handleRevoke}
-                type="button"
-              >
-                {isPending ? text.revoking : text.revoke}
-              </button>
-            ) : null}
+          </div>
+
+          <div className="season-access-links">
+            <div className="season-access-links__header">
+              <h3>{text.linksTitle}</h3>
+            </div>
+
+            {links.length ? (
+              <div className="season-access-list">
+                {links.map((link) => (
+                  <div className="season-access-item" key={link.id}>
+                    <div className="season-access-item__main">
+                      <div className="season-access-item__top">
+                        <strong>{link.invitee_name || text.noAccess}</strong>
+                        <span className={`status-pill ${link.is_active ? "is-good" : "is-muted"}`}>
+                          {link.is_active ? text.active : text.inactive}
+                        </span>
+                      </div>
+                      <div className="season-access-meta">
+                        <span>
+                          {text.visibility}:{" "}
+                          {link.can_view_visits === false ? text.tripOnly : text.tripAndVisits}
+                        </span>
+                        <span>
+                          {text.createdAt}: {renderDate(link.created_at)}
+                        </span>
+                        <span>
+                          {text.expiresAt}: {renderDate(link.expires_at)}
+                        </span>
+                        <span>
+                          {text.lastAccess}: {renderDate(link.last_access_at)}
+                        </span>
+                        <span>
+                          {text.accessCount}: {link.access_count}
+                        </span>
+                        <span>
+                          {text.creator}: {link.creator_name ?? text.noAccess}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="season-access-item__actions">
+                      {link.is_active ? (
+                        <button
+                          className="secondary-button secondary-button--danger"
+                          disabled={isPending}
+                          onClick={() => handleRevoke(link.id)}
+                          type="button"
+                        >
+                          {isPending ? text.revoking : text.revoke}
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="muted">{text.empty}</p>
+            )}
           </div>
         </>
-      )}
+      ) : null}
     </article>
   );
 }

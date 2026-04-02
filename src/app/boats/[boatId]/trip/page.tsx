@@ -46,30 +46,30 @@ export default async function BoatTripPage({
 
   return (
     <>
-      <BoatNav active="trip" boatId={boatId} />
-
-      <SeasonBar
-        basePath={`/boats/${boatId}/trip`}
-        boatId={boatId}
-        canEdit={canEdit}
-        onDelete={deleteSeason}
-        onSave={saveSeason}
-        seasons={workspace.seasons}
-        selected={workspace.selectedSeason}
-      />
-
-      {workspace.selectedSeason && canManageUsers && seasonAccess ? (
-        <SeasonAccessPanel
-          activeLink={seasonAccess.activeLink}
-          boatId={boatId}
-          latestLink={seasonAccess.latestLink}
-          onGenerate={generateSeasonAccessLink}
-          onRevoke={revokeSeasonAccessLink}
-          seasonId={workspace.selectedSeason.id}
-        />
-      ) : null}
-
       {workspace.selectedSeason && (
+        <>
+          <SeasonBar
+            basePath={`/boats/${boatId}/trip`}
+            boatId={boatId}
+            canEdit={canEdit}
+            onDelete={deleteSeason}
+            onSave={saveSeason}
+            seasons={workspace.seasons}
+            selected={workspace.selectedSeason}
+          />
+
+          {canManageUsers && seasonAccess ? (
+            <SeasonAccessPanel
+              boatId={boatId}
+              links={seasonAccess.links}
+              onGenerate={generateSeasonAccessLink}
+              onRevoke={revokeSeasonAccessLink}
+              seasonId={workspace.selectedSeason.id}
+            />
+          ) : null}
+
+          <BoatNav active="trip" boatId={boatId} />
+
           <TripOverview
             season={workspace.selectedSeason}
             tripSegments={filteredSegments}
@@ -110,6 +110,7 @@ export default async function BoatTripPage({
               />
             </article>
           </TripOverview>
+        </>
       )}
     </>
   );

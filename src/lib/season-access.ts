@@ -4,7 +4,12 @@ import { buildAuthRedirectUrl, getEnv } from "@/lib/env";
 
 export const SEASON_ACCESS_COOKIE_NAME = "season_access_guest";
 
-export type SeasonAccessWindow = "season_end" | "season_plus_7";
+export type SeasonAccessWindow =
+  | "one_use"
+  | "one_day"
+  | "one_week"
+  | "season_end"
+  | "season_plus_7";
 
 export type SeasonAccessCookiePayload = {
   v: 1;
@@ -42,6 +47,18 @@ export const getSeasonAccessExpiry = (
   seasonEndDate: string,
   window: SeasonAccessWindow,
 ) => {
+  if (window === "one_day") {
+    return new Date(Date.now() + 86_400_000).toISOString();
+  }
+
+  if (window === "one_week") {
+    return new Date(Date.now() + 7 * 86_400_000).toISOString();
+  }
+
+  if (window === "one_use") {
+    return new Date(Date.now() + 24 * 86_400_000).toISOString();
+  }
+
   const baseDate = new Date(`${seasonEndDate}T23:59:59.000Z`);
 
   if (window === "season_plus_7") {

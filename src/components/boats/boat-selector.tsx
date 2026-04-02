@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { useI18n } from "@/components/i18n/provider";
+import { BoatPlaceholder } from "@/components/ui/boat-placeholder";
 import type { BoatSummary } from "@/lib/planning";
 
 type BoatSelectorProps = {
@@ -86,9 +87,10 @@ export const BoatSelector = ({ boats, activeBoatId }: BoatSelectorProps) => {
               src={boat.image_url}
             />
           ) : (
-            <div className="boat-card__image boat-card__image--empty">
-              {t("boatSelector.noImage")}
-            </div>
+            <BoatPlaceholder
+              className="boat-card__image boat-card__image--empty"
+              title={t("boatSelector.noImage")}
+            />
           )}
           <div className="boat-card__header">
             <p className="eyebrow">

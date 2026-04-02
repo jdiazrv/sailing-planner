@@ -96,7 +96,9 @@ const formatLastAccess = (
   }
 
   return new Intl.DateTimeFormat(locale, {
-    dateStyle: "medium",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
     timeStyle: "short",
   }).format(new Date(value));
 };
