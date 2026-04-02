@@ -54,8 +54,9 @@ export const getSeasonAccessExpiry = (
 const safeBuildAppUrl = (path: string) => {
   try {
     return buildAuthRedirectUrl(path);
-  } catch {
+  } catch (e) {
     // Fallback to relative URL if NEXT_PUBLIC_APP_URL is invalid in runtime env.
+    console.warn("[season-access] safeBuildAppUrl fallback:", e instanceof Error ? e.message : e);
     return path;
   }
 };

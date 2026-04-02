@@ -27,5 +27,11 @@ export const getEnv = () => ({
   SUPABASE_DB_PASSWORD: process.env.SUPABASE_DB_PASSWORD,
 });
 
-export const buildAuthRedirectUrl = (path = "/auth/callback") =>
-  new URL(path, getEnv().NEXT_PUBLIC_APP_URL).toString();
+export const buildAuthRedirectUrl = (path = "/auth/callback") => {
+  const base = getEnv().NEXT_PUBLIC_APP_URL;
+  try {
+    return new URL(path, base).toString();
+  } catch {
+    throw new Error(`Invalid URL: base="${base}" path="${path}"`);
+  }
+};
