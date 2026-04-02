@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 
 import { requireSuperuser, requireUserAdminAccess } from "@/lib/boat-data";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -591,10 +592,18 @@ export async function generateSeasonAccessLink(formData: FormData) {
 
     refreshAdminRoutes(boatId);
 
+    // Build the absolute URL using the real request origin (reliable in all envs).
+    const headerStore = await headers();
+    const host = headerStore.get("host") ?? "";
+    const proto = headerStore.get("x-forwarded-proto") ?? "https";
+    const origin = host ? `${proto}://${host}` : "";
+    const tokenPath = `/season-access/${token}`;
+    const url = origin ? `${origin}${tokenPath}` : buildSeasonAccessUrl(token);
+
     return {
       id: data?.id ?? "",
       expiresAt: data?.expires_at ?? expiresAt,
-      url: buildSeasonAccessUrl(token),
+      url,
     };
   } catch (error) {
     return {
