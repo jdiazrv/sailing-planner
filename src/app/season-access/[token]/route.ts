@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 
+import { resolveAppOrigin } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   SEASON_ACCESS_COOKIE_NAME,
@@ -14,10 +15,13 @@ export async function GET(
   { params }: { params: Promise<{ token: string }> },
 ) {
   const { token } = await params;
+  const requestOrigin = request.nextUrl.origin;
 
   const admin = createAdminClient();
   if (!admin) {
-    return NextResponse.redirect(getSeasonAccessErrorUrl("config").toString());
+    return NextResponse.redirect(
+      getSeasonAccessErrorUrl("config", { requestOrigin }).toString(),
+    );
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -31,7 +35,9 @@ export async function GET(
     .maybeSingle();
 
   if (error || !link) {
-    return NextResponse.redirect(getSeasonAccessErrorUrl("not_found").toString());
+    return NextResponse.redirect(
+      getSeasonAccessErrorUrl("not_found", { requestOrigin }).toString(),
+    );
   }
 
   if (
@@ -39,7 +45,9 @@ export async function GET(
     Date.parse(link.expires_at) <= Date.now() ||
     (link.single_use && link.redeemed_at)
   ) {
-    return NextResponse.redirect(getSeasonAccessErrorUrl("expired").toString());
+    return NextResponse.redirect(
+      getSeasonAccessErrorUrl("expired", { requestOrigin }).toString(),
+    );
   }
 
   const now = new Date().toISOString();
@@ -65,7 +73,9 @@ export async function GET(
     .maybeSingle();
 
   if (redeemError || !redeemedLink) {
-    return NextResponse.redirect(getSeasonAccessErrorUrl("expired").toString());
+    return NextResponse.redirect(
+      getSeasonAccessErrorUrl("expired", { requestOrigin }).toString(),
+    );
   }
 
   const payload = {
@@ -77,19 +87,18 @@ export async function GET(
   };
 
   const cookieValue = serializeSeasonAccessCookie(payload);
-  const cookieOptions = getSeasonAccessCookieOptions(link.expires_at as string);
+  const cookieOptions = getSeasonAccessCookieOptions(link.expires_at as string, {
+    requestOrigin,
+  });
 
   let destination: URL;
   try {
     destination = new URL(
       `/guest/${link.boat_id}/${link.season_id}`,
-      process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin,
+      resolveAppOrigin({ requestOrigin }),
     );
   } catch {
-    destination = new URL(
-      `/guest/${link.boat_id}/${link.season_id}`,
-      request.nextUrl.origin,
-    );
+    destination = new URL(`/guest/${link.boat_id}/${link.season_id}`, requestOrigin);
   }
 
   if (firstAccess) {

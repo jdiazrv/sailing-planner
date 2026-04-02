@@ -1,6 +1,11 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "crypto";
 
-import { buildAuthRedirectUrl, getEnv } from "@/lib/env";
+import {
+  buildAuthRedirectUrl,
+  getEnv,
+  isSecureOrigin,
+  resolveAppOrigin,
+} from "@/lib/env";
 
 export const SEASON_ACCESS_COOKIE_NAME = "season_access_guest";
 
@@ -68,17 +73,19 @@ export const getSeasonAccessExpiry = (
   return baseDate.toISOString();
 };
 
-const safeBuildAppUrl = (path: string) => {
+const safeBuildAppUrl = (path: string, requestOrigin?: string | null) => {
   try {
-    return buildAuthRedirectUrl(path);
+    return buildAuthRedirectUrl(path, { requestOrigin });
   } catch {
     // Fallback to relative URL if NEXT_PUBLIC_APP_URL is invalid in runtime env.
     return path;
   }
 };
 
-export const buildSeasonAccessUrl = (token: string) =>
-  safeBuildAppUrl(`/season-access/${token}`);
+export const buildSeasonAccessUrl = (
+  token: string,
+  options?: { requestOrigin?: string | null },
+) => safeBuildAppUrl(`/season-access/${token}`, options?.requestOrigin);
 
 export const serializeSeasonAccessCookie = (
   payload: SeasonAccessCookiePayload,
@@ -129,18 +136,24 @@ export const parseSeasonAccessCookie = (
   }
 };
 
-export const getSeasonAccessCookieOptions = (expiresAt: string | Date) => ({
+export const getSeasonAccessCookieOptions = (
+  expiresAt: string | Date,
+  options?: { requestOrigin?: string | null },
+) => ({
   httpOnly: true,
   sameSite: "lax" as const,
-  secure: getEnv().NEXT_PUBLIC_APP_URL.startsWith("https://"),
+  secure: isSecureOrigin(resolveAppOrigin(options)),
   path: "/",
   expires: new Date(expiresAt),
 });
 
-export const getSeasonAccessErrorUrl = (reason: string) => {
+export const getSeasonAccessErrorUrl = (
+  reason: string,
+  options?: { requestOrigin?: string | null },
+) => {
   let url: URL;
   try {
-    url = new URL("/season-access/error", getEnv().NEXT_PUBLIC_APP_URL);
+    url = new URL("/season-access/error", resolveAppOrigin(options));
   } catch {
     url = new URL("/season-access/error", "http://localhost:3000");
   }

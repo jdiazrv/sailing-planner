@@ -10,7 +10,7 @@ import {
   requireUserAdminAccess,
 } from "@/lib/boat-data";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { buildAuthRedirectUrl } from "@/lib/env";
+import { buildAuthRedirectUrl, resolveAppOrigin } from "@/lib/env";
 import {
   buildSeasonAccessUrl,
   generateSeasonAccessToken,
@@ -668,13 +668,14 @@ export async function generateSeasonAccessLink(formData: FormData) {
 
     // Build the absolute URL using the real request origin (reliable in all envs).
     const headerStore = await headers();
-    const host = headerStore.get("host") ?? "";
+    const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "";
     const forwardedProto = headerStore.get("x-forwarded-proto");
     const isLocalhost = host.startsWith("localhost") || host.startsWith("127.0.0.1");
     const proto = forwardedProto ?? (isLocalhost ? "http" : "https");
-    const origin = host ? `${proto}://${host}` : "";
-    const tokenPath = `/season-access/${token}`;
-    const url = origin ? `${origin}${tokenPath}` : buildSeasonAccessUrl(token);
+    const requestOrigin = host ? `${proto}://${host}` : null;
+    const url = buildSeasonAccessUrl(token, {
+      requestOrigin: resolveAppOrigin({ requestOrigin }),
+    });
 
     return {
       id: data?.id ?? "",
