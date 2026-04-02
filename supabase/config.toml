@@ -42,4 +42,4 @@ enable_confirmations = false
 
 [auth.email.template.invite]
 subject = "Te han invitado a Sailing Planner"
-content_path = "./templates/invite.html"
+content_path = "./supabase/templates/invite.html"
