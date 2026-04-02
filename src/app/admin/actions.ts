@@ -4,7 +4,11 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
-import { requireSuperuser, requireUserAdminAccess } from "@/lib/boat-data";
+import {
+  requireBoatShareAccess,
+  requireSuperuser,
+  requireUserAdminAccess,
+} from "@/lib/boat-data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildAuthRedirectUrl } from "@/lib/env";
 import {
@@ -47,6 +51,40 @@ const toBoolean = (value: FormDataEntryValue | null) => value?.toString() === "o
 const throwIfError = (error: { message?: string } | null) => {
   if (error) {
     throw new Error(error.message ?? "Unexpected Supabase error.");
+  }
+};
+
+const requireProfileAdminClient = () => {
+  const admin = createAdminClient();
+  if (!admin) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY is required for cross-user profile administration.",
+    );
+  }
+
+  return admin as any;
+};
+
+const assertManageableUser = async (
+  db: any,
+  actorUserId: string,
+  manageableBoatIds: string[] | null,
+  targetUserId: string,
+) => {
+  if (actorUserId === targetUserId || manageableBoatIds === null) {
+    return;
+  }
+
+  const { data, error } = await db
+    .from("user_boat_permissions")
+    .select("boat_id")
+    .eq("user_id", targetUserId)
+    .in("boat_id", manageableBoatIds)
+    .limit(1);
+  throwIfError(error);
+
+  if (!(data ?? []).length) {
+    throw new Error("You can only manage users assigned to boats you administer.");
   }
 };
 
@@ -219,7 +257,8 @@ export async function removeBoatImage(formData: FormData) {
 }
 
 export async function saveUserProfile(formData: FormData) {
-  const { supabase, viewer } = await requireUserAdminAccess();
+  const { supabase, user, viewer, manageableBoatIds } = await requireUserAdminAccess();
+  const adminDb = requireProfileAdminClient();
   const db = supabase as any;
   const userId = formData.get("user_id")?.toString() ?? "";
   const isSuperuser = toBoolean(formData.get("is_superuser"));
@@ -229,6 +268,8 @@ export async function saveUserProfile(formData: FormData) {
   if (!viewer.isSuperuser && isSuperuser) {
     throw new Error("Only a superuser can grant superuser access.");
   }
+
+  await assertManageableUser(db, user.id, manageableBoatIds, userId);
 
   const profilePayload = {
     display_name: asOptionalString(formData.get("display_name")),
@@ -240,7 +281,7 @@ export async function saveUserProfile(formData: FormData) {
     ...(viewer.isSuperuser ? { onboarding_pending: onboardingPending } : {}),
   };
 
-  const { error } = await db
+  const { error } = await adminDb
     .from("profiles")
     .update(profilePayload)
     .eq("id", userId);
@@ -275,11 +316,12 @@ export async function saveUserProfile(formData: FormData) {
 
 export async function saveUserBoatPermission(formData: FormData) {
   const { supabase, manageableBoatIds } = await requireUserAdminAccess();
+  const adminDb = requireProfileAdminClient();
   const db = supabase as any;
   const userId = formData.get("user_id")?.toString() ?? "";
   const boatId = formData.get("boat_id")?.toString() ?? "";
   assertManageableBoat(manageableBoatIds, boatId);
-  const { data: profile, error: profileError } = await db
+  const { data: profile, error: profileError } = await adminDb
     .from("profiles")
     .select("is_superuser")
     .eq("id", userId)
@@ -342,6 +384,7 @@ export async function createUserAccount(formData: FormData) {
       "SUPABASE_SERVICE_ROLE_KEY is not configured, so admin user creation is unavailable.",
     );
   }
+  const adminDb = admin as any;
 
   const email = formData.get("email")?.toString().trim() ?? "";
   const displayName = asOptionalString(formData.get("display_name"));
@@ -385,7 +428,7 @@ export async function createUserAccount(formData: FormData) {
 
   if (data.user?.id) {
     const db = supabase as any;
-    const { error: profileError } = await db
+    const { error: profileError } = await adminDb
       .from("profiles")
       .update({
         preferred_language: preferredLanguage,
@@ -422,6 +465,7 @@ export async function inviteUserAccount(formData: FormData) {
       "SUPABASE_SERVICE_ROLE_KEY is not configured, so user invitations are unavailable.",
     );
   }
+  const adminDb = admin as any;
 
   const email = formData.get("email")?.toString().trim() ?? "";
   const displayName = asOptionalString(formData.get("display_name"));
@@ -458,7 +502,7 @@ export async function inviteUserAccount(formData: FormData) {
 
   if (data.user?.id) {
     const db = supabase as any;
-    const { error: profileError } = await (supabase as any)
+    const { error: profileError } = await adminDb
       .from("profiles")
       .update({
         display_name: displayName,
@@ -566,16 +610,14 @@ export async function deleteUserAccount(formData: FormData) {
 
 export async function generateSeasonAccessLink(formData: FormData) {
   try {
-    const { supabase, user, manageableBoatIds } = await requireUserAdminAccess();
-    const db = supabase as any;
     const boatId = formData.get("boat_id")?.toString() ?? "";
+    const { supabase, user } = await requireBoatShareAccess(boatId);
+    const db = supabase as any;
     const seasonId = formData.get("season_id")?.toString() ?? "";
     const inviteeName = asOptionalString(formData.get("invitee_name"));
     const canViewVisits = formData.get("can_view_visits")?.toString() !== "off";
     const window =
       (formData.get("access_window")?.toString() as SeasonAccessWindow) ?? "season_end";
-
-    assertManageableBoat(manageableBoatIds, boatId);
 
     const { data: season, error: seasonError } = await db
       .from("seasons")
@@ -651,16 +693,14 @@ export async function generateSeasonAccessLink(formData: FormData) {
 }
 
 export async function revokeSeasonAccessLink(formData: FormData) {
-  const { supabase, manageableBoatIds } = await requireUserAdminAccess();
-  const db = supabase as any;
   const boatId = formData.get("boat_id")?.toString() ?? "";
+  const { supabase } = await requireBoatShareAccess(boatId);
+  const db = supabase as any;
   const linkId = formData.get("link_id")?.toString() ?? "";
 
   if (!boatId || !linkId) {
     throw new Error("Boat and link are required.");
   }
-
-  assertManageableBoat(manageableBoatIds, boatId);
 
   const { error } = await db
     .from("season_access_links")

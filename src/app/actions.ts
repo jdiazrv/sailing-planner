@@ -12,6 +12,12 @@ import {
 import { recordCurrentUserAccess as recordCurrentUserAccessInternal } from "@/lib/auth-audit";
 import { createClient } from "@/lib/supabase/server";
 
+const throwIfError = (error: { message?: string } | null) => {
+  if (error) {
+    throw new Error(error.message ?? "Unexpected Supabase error.");
+  }
+};
+
 export async function updateLanguagePreference(locale: Locale) {
   if (!isLocale(locale)) {
     throw new Error("Invalid locale.");
@@ -30,10 +36,11 @@ export async function updateLanguagePreference(locale: Locale) {
   } = await supabase.auth.getUser();
 
   if (user) {
-    await (supabase as any)
+    const { error } = await (supabase as any)
       .from("profiles")
       .update({ preferred_language: locale })
       .eq("id", user.id);
+    throwIfError(error);
   }
 
   revalidatePath("/", "layout");
@@ -49,10 +56,11 @@ export async function updateTimelineVisibility(isPublic: boolean) {
     throw new Error("Authentication required.");
   }
 
-  await (supabase as any)
+  const { error } = await (supabase as any)
     .from("profiles")
     .update({ is_timeline_public: isPublic })
     .eq("id", user.id);
+  throwIfError(error);
 
   revalidatePath("/dashboard");
   revalidatePath("/shared");

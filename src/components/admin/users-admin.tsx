@@ -161,19 +161,6 @@ export function UsersAdmin({
 
   return (
     <section className="admin-stack">
-      <article className="dashboard-card">
-        <div className="card-header">
-          <div>
-            <p className="eyebrow">{t("admin.users.summaryEyebrow")}</p>
-            <h2>{t("admin.users.summaryTitle")}</h2>
-          </div>
-          <span className="badge">
-            {users.length} {t("common.users").toLowerCase()}
-          </span>
-        </div>
-        <p className="muted">{t("admin.users.summaryBody")}</p>
-      </article>
-
       {isSuperuser && (
         <article className="dashboard-card admin-card">
           <div className="card-header">

@@ -66,18 +66,12 @@ export function BoatsAdmin({
     locale === "es"
       ? {
           eyebrow: "Administración de barcos",
-          title: "Flota",
-          body:
-            "Actualiza los datos del barco, la imagen de portada y la información base de cada espacio de trabajo.",
           addBoat: "Añadir barco",
           search: "Buscar barco",
           noMatches: "Ningún barco coincide con la búsqueda.",
         }
       : {
           eyebrow: "Boat administration",
-          title: "Fleet",
-          body:
-            "Update the core boat record, cover image and planning metadata for every workspace.",
           addBoat: "Add boat",
           search: "Search boat",
           noMatches: "No boats match the current search.",
@@ -85,17 +79,6 @@ export function BoatsAdmin({
 
   return (
     <section className="admin-stack">
-      <article className="dashboard-card">
-        <div className="card-header">
-          <div>
-            <p className="eyebrow">{text.eyebrow}</p>
-            <h2>{text.title}</h2>
-          </div>
-          <span className="badge">{boats.length}</span>
-        </div>
-        <p className="muted">{text.body}</p>
-      </article>
-
       <article className="dashboard-card admin-card">
         <div className="card-header">
           <div>
@@ -125,6 +108,10 @@ export function BoatsAdmin({
       {isCreating ? (
         <BoatEditorCard
           boat={emptyBoatDraft}
+          onCreated={() => {
+            setIsCreating(false);
+            setSearch("");
+          }}
           onDelete={onDelete}
           onSave={onSave}
           title={text.addBoat}
@@ -155,6 +142,7 @@ export function BoatsAdmin({
 function BoatEditorCard({
   boat,
   title,
+  onCreated,
   onSave,
   onUploadImage,
   onRemoveImage,
@@ -162,6 +150,7 @@ function BoatEditorCard({
 }: {
   boat: BoatEditorValue;
   title: string;
+  onCreated?: () => void;
   onSave: (fd: FormData) => Promise<void | { id: string }>;
   onUploadImage?: (fd: FormData) => Promise<void>;
   onRemoveImage?: (fd: FormData) => Promise<void>;
@@ -242,8 +231,12 @@ function BoatEditorCard({
   const saveBoat = (formData: FormData) => {
     startTransition(async () => {
       try {
-        await onSave(formData);
+        const result = await onSave(formData);
         toast.success(text.saved);
+        if (!boat.id && result && "id" in result && result.id) {
+          router.prefetch(`/boats/${result.id}/trip`);
+          onCreated?.();
+        }
         router.refresh();
       } catch (error) {
         toast.error(error instanceof Error ? error.message : text.saveError);

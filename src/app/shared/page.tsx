@@ -44,51 +44,15 @@ export default async function SharedPage({
         </article>
       ) : (
         <>
-          <section className="dashboard-card admin-card">
-            <form className="editor-form" method="get">
-              <div className="form-grid">
-              <label>
-                <span>{t(locale, "shared.boat")}</span>
-                <select defaultValue={workspace.selectedBoatId ?? ""} name="boat">
-                  {workspace.boats.map((entry) => (
-                    <option key={entry.boat.id} value={entry.boat.id}>
-                      {entry.boat.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>{t(locale, "shared.season")}</span>
-                <select defaultValue={workspace.selectedSeason?.id ?? ""} name="season">
-                  {workspace.seasons.map((entry) => (
-                    <option key={entry.id} value={entry.id}>
-                      {entry.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="form-grid__wide">
-                <span>{t(locale, "shared.owner")}</span>
-                <input
-                  defaultValue={selected?.ownerDisplayName ?? "—"}
-                  disabled
-                  readOnly
-                />
-              </label>
-              </div>
-              <div className="modal__footer">
-                <button className="secondary-button" type="submit">
-                  {t(locale, "shared.open")}
-                </button>
-              </div>
-            </form>
-          </section>
-
           <div className="shared-boat-grid">
             {workspace.boats.map((entry) => (
               <Link
                 className={`boat-card ${entry.boat.id === workspace.selectedBoatId ? "is-active" : ""}`}
-                href={`/shared?boat=${entry.boat.id}`}
+                href={
+                  entry.season
+                    ? `/shared?boat=${entry.boat.id}&season=${entry.season.id}`
+                    : `/shared?boat=${entry.boat.id}`
+                }
                 key={entry.boat.id}
               >
                 <div className="boat-card__header">
@@ -96,7 +60,9 @@ export default async function SharedPage({
                   <span className="status-pill is-good">{t(locale, "shared.open")}</span>
                 </div>
                 <h3>{entry.boat.name}</h3>
-                <p className="muted">{entry.season?.name ?? t(locale, "planning.noSeasonSelected")}</p>
+                <p className="muted">
+                  {entry.season?.name ?? t(locale, "planning.noSeasonSelected")}
+                </p>
                 <p className="meta">
                   {t(locale, "shared.owner")}: {entry.ownerDisplayName ?? "—"}
                 </p>

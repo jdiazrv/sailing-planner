@@ -7,6 +7,7 @@ import { recordCurrentUserAccess } from "@/app/actions";
 import { buildAuthRedirectUrl } from "@/lib/env";
 import { createClient } from "@/lib/supabase/browser";
 import { useI18n } from "@/components/i18n/provider";
+import { PasswordInput } from "@/components/ui/password-input";
 
 type Mode = "password" | "magic-link";
 
@@ -112,13 +113,12 @@ export const AuthForm = () => {
 
       <label className="field">
         <span>{t("auth.password")}</span>
-        <input
+        <PasswordInput
           autoComplete="current-password"
           disabled={mode === "magic-link"}
           name="password"
           onChange={(event) => setPassword(event.target.value)}
           placeholder="••••••••"
-          type="password"
           value={password}
         />
       </label>

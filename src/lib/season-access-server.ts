@@ -48,6 +48,7 @@ export const getSeasonAccessCookiePayload = async () => {
 
 export const getSeasonGuestSession = async (
   expectedBoatId?: string,
+  expectedSeasonId?: string,
 ): Promise<SeasonGuestSession | null> => {
   const payload = await getSeasonAccessCookiePayload();
 
@@ -91,7 +92,8 @@ export const getSeasonGuestSession = async (
     link.revoked_at ||
     isExpired ||
     mismatchedPayload ||
-    (expectedBoatId && link.boat_id !== expectedBoatId)
+    (expectedBoatId && link.boat_id !== expectedBoatId) ||
+    (expectedSeasonId && link.season_id !== expectedSeasonId)
   ) {
     return null;
   }
@@ -105,8 +107,11 @@ export const getSeasonGuestSession = async (
   };
 };
 
-export const requireSeasonGuestSession = async (expectedBoatId?: string) => {
-  const session = await getSeasonGuestSession(expectedBoatId);
+export const requireSeasonGuestSession = async (
+  expectedBoatId?: string,
+  expectedSeasonId?: string,
+) => {
+  const session = await getSeasonGuestSession(expectedBoatId, expectedSeasonId);
 
   if (!session) {
     redirect(getSeasonAccessErrorUrl("invalid").toString());

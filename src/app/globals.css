@@ -1,5 +1,15 @@
 :root {
   color-scheme: light;
+  --font-body:
+    "Avenir Next",
+    "Segoe UI",
+    "Helvetica Neue",
+    sans-serif;
+  --font-heading:
+    "Gill Sans",
+    "Avenir Next Condensed",
+    "Trebuchet MS",
+    sans-serif;
   --background: #f6f3ea;
   --surface: rgba(255, 252, 246, 0.88);
   --surface-strong: #ffffff;
@@ -12,7 +22,8 @@
   --error: #a22c29;
   --success: #2d6a4f;
   --shadow: 0 20px 50px rgba(23, 33, 31, 0.1);
-  --font-ui: var(--font-body), sans-serif;
+  --font-ui: var(--font-body);
+  --button-height: 2.5rem;
 }
 
 * {
@@ -699,6 +710,10 @@ textarea {
 .secondary-button,
 .link-button,
 .segmented-control button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--button-height);
   border-radius: 999px;
   border: 1px solid transparent;
   transition:
@@ -710,8 +725,9 @@ textarea {
 .primary-button,
 .secondary-button,
 .link-button {
-  padding: 0.5rem 1rem;
+  padding: 0 1rem;
   font-size: 0.85rem;
+  line-height: 1;
   cursor: pointer;
 }
 
@@ -736,9 +752,13 @@ textarea {
 }
 
 .link-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  white-space: nowrap;
+}
+
+.secondary-button--small {
+  min-height: 2.15rem;
+  padding: 0 0.85rem;
+  font-size: 0.8rem;
 }
 
 .dashboard-grid,
@@ -1191,6 +1211,7 @@ body:has(.auth-layout) .app-language {
 
 .section-nav {
   display: inline-flex;
+  flex-wrap: wrap;
   gap: 0.3rem;
   padding: 0.25rem;
   border-radius: 999px;
@@ -1244,6 +1265,11 @@ body:has(.auth-layout) .app-language {
 .workspace-grid--trip .map-panel--tall .map-canvas,
 .workspace-grid--trip .map-panel--tall .map-google {
   min-height: 520px;
+}
+
+.next-step-card {
+  display: grid;
+  gap: 0.9rem;
 }
 
 .workspace-panel {
@@ -2688,7 +2714,7 @@ body:has(.auth-layout) .app-language {
 
   .section-nav {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     justify-content: stretch;
   }
 

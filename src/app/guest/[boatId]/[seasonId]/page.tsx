@@ -20,9 +20,9 @@ export default async function GuestSeasonPage({
   params: Promise<{ boatId: string; seasonId: string }>;
   searchParams: Promise<{ view?: string; welcome?: string }>;
 }) {
-  const { boatId } = await params;
+  const { boatId, seasonId } = await params;
   const { view, welcome } = await searchParams;
-  const workspace = await getSeasonGuestWorkspace(boatId);
+  const workspace = await getSeasonGuestWorkspace(boatId, seasonId);
   const canViewVisits = workspace.viewer.seasonGuestCanViewVisits !== false;
   const currentView = view === "visits" && canViewVisits ? "visits" : "trip";
   const shouldShowWelcome = welcome === "1";

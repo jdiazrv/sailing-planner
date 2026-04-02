@@ -55,6 +55,8 @@ Required for the app:
   Your hosted Supabase project URL.
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
   The public anon key from Supabase.
+- `SUPABASE_SERVICE_ROLE_KEY`
+  Required for server-side admin flows such as guest season links, invitations and cross-user profile updates. Keep it server-side only.
 
 Recommended for CLI workflows:
 
@@ -81,6 +83,7 @@ Create a Supabase project in the dashboard and then do the following:
    - Magic links or email OTP, depending on your preference
 4. Optionally disable email confirmations in local-only workflows. The local CLI config already disables confirmations for local development.
 5. If you want CLI commands like `db push` against the hosted project, link the repo with `npm run supabase:link`.
+6. Add `SUPABASE_SERVICE_ROLE_KEY` to the runtime environment before using guest access links, invitations or other admin flows that act on behalf of other users.
 
 ## Local development
 

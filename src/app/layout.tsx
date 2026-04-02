@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Sora } from "next/font/google";
 import { Toaster } from "sonner";
 
 import { LanguageSwitcher } from "@/components/i18n/language-switcher";
@@ -7,16 +6,6 @@ import { I18nProvider } from "@/components/i18n/provider";
 import { getRequestLocale } from "@/lib/i18n-server";
 
 import "./globals.css";
-
-const bodyFont = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  variable: "--font-body",
-});
-
-const headingFont = Sora({
-  subsets: ["latin"],
-  variable: "--font-heading",
-});
 
 export const metadata: Metadata = {
   title: "Sailing Planner",
@@ -31,11 +20,7 @@ export default async function RootLayout({
   const locale = await getRequestLocale();
 
   return (
-    <html
-      lang={locale}
-      className={`${bodyFont.variable} ${headingFont.variable}`}
-      suppressHydrationWarning
-    >
+    <html lang={locale} suppressHydrationWarning>
       <body suppressHydrationWarning>
         <I18nProvider locale={locale}>
           <div className="app-language">

@@ -270,6 +270,32 @@ export const requireUserAdminAccess = async () => {
   };
 };
 
+export const requireBoatShareAccess = async (boatId: string) => {
+  const context = await requireViewer();
+
+  if (context.viewer.isSuperuser) {
+    return context;
+  }
+
+  const db = context.supabase as any;
+  const { data, error } = await db
+    .from("user_boat_permissions")
+    .select("boat_id, can_edit, can_manage_boat_users")
+    .eq("boat_id", boatId)
+    .eq("user_id", context.user.id)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data?.can_edit && !data?.can_manage_boat_users) {
+    redirect(`/boats/${boatId}/trip`);
+  }
+
+  return context;
+};
+
 export const getAdminBoats = async () => {
   const { supabase, manageableBoatIds } = await requireUserAdminAccess();
   const db = supabase as any;
@@ -287,6 +313,7 @@ export const getAdminBoats = async () => {
 
 export const getAdminUsers = async () => {
   const { supabase, manageableBoatIds, viewer } = await requireUserAdminAccess();
+  const admin = createAdminClient();
   const db = supabase as any;
 
   let permissionsQuery = db
@@ -299,12 +326,10 @@ export const getAdminUsers = async () => {
     permissionsQuery = permissionsQuery.in("boat_id", manageableBoatIds);
   }
 
-  const [{ data: permissionsData }, { data: profilesData }] = await Promise.all([
-    permissionsQuery,
-    viewer.isSuperuser
-      ? db.from("profiles").select("*").order("display_name")
-      : db.from("profiles").select("*").order("display_name"),
-  ]);
+  const { data: permissionsData, error: permissionsError } = await permissionsQuery;
+  if (permissionsError) {
+    throw new Error(permissionsError.message);
+  }
 
   const permissions = (permissionsData ?? []) as PermissionRow[];
   const permissionsByUser = new Map<string, PermissionRow[]>();
@@ -319,9 +344,35 @@ export const getAdminUsers = async () => {
   permissions.forEach((permission) => visibleUserIds.add(permission.user_id));
   visibleUserIds.add(viewer.profile?.id ?? "");
 
-  const profiles = ((profilesData ?? []) as ProfileRow[]).filter((profile) =>
-    viewer.isSuperuser ? true : visibleUserIds.has(profile.id),
-  );
+  let profiles: ProfileRow[] = [];
+
+  if (viewer.isSuperuser) {
+    const profileClient = (admin ?? db) as any;
+    const { data: profilesData, error: profilesError } = await profileClient
+      .from("profiles")
+      .select("*")
+      .order("display_name");
+
+    if (profilesError) {
+      throw new Error(profilesError.message);
+    }
+
+    profiles = (profilesData ?? []) as ProfileRow[];
+  } else if (visibleUserIds.size) {
+    const profileIds = [...visibleUserIds].filter(Boolean);
+    const profileClient = (admin ?? db) as any;
+    const { data: profilesData, error: profilesError } = await profileClient
+      .from("profiles")
+      .select("*")
+      .in("id", profileIds)
+      .order("display_name");
+
+    if (profilesError) {
+      throw new Error(profilesError.message);
+    }
+
+    profiles = (profilesData ?? []) as ProfileRow[];
+  }
 
   return profiles.map((profile) => ({
     ...profile,
@@ -641,8 +692,11 @@ export const getBoatWorkspace = async (
   } satisfies BoatWorkspace;
 };
 
-export const getSeasonGuestWorkspace = async (boatId: string) => {
-  const session = await requireSeasonGuestSession(boatId);
+export const getSeasonGuestWorkspace = async (
+  boatId: string,
+  seasonId?: string,
+) => {
+  const session = await requireSeasonGuestSession(boatId, seasonId);
   const admin = createAdminClient();
   const canViewVisits = session.link.can_view_visits !== false;
 
@@ -733,8 +787,7 @@ export const getSeasonAccessLinkStatus = async (
   boatId: string,
   seasonId: string,
 ) => {
-  const { supabase, manageableBoatIds } = await requireUserAdminAccess();
-  assertManageableBoat(manageableBoatIds, boatId);
+  const { supabase } = await requireBoatShareAccess(boatId);
   const db = supabase as any;
 
   const { data, error } = await db
@@ -763,10 +816,4 @@ export const getSeasonAccessLinkStatus = async (
   return {
     links: rows,
   };
-};
-
-const assertManageableBoat = (manageableBoatIds: string[] | null, boatId: string) => {
-  if (manageableBoatIds && !manageableBoatIds.includes(boatId)) {
-    throw new Error("You can only manage links for boats assigned to you.");
-  }
 };

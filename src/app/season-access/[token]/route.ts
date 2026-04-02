@@ -45,14 +45,28 @@ export async function GET(
   const now = new Date().toISOString();
   const firstAccess = Number(link.access_count ?? 0) === 0;
 
-  await db
+  let redeemQuery = db
     .from("season_access_links")
     .update({
       access_count: Number(link.access_count ?? 0) + 1,
       last_access_at: now,
       redeemed_at: link.single_use ? now : link.redeemed_at,
     })
-    .eq("id", link.id);
+    .eq("id", link.id)
+    .is("revoked_at", null)
+    .gt("expires_at", now);
+
+  if (link.single_use) {
+    redeemQuery = redeemQuery.is("redeemed_at", null);
+  }
+
+  const { data: redeemedLink, error: redeemError } = await redeemQuery
+    .select("id")
+    .maybeSingle();
+
+  if (redeemError || !redeemedLink) {
+    return NextResponse.redirect(getSeasonAccessErrorUrl("expired").toString());
+  }
 
   const payload = {
     v: 1 as const,

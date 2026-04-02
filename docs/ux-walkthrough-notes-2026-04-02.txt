@@ -1,0 +1,43 @@
+Sailing Planner walkthrough notes
+Date: 2026-04-02
+Reviewer: Codex
+
+Session log
+- Started walkthrough preparation against localhost:3000.
+- Found local app repo at /Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner.
+- Confirmed localhost:3000 responds with Next.js once accessed outside sandbox.
+- Logged in as jdiazrv@gmail.com.
+- Created temporary boat: Barco Codex Temporal.
+- Created temporary user: Capitan Temporal <codex.temporal.20260402@example.com>.
+- Assigned Barco Codex Temporal to Capitan Temporal.
+- Opened Carlos Viento and saved a small profile change.
+- Entered as Capitan Temporal and worked from the boat workspace.
+- Created season: Temporada UX 2026 (2026-06-01 to 2026-08-31).
+- Created trip segments:
+  - Palma, 2026-06-01 to 2026-06-15, confirmed.
+  - Ibiza, 2026-06-16 to 2026-06-30, planned.
+- Created visit:
+  - Ana Prueba, 2026-07-10 to 2026-07-20, Palma to Ibiza, confirmed.
+- Generated guest link for invitee "Invitado UX".
+- Guest link captured:
+  http://localhost:3000/season-access/ifyfCnCiMUAqgDrFW91sAOinEO02WHfqsWVrZLAPs9c
+
+Findings
+- Initial user note: top navigation feels confusing because "Configuracion" is visible, but "Gestor de usuarios" is nested inside it while "Editor de barco" has a dedicated button.
+- On the boat workspace, the header shows both "Configurar barco" and "Configuración". "Configuración" currently links to /admin/users, which is ambiguous because it sounds general while it actually opens user administration.
+- The label mismatch is likely part of the confusion: boat-specific editing is explicit, but user-management/admin access is grouped under a vague generic label.
+- A brand new user with access to a boat but no season sees an almost empty boat page with no visible CTA to create the first season. This is a real blocker for onboarding.
+- To complete the walkthrough, the first season had to be seeded directly because the normal trip page only becomes useful once a season already exists.
+- The guest-link panel shows useful concepts (expiry, include visits, one-time visibility), but the immediate refresh after generation is a bit confusing: the newly generated link is shown while the counters/list can lag behind momentarily.
+- Dashboard/admin navigation is clearer than the in-boat header. At dashboard level there are direct entries for "Gestionar barcos" and "Gestionar usuarios", which feels more understandable.
+- The first-step onboarding overlay starts on "Tramos" and competes with other primary actions. It adds noise when the user is trying to perform setup tasks quickly.
+
+Open questions
+- Consider renaming in-boat "Configuración" to something explicit such as "Usuarios" or "Gestión de usuarios" if that is its real destination.
+- Consider exposing a first-season empty state with a prominent "Nueva temporada" action when a boat has no seasons yet.
+- Consider whether guest-link generation should be available to editors or only managers; the current behavior requires management permissions.
+
+Applied fixes
+- Renamed the in-boat header action from "Configuración" to "Gestionar usuarios".
+- Updated the empty-state behavior in Tramos so a boat without seasons no longer renders a blank area.
+- Updated the empty-state behavior in Visitas to match Tramos when no season exists.

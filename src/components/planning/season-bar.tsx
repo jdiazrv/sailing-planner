@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 import { useI18n } from "@/components/i18n/provider";
@@ -17,6 +18,7 @@ type Props = {
   basePath: string;
   boatId: string;
   canEdit: boolean;
+  initiallyOpenAdd?: boolean;
   onSave: (fd: FormData) => Promise<void>;
   onDelete: (fd: FormData) => Promise<void>;
 };
@@ -27,15 +29,33 @@ export function SeasonBar({
   basePath,
   boatId,
   canEdit,
+  initiallyOpenAdd = false,
   onSave,
   onDelete,
 }: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [showPicker, setShowPicker] = useState(false);
-  const [addOpen, setAddOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(initiallyOpenAdd);
   const [editOpen, setEditOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { t } = useI18n();
+
+  useEffect(() => {
+    if (!initiallyOpenAdd) {
+      return;
+    }
+
+    setAddOpen(true);
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete("setup");
+    const nextQuery = nextParams.toString();
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, {
+      scroll: false,
+    });
+  }, [initiallyOpenAdd, pathname, router, searchParams]);
 
   const buildSeasonHref = (seasonId: string) =>
     `${basePath}${basePath.includes("?") ? "&" : "?"}season=${seasonId}`;

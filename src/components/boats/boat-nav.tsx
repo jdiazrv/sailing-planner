@@ -5,13 +5,15 @@ import { getRequestLocale } from "@/lib/i18n-server";
 
 type BoatNavProps = {
   boatId: string;
-  active: "trip" | "visits";
+  active: "trip" | "visits" | "share";
+  canShare?: boolean;
   basePath?: string;
 };
 
 export const BoatNav = async ({
   boatId,
   active,
+  canShare = false,
   basePath = "/boats",
 }: BoatNavProps) => {
   const locale = await getRequestLocale();
@@ -30,6 +32,14 @@ export const BoatNav = async ({
       >
         {t(locale, "boatNav.visits")}
       </Link>
+      {canShare ? (
+        <Link
+          className={active === "share" ? "is-active" : undefined}
+          href={`${basePath}/${boatId}/share`}
+        >
+          {t(locale, "boatNav.share")}
+        </Link>
+      ) : null}
     </nav>
   );
 };

@@ -35,6 +35,7 @@ export function GuestOnboardingTour({
   const [isOpen, setIsOpen] = useState(enabled);
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<RectState>(null);
+  const isVisitsView = pathname.includes("/visits") || searchParams.get("view") === "visits";
 
   const steps = useMemo<TourStep[]>(
     () =>
@@ -59,7 +60,7 @@ export function GuestOnboardingTour({
           target: '[data-tour="boat-nav"]',
           title: "Visitas",
           body: canViewVisits
-            ? "La seccion de Visitas te permite revisar incorporaciones, fechas y movimientos de invitados durante la temporada."
+            ? "Desde la pestana Visitas puedes abrir la vista de invitados para revisar incorporaciones, fechas, lugares de embarque y desembarque, y movimientos previstos durante la temporada."
             : "Si este acceso incluyera Visitas, tambien podrias cambiar a esa vista desde aqui.",
         },
         {
@@ -70,9 +71,10 @@ export function GuestOnboardingTour({
         },
         {
           target: '[data-tour="boat-detail"]',
-          title: "Detalle",
-          body:
-            "Aqui ves el detalle estructurado de los tramos o visitas de la temporada, con fechas, lugares y estado.",
+          title: isVisitsView ? "Detalle de visitas" : "Detalle",
+          body: isVisitsView
+            ? "En esta zona ves el detalle de las visitas: invitado, fechas, lugares y estado. Si vuelves a Tramos, este panel cambia para mostrar el plan de navegacion."
+            : "Aqui ves el detalle estructurado de los tramos. Cuando cambies a Visitas, este mismo panel te mostrara las incorporaciones previstas, con fechas, lugares y estado.",
         },
         {
           target: '[data-tour="boat-map"]',
@@ -81,7 +83,7 @@ export function GuestOnboardingTour({
             "El mapa ayuda a ubicar visualmente el recorrido y los puntos importantes de la temporada.",
         },
       ] satisfies TourStep[],
-    [canViewVisits, variant],
+    [canViewVisits, isVisitsView, variant],
   );
 
   useEffect(() => {

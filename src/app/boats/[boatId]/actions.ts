@@ -117,9 +117,8 @@ const getNextTripSortOrder = async (db: any, seasonId: string) => {
 };
 
 export async function saveSeason(formData: FormData) {
-  const supabase = await createClient();
-  const db = supabase as any;
   const boatId = formData.get("boat_id")?.toString() ?? "";
+  const { db } = await requireBoatEditor(boatId);
   const seasonId = asOptionalString(formData.get("season_id"));
 
   const payload = {
@@ -143,9 +142,8 @@ export async function saveSeason(formData: FormData) {
 }
 
 export async function deleteSeason(formData: FormData) {
-  const supabase = await createClient();
-  const db = supabase as any;
   const boatId = formData.get("boat_id")?.toString() ?? "";
+  const { db } = await requireBoatEditor(boatId);
   const seasonId = formData.get("season_id")?.toString() ?? "";
 
   const { error } = await db.from("seasons").delete().eq("id", seasonId);
@@ -154,9 +152,8 @@ export async function deleteSeason(formData: FormData) {
 }
 
 export async function saveTripSegment(formData: FormData) {
-  const supabase = await createClient();
-  const db = supabase as any;
   const boatId = formData.get("boat_id")?.toString() ?? "";
+  const { db } = await requireBoatEditor(boatId);
   const segmentId = asOptionalString(formData.get("segment_id"));
   const seasonId = formData.get("season_id")?.toString() ?? "";
   const privateNotes = asOptionalString(formData.get("private_notes"));
@@ -223,9 +220,8 @@ export async function saveTripSegment(formData: FormData) {
 }
 
 export async function moveTripSegment(formData: FormData) {
-  const supabase = await createClient();
-  const db = supabase as any;
   const boatId = formData.get("boat_id")?.toString() ?? "";
+  const { db } = await requireBoatEditor(boatId);
   const seasonId = formData.get("season_id")?.toString() ?? "";
   const segmentId = formData.get("segment_id")?.toString() ?? "";
   const direction = formData.get("direction")?.toString();
@@ -273,9 +269,8 @@ export async function moveTripSegment(formData: FormData) {
 }
 
 export async function deleteTripSegment(formData: FormData) {
-  const supabase = await createClient();
-  const db = supabase as any;
   const boatId = formData.get("boat_id")?.toString() ?? "";
+  const { db } = await requireBoatEditor(boatId);
   const segmentId = formData.get("segment_id")?.toString() ?? "";
 
   const { error } = await db.from("trip_segments").delete().eq("id", segmentId);
@@ -284,12 +279,11 @@ export async function deleteTripSegment(formData: FormData) {
 }
 
 export async function saveVisit(formData: FormData) {
-  const supabase = await createClient();
-  const db = supabase as any;
+  const boatId = formData.get("boat_id")?.toString() ?? "";
+  const { supabase, db } = await requireBoatEditor(boatId);
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const boatId = formData.get("boat_id")?.toString() ?? "";
   const visitId = asOptionalString(formData.get("visit_id"));
   const seasonId = formData.get("season_id")?.toString() ?? "";
   const privateNotes = asOptionalString(formData.get("private_notes"));
@@ -369,9 +363,8 @@ export async function saveVisit(formData: FormData) {
 }
 
 export async function deleteVisit(formData: FormData) {
-  const supabase = await createClient();
-  const db = supabase as any;
   const boatId = formData.get("boat_id")?.toString() ?? "";
+  const { db } = await requireBoatEditor(boatId);
   const visitId = formData.get("visit_id")?.toString() ?? "";
 
   const { error } = await db.from("visits").delete().eq("id", visitId);

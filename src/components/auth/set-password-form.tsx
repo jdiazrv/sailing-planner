@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { recordCurrentUserAccess } from "@/app/actions";
 import { useI18n } from "@/components/i18n/provider";
+import { PasswordInput } from "@/components/ui/password-input";
 import { createClient } from "@/lib/supabase/browser";
 
 export function SetPasswordForm() {
@@ -96,26 +97,24 @@ export function SetPasswordForm() {
 
       <label className="field">
         <span>{text.password}</span>
-        <input
+        <PasswordInput
           autoComplete="new-password"
           name="password"
           onChange={(event) => setPassword(event.target.value)}
           placeholder={text.placeholder}
           required
-          type="password"
           value={password}
         />
       </label>
 
       <label className="field">
         <span>{text.confirmPassword}</span>
-        <input
+        <PasswordInput
           autoComplete="new-password"
           name="confirm_password"
           onChange={(event) => setConfirmPassword(event.target.value)}
           placeholder={text.placeholder}
           required
-          type="password"
           value={confirmPassword}
         />
       </label>
