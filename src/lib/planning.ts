@@ -20,6 +20,11 @@ export type BoatSummary = Database["public"]["Views"]["boat_access_overview"]["R
   image_path?: string | null;
   image_url?: string | null;
   is_active?: boolean;
+  trip_segments_count?: number;
+  visits_count?: number;
+  active_invites_count?: number;
+  user_last_access_at?: string | null;
+  user_display_name?: string | null;
 };
 
 export type BoatDetails = BoatRow & {
@@ -40,6 +45,7 @@ export type SharedTimelineBoat = {
 export type ViewerContext = {
   profile: ProfileRow | null;
   isSuperuser: boolean;
+  onboardingPending?: boolean;
   isSeasonGuest?: boolean;
   seasonGuestCanViewVisits?: boolean;
   seasonGuestCreatorName?: string | null;
@@ -123,9 +129,29 @@ export const formatShortDate = (value: string) =>
     year: "numeric",
   }).format(parseDate(value));
 
+const DATE_INPUT_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
 export const parseDate = (value: string) => {
-  const [year, month, day] = value.split("-").map(Number);
-  return new Date(Date.UTC(year, month - 1, day));
+  const match = DATE_INPUT_PATTERN.exec(value);
+  if (!match) {
+    throw new Error(`Invalid date value: ${value}`);
+  }
+
+  const [, yearValue, monthValue, dayValue] = match;
+  const year = Number(yearValue);
+  const month = Number(monthValue);
+  const day = Number(dayValue);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) {
+    throw new Error(`Invalid date value: ${value}`);
+  }
+
+  return parsed;
 };
 
 export const toDateInputValue = (value: Date) =>

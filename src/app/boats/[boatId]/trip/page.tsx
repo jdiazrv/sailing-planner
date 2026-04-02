@@ -1,5 +1,6 @@
 import { SeasonAccessPanel } from "@/components/admin/season-access-panel";
 import { BoatNav } from "@/components/boats/boat-nav";
+import { MemberFirstAccess } from "@/components/guest/member-first-access";
 import { TripOverview } from "@/components/planning/trip-overview";
 import { SeasonBar } from "@/components/planning/season-bar";
 import { TripSegmentsManager } from "@/components/planning/trip-segments-manager";
@@ -48,6 +49,13 @@ export default async function BoatTripPage({
     <>
       {workspace.selectedSeason && (
         <>
+          {!workspace.viewer.isSuperuser && workspace.viewer.onboardingPending ? (
+            <MemberFirstAccess
+              canViewVisits
+              viewerId={workspace.viewer.profile?.id ?? boatId}
+            />
+          ) : null}
+
           <SeasonBar
             basePath={`/boats/${boatId}/trip`}
             boatId={boatId}

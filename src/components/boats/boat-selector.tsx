@@ -17,6 +17,19 @@ export const BoatSelector = ({ boats, activeBoatId }: BoatSelectorProps) => {
   const { locale, t } = useI18n();
   const [query, setQuery] = useState("");
   const useCompactList = boats.length > 8;
+  const formatLastAccess = (value: string | null | undefined) => {
+    if (!value) {
+      return locale === "es" ? "Sin acceso" : "No access";
+    }
+
+    return new Intl.DateTimeFormat(locale, {
+      day: "2-digit",
+      month: "2-digit",
+      year: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(value));
+  };
   const filteredBoats = useMemo(
     () =>
       boats.filter((boat) =>
@@ -103,16 +116,15 @@ export const BoatSelector = ({ boats, activeBoatId }: BoatSelectorProps) => {
             </span>
           </div>
           <h3>{boat.boat_name}</h3>
-          <p className="muted">
-            {boat.boat_id === activeBoatId
-              ? t("boatSelector.currentWorkspace")
-              : t("boatSelector.selectBoat")}
+          <p className="meta">{boat.home_port || t("boatSelector.homePortMissing")}</p>
+          <p className="boat-card__access">
+            {locale === "es" ? "Ult. acceso" : "Last access"}: {formatLastAccess(boat.user_last_access_at)}
           </p>
-          <p className="meta">
-            {boat.home_port
-              ? `${t("boatSelector.homePortSet")}: ${boat.home_port}`
-              : t("boatSelector.homePortMissing")}
-          </p>
+          <div className="boat-card__stats">
+            <span>{boat.trip_segments_count ?? 0}T</span>
+            <span>{boat.visits_count ?? 0}V</span>
+            <span>{boat.active_invites_count ?? 0}I</span>
+          </div>
         </Link>
       ))}
     </div>

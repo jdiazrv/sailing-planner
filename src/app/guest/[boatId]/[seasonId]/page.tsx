@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { GuestWelcomeModal } from "@/components/guest/guest-welcome-modal";
+import { GuestFirstAccess } from "@/components/guest/guest-first-access";
 import { TripOverview } from "@/components/planning/trip-overview";
 import { TripSegmentsManager } from "@/components/planning/trip-segments-manager";
 import { VisitsWorkspace } from "@/components/planning/visits-workspace";
@@ -47,10 +47,11 @@ export default async function GuestSeasonPage({
   return (
     <main>
       {shouldShowWelcome ? (
-        <GuestWelcomeModal
+        <GuestFirstAccess
           canViewVisits={canViewVisits}
           creatorName={creatorName}
           expiresAt={expiresAt}
+          resetKey={`${boatId}:${workspace.selectedSeason?.id ?? ""}:${welcome ?? ""}`}
           seasonName={seasonName}
         />
       ) : null}
@@ -62,7 +63,7 @@ export default async function GuestSeasonPage({
         </span>
       </section>
 
-      <header className="boat-header">
+      <header className="boat-header" data-tour="guest-header">
         <div className="boat-header__title">
           <h1>{workspace.boat.name}</h1>
           {workspace.selectedSeason && (
@@ -72,7 +73,7 @@ export default async function GuestSeasonPage({
         <span className="status-pill status-pill--readonly">Solo lectura</span>
       </header>
 
-      <nav className="section-nav" aria-label="Vista">
+      <nav className="section-nav" aria-label="Vista" data-tour="boat-nav">
         <Link
           className={currentView === "trip" ? "is-active" : undefined}
           href={`/guest/${boatId}/${workspace.selectedSeason?.id ?? ""}?view=trip`}

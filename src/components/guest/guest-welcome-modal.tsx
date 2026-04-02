@@ -9,6 +9,7 @@ type GuestWelcomeModalProps = {
   seasonName: string;
   expiresAt: string | null;
   canViewVisits: boolean;
+  onCloseComplete?: () => void;
 };
 
 export function GuestWelcomeModal({
@@ -16,11 +17,17 @@ export function GuestWelcomeModal({
   seasonName,
   expiresAt,
   canViewVisits,
+  onCloseComplete,
 }: GuestWelcomeModalProps) {
   const [open, setOpen] = useState(true);
 
+  const handleClose = () => {
+    setOpen(false);
+    onCloseComplete?.();
+  };
+
   return (
-    <Dialog onClose={() => setOpen(false)} open={open} title="Invitacion activada">
+    <Dialog onClose={handleClose} open={open} title="Invitacion activada">
       <div className="guest-welcome-modal">
         <p className="guest-welcome-modal__lead">
           <strong>{creatorName}</strong> le ha invitado a ver el planeamiento de su navegacion{" "}
@@ -44,7 +51,7 @@ export function GuestWelcomeModal({
           un vistazo el recorrido completo de la navegacion.
         </p>
         <div className="modal__footer">
-          <button className="primary-button" onClick={() => setOpen(false)} type="button">
+          <button className="primary-button" onClick={handleClose} type="button">
             Cerrar
           </button>
         </div>

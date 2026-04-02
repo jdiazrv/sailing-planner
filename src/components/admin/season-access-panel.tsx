@@ -83,6 +83,7 @@ export function SeasonAccessPanel({
           noAccess: "Sin registros",
           latest: "Enlace recién generado",
           linksTitle: "Enlaces generados",
+          inviteeField: "Invitado",
           activeCount: "activos",
           totalCount: "totales",
           defaultWindow: "Hasta fin de temporada",
@@ -128,6 +129,7 @@ export function SeasonAccessPanel({
           noAccess: "No records",
           latest: "Latest generated link",
           linksTitle: "Generated links",
+          inviteeField: "Guest",
           activeCount: "active",
           totalCount: "total",
           defaultWindow: "Until season end",
@@ -318,13 +320,16 @@ export function SeasonAccessPanel({
               <h3>{text.linksTitle}</h3>
             </div>
 
-            {links.length ? (
+            {activeLinks.length ? (
               <div className="season-access-list">
-                {links.map((link) => (
+                {activeLinks.map((link) => (
                   <div className="season-access-item" key={link.id}>
                     <div className="season-access-item__main">
                       <div className="season-access-item__top">
-                        <strong>{link.invitee_name || text.noAccess}</strong>
+                        <div className="season-access-item__identity">
+                          <span className="season-access-item__label">{text.inviteeField}</span>
+                          <strong>{link.invitee_name || text.noAccess}</strong>
+                        </div>
                         <span className={`status-pill ${link.is_active ? "is-good" : "is-muted"}`}>
                           {link.is_active ? text.active : text.inactive}
                         </span>
@@ -352,16 +357,14 @@ export function SeasonAccessPanel({
                       </div>
                     </div>
                     <div className="season-access-item__actions">
-                      {link.is_active ? (
-                        <button
-                          className="secondary-button secondary-button--danger"
-                          disabled={isPending}
-                          onClick={() => handleRevoke(link.id)}
-                          type="button"
-                        >
-                          {isPending ? text.revoking : text.revoke}
-                        </button>
-                      ) : null}
+                      <button
+                        className="secondary-button secondary-button--danger"
+                        disabled={isPending}
+                        onClick={() => handleRevoke(link.id)}
+                        type="button"
+                      >
+                        {isPending ? text.revoking : text.revoke}
+                      </button>
                     </div>
                   </div>
                 ))}

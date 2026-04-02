@@ -88,6 +88,7 @@ export function VisitsWorkspace({
 
       <section
         className={`workspace-grid workspace-grid--single workspace-panel workspace-panel--standalone${mobilePanel === "timeline" ? " is-active" : ""}`}
+        data-tour="boat-timeline"
       >
         <Timeline
           onVisitClick={canEdit ? setTimelineEditVisit : undefined}
@@ -154,7 +155,10 @@ export function VisitsWorkspace({
       </section>
 
       <section className="workspace-grid workspace-grid--visits workspace-grid--mobile-panels">
-        <article className={`dashboard-card workspace-main workspace-panel${mobilePanel === "visits" ? " is-active" : ""}`}>
+        <article
+          className={`dashboard-card workspace-main workspace-panel${mobilePanel === "visits" ? " is-active" : ""}`}
+          data-tour="boat-detail"
+        >
           {season && seasonId ? (
             <VisitsManager
               boatId={boatId}
@@ -175,7 +179,10 @@ export function VisitsWorkspace({
           )}
         </article>
 
-        <aside className={`stack workspace-panel${mobilePanel === "map" ? " is-active" : ""}`}>
+        <aside
+          className={`stack workspace-panel${mobilePanel === "map" ? " is-active" : ""}`}
+          data-tour="boat-map"
+        >
           <MapPanel
             selectedEntityId={selectedEntityId}
             tall

@@ -99,7 +99,8 @@ const formatLastAccess = (
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
-    timeStyle: "short",
+    hour: "2-digit",
+    minute: "2-digit",
   }).format(new Date(value));
 };
 
@@ -763,6 +764,20 @@ function UserEditorCard({
                 />
                 <span>{t("admin.users.timelinePublic")}</span>
               </label>
+              {isSuperuser ? (
+                <label className="checkbox-field">
+                  <input
+                    defaultChecked={user.onboarding_pending}
+                    name="onboarding_pending"
+                    type="checkbox"
+                  />
+                  <span>
+                    {locale === "es"
+                      ? "Tour inicial pendiente"
+                      : "Initial tour pending"}
+                  </span>
+                </label>
+              ) : null}
             </div>
 
             <div className="modal__footer">

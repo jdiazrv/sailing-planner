@@ -60,6 +60,7 @@ export const requireViewer = async () => {
   const viewer: ViewerContext = {
     profile,
     isSuperuser: Boolean(profile?.is_superuser),
+    onboardingPending: Boolean(profile?.onboarding_pending),
     isSeasonGuest: false,
   };
 
@@ -70,17 +71,18 @@ export const getAccessibleBoats = async () => {
   const { supabase, viewer } = await requireViewer();
   const db = supabase as any;
 
-  const { data } = await db
-    .from("boats")
-    .select(
-      "id, name, description, is_active, model, year_built, home_port, image_path",
-    )
-    .order("name");
-
-  const { data: overviewData } = await db
-    .from("boat_access_overview")
-    .select("boat_id, boat_name, permission_level, can_edit, can_manage_boat_users")
-    .order("boat_name");
+  const [{ data }, { data: overviewData }] = await Promise.all([
+    db
+      .from("boats")
+      .select(
+        "id, name, description, is_active, model, year_built, home_port, image_path",
+      )
+      .order("name"),
+    db
+      .from("boat_access_overview")
+      .select("boat_id, boat_name, permission_level, can_edit, can_manage_boat_users")
+      .order("boat_name"),
+  ]);
 
   const overviewByBoat = new Map(
     ((overviewData ?? []) as BoatOverviewRow[]).map((row: BoatOverviewRow) => [
@@ -89,11 +91,115 @@ export const getAccessibleBoats = async () => {
     ]),
   );
 
-  return ((data ?? []) as (BoatRow & {
+  const boatRows = (data ?? []) as (BoatRow & {
     model?: string | null;
     year_built?: number | null;
     home_port?: string | null;
-  })[]).map((boat) => ({
+  })[];
+  const boatIds = boatRows.map((boat) => boat.id);
+
+  const tripSegmentsCountByBoat = new Map<string, number>();
+  const visitsCountByBoat = new Map<string, number>();
+  const activeInvitesCountByBoat = new Map<string, number>();
+  const userLastAccessByBoat = new Map<string, { lastAccessAt: string | null; displayName: string | null }>();
+
+  if (boatIds.length) {
+    const [{ data: seasonsData }, { data: linksData }, { data: permissionsData }] = await Promise.all([
+      db.from("seasons").select("id, boat_id").in("boat_id", boatIds),
+      db
+        .from("season_access_links")
+        .select("boat_id, revoked_at, expires_at, single_use, redeemed_at")
+        .in("boat_id", boatIds),
+      db
+        .from("user_boat_permissions")
+        .select("boat_id, user_id, created_at")
+        .in("boat_id", boatIds)
+        .order("created_at", { ascending: true }),
+    ]);
+
+    const permissionRows = (permissionsData ?? []) as Pick<
+      PermissionRow,
+      "boat_id" | "user_id" | "created_at"
+    >[];
+    const userIds = [...new Set(permissionRows.map((permission) => permission.user_id))];
+    const { data: profilesData } = userIds.length
+      ? await db
+          .from("profiles")
+          .select("id, display_name, is_superuser, last_sign_in_at")
+          .in("id", userIds)
+      : { data: [] };
+
+    const seasonRows = (seasonsData ?? []) as Pick<SeasonRow, "id" | "boat_id">[];
+    const seasonById = new Map(seasonRows.map((season) => [season.id, season.boat_id]));
+    const seasonIds = seasonRows.map((season) => season.id);
+
+    if (seasonIds.length) {
+      const [{ data: tripRows }, { data: visitRows }] = await Promise.all([
+        db.from("trip_segments").select("season_id").in("season_id", seasonIds),
+        db.from("visits").select("season_id").in("season_id", seasonIds),
+      ]);
+
+      ((tripRows ?? []) as Pick<Database["public"]["Tables"]["trip_segments"]["Row"], "season_id">[])
+        .forEach((row) => {
+          const boatId = seasonById.get(row.season_id);
+          if (!boatId) return;
+          tripSegmentsCountByBoat.set(boatId, (tripSegmentsCountByBoat.get(boatId) ?? 0) + 1);
+        });
+
+      ((visitRows ?? []) as Pick<Database["public"]["Tables"]["visits"]["Row"], "season_id">[])
+        .forEach((row) => {
+          const boatId = seasonById.get(row.season_id);
+          if (!boatId) return;
+          visitsCountByBoat.set(boatId, (visitsCountByBoat.get(boatId) ?? 0) + 1);
+        });
+    }
+
+    const now = Date.now();
+    (
+      (linksData ?? []) as Pick<
+        SeasonAccessLinkRow,
+        "boat_id" | "revoked_at" | "expires_at" | "single_use" | "redeemed_at"
+      >[]
+    ).forEach((row) => {
+      const isActive =
+        !row.revoked_at &&
+        new Date(row.expires_at).getTime() > now &&
+        !(row.single_use && row.redeemed_at);
+
+      if (!isActive) return;
+      activeInvitesCountByBoat.set(
+        row.boat_id,
+        (activeInvitesCountByBoat.get(row.boat_id) ?? 0) + 1,
+      );
+    });
+
+    const profileById = new Map(
+      (
+        (profilesData ?? []) as Pick<
+          ProfileRow,
+          "id" | "display_name" | "is_superuser" | "last_sign_in_at"
+        >[]
+      ).map((profile) => [profile.id, profile]),
+    );
+
+    permissionRows.forEach((permission) => {
+        if (userLastAccessByBoat.has(permission.boat_id)) {
+          return;
+        }
+
+        const profile = profileById.get(permission.user_id);
+        if (!profile || profile.is_superuser) {
+          return;
+        }
+
+        userLastAccessByBoat.set(permission.boat_id, {
+          lastAccessAt: profile.last_sign_in_at ?? null,
+          displayName: profile.display_name ?? null,
+        });
+      });
+  }
+
+  return boatRows.map((boat) => ({
     boat_id: boat.id,
     boat_name: boat.name,
     permission_level:
@@ -111,6 +217,11 @@ export const getAccessibleBoats = async () => {
     model: boat.model ?? null,
     year_built: boat.year_built ?? null,
     is_active: boat.is_active,
+    trip_segments_count: tripSegmentsCountByBoat.get(boat.id) ?? 0,
+    visits_count: visitsCountByBoat.get(boat.id) ?? 0,
+    active_invites_count: activeInvitesCountByBoat.get(boat.id) ?? 0,
+    user_last_access_at: userLastAccessByBoat.get(boat.id)?.lastAccessAt ?? null,
+    user_display_name: userLastAccessByBoat.get(boat.id)?.displayName ?? null,
   })) as BoatSummary[];
 };
 

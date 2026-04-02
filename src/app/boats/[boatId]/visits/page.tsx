@@ -1,4 +1,5 @@
 import { BoatNav } from "@/components/boats/boat-nav";
+import { MemberFirstAccess } from "@/components/guest/member-first-access";
 import { SeasonBar } from "@/components/planning/season-bar";
 import { VisitsWorkspace } from "@/components/planning/visits-workspace";
 import { getBoatWorkspace } from "@/lib/boat-data";
@@ -42,6 +43,13 @@ export default async function BoatVisitsPage({
 
   return (
     <>
+      {!workspace.viewer.isSuperuser && workspace.viewer.onboardingPending ? (
+        <MemberFirstAccess
+          canViewVisits
+          viewerId={workspace.viewer.profile?.id ?? boatId}
+        />
+      ) : null}
+
       <SeasonBar
         basePath={`/boats/${boatId}/visits`}
         boatId={boatId}

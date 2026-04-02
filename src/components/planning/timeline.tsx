@@ -366,6 +366,7 @@ export const Timeline = ({
                 className="modal__close"
                 onClick={() => setExpandedVisitId(null)}
                 type="button"
+                aria-label="Cerrar"
               >
                 ✕
               </button>
@@ -406,6 +407,7 @@ export const Timeline = ({
                 className="modal__close"
                 onClick={() => setSelectedAvailabilityIndex(null)}
                 type="button"
+                aria-label="Cerrar"
               >
                 ✕
               </button>

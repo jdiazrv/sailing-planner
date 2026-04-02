@@ -99,6 +99,7 @@ const dictionary = {
     "boatLayout.defaultDescription":
       "Planificación de temporada, rutas, visitas y disponibilidad.",
     "boatLayout.editBoats": "Editar barcos",
+    "boatLayout.boatSettings": "Configurar barco",
     "boatLayout.editUsers": "Configuración",
     "boatLayout.switchBoat": "Cambiar barco",
     "boatLayout.sharedTimelines": "Timelines compartidos",
@@ -401,6 +402,7 @@ const dictionary = {
     "boatLayout.defaultDescription":
       "Season planning, trip routing, visits and availability.",
     "boatLayout.editBoats": "Edit boats",
+    "boatLayout.boatSettings": "Boat settings",
     "boatLayout.editUsers": "Settings",
     "boatLayout.switchBoat": "Switch boat",
     "boatLayout.sharedTimelines": "Shared timelines",

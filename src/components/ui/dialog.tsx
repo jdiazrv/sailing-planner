@@ -29,12 +29,18 @@ export function Dialog({
     <dialog
       ref={ref}
       className="modal"
+      aria-modal="true"
       onClose={onClose}
     >
       <div className="modal__inner">
         <div className="modal__header">
           <h3>{title}</h3>
-          <button type="button" className="modal__close" onClick={onClose}>
+          <button
+            type="button"
+            className="modal__close"
+            onClick={onClose}
+            aria-label="Cerrar"
+          >
             ✕
           </button>
         </div>

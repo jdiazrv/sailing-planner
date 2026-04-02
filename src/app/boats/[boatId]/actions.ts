@@ -10,6 +10,7 @@ import {
 } from "@/app/admin/actions";
 import { createClient } from "@/lib/supabase/server";
 import type {
+  Database,
   LocationType,
   PlaceSource,
   TripSegmentStatus,
@@ -37,10 +38,69 @@ const asOptionalString = (value: FormDataEntryValue | null) => {
   return normalized ? normalized : null;
 };
 
+const parseOptionalYear = (value: FormDataEntryValue | null) => {
+  const normalized = asOptionalString(value);
+  if (!normalized) {
+    return null;
+  }
+
+  const parsed = Number(normalized);
+  if (!Number.isInteger(parsed) || parsed < 1800 || parsed > 3000) {
+    throw new Error("Year built must be a valid year.");
+  }
+
+  return parsed;
+};
+
+const getBoatImageExtension = (file: File) => {
+  if (file.type === "image/png") return "png";
+  if (file.type === "image/webp") return "webp";
+  if (file.type === "image/gif") return "gif";
+  if (file.type === "image/svg+xml") return "svg";
+  return "jpg";
+};
+
 const throwIfError = (error: { message?: string } | null) => {
   if (error) {
     throw new Error(error.message ?? "Unexpected Supabase error.");
   }
+};
+
+const requireBoatEditor = async (boatId: string) => {
+  const supabase = await createClient();
+  const db = supabase as any;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("Authentication required.");
+  }
+
+  const { data: profile, error: profileError } = await db
+    .from("profiles")
+    .select("is_superuser")
+    .eq("id", user.id)
+    .maybeSingle();
+  throwIfError(profileError);
+
+  if (profile?.is_superuser) {
+    return { supabase, db };
+  }
+
+  const { data: permission, error: permissionError } = await db
+    .from("user_boat_permissions")
+    .select("can_edit")
+    .eq("boat_id", boatId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  throwIfError(permissionError);
+
+  if (!permission?.can_edit) {
+    throw new Error("You do not have permission to edit this boat.");
+  }
+
+  return { supabase, db };
 };
 
 const getNextTripSortOrder = async (db: any, seasonId: string) => {
@@ -325,4 +385,79 @@ export async function generateSeasonAccessLink(formData: FormData) {
 
 export async function revokeSeasonAccessLink(formData: FormData) {
   return revokeSeasonAccessLinkInternal(formData);
+}
+
+export async function saveBoatProfile(formData: FormData) {
+  const boatId = formData.get("boat_id")?.toString() ?? "";
+  const { db } = await requireBoatEditor(boatId);
+
+  const payload: Partial<Database["public"]["Tables"]["boats"]["Update"]> = {
+    model: asOptionalString(formData.get("model")),
+    year_built: parseOptionalYear(formData.get("year_built")),
+    home_port: asOptionalString(formData.get("home_port")),
+    description: asOptionalString(formData.get("description")),
+  };
+
+  const { error } = await db.from("boats").update(payload).eq("id", boatId);
+  throwIfError(error);
+  refreshBoatRoutes(boatId);
+}
+
+export async function uploadBoatProfileImage(formData: FormData) {
+  const boatId = formData.get("boat_id")?.toString() ?? "";
+  const { supabase, db } = await requireBoatEditor(boatId);
+  const file = formData.get("image");
+
+  if (!(file instanceof File) || file.size === 0) {
+    return;
+  }
+
+  const { data: boat } = await db
+    .from("boats")
+    .select("image_path")
+    .eq("id", boatId)
+    .single();
+
+  const extension = getBoatImageExtension(file);
+  const nextPath = `${boatId}/cover-${Date.now()}.${extension}`;
+
+  const { error: uploadError } = await supabase.storage.from("boat-images").upload(nextPath, file, {
+    cacheControl: "3600",
+    upsert: false,
+    contentType: file.type || undefined,
+  });
+  throwIfError(uploadError);
+
+  const { error: updateError } = await db
+    .from("boats")
+    .update({ image_path: nextPath })
+    .eq("id", boatId);
+  throwIfError(updateError);
+
+  if (boat?.image_path) {
+    const { error: removeError } = await supabase.storage.from("boat-images").remove([boat.image_path]);
+    throwIfError(removeError);
+  }
+
+  refreshBoatRoutes(boatId);
+}
+
+export async function removeBoatProfileImage(formData: FormData) {
+  const boatId = formData.get("boat_id")?.toString() ?? "";
+  const { supabase, db } = await requireBoatEditor(boatId);
+
+  const { data: boat } = await db
+    .from("boats")
+    .select("image_path")
+    .eq("id", boatId)
+    .single();
+
+  if (boat?.image_path) {
+    const { error } = await supabase.storage.from("boat-images").remove([boat.image_path]);
+    throwIfError(error);
+  }
+
+  const { error } = await db.from("boats").update({ image_path: null }).eq("id", boatId);
+  throwIfError(error);
+  refreshBoatRoutes(boatId);
 }

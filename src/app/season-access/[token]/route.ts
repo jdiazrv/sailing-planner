@@ -36,7 +36,7 @@ export async function GET(
 
   if (
     link.revoked_at ||
-    new Date(link.expires_at) <= new Date() ||
+    Date.parse(link.expires_at) <= Date.now() ||
     (link.single_use && link.redeemed_at)
   ) {
     return NextResponse.redirect(getSeasonAccessErrorUrl("expired").toString());

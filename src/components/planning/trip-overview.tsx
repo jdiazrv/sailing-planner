@@ -29,7 +29,7 @@ export function TripOverview({
   return (
     <>
       <section className="workspace-grid workspace-grid--single">
-        <div className="workspace-main">
+        <div className="workspace-main" data-tour="boat-timeline">
           <Timeline
             onTripSegmentSelect={(segment) => setSelectedEntityId(segment.id)}
             onVisitSelect={(visit) => setSelectedEntityId(visit.id)}
@@ -69,10 +69,16 @@ export function TripOverview({
       </div>
 
       <section className="workspace-grid workspace-grid--trip workspace-grid--mobile-panels">
-        <div className={`workspace-main workspace-panel${mobilePanel === "segments" ? " is-active" : ""}`}>
+        <div
+          className={`workspace-main workspace-panel${mobilePanel === "segments" ? " is-active" : ""}`}
+          data-tour="boat-detail"
+        >
           {children}
         </div>
-        <aside className={`stack workspace-panel${mobilePanel === "map" ? " is-active" : ""}`}>
+        <aside
+          className={`stack workspace-panel${mobilePanel === "map" ? " is-active" : ""}`}
+          data-tour="boat-map"
+        >
           <MapPanel
             selectedEntityId={selectedEntityId}
             tall

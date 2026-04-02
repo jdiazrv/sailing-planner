@@ -17,7 +17,7 @@ export const BoatNav = async ({
   const locale = await getRequestLocale();
 
   return (
-    <nav className="section-nav">
+    <nav className="section-nav" data-tour="boat-nav">
       <Link
         className={active === "trip" ? "is-active" : undefined}
         href={`${basePath}/${boatId}/trip`}

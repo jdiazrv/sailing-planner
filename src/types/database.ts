@@ -77,6 +77,7 @@ export interface Database {
           display_name: string | null;
           email: string | null;
           is_superuser: boolean;
+          onboarding_pending: boolean;
           is_guest_user: boolean;
           is_timeline_public: boolean;
           created_by_user_id: string | null;
@@ -91,6 +92,7 @@ export interface Database {
           display_name?: string | null;
           email?: string | null;
           is_superuser?: boolean;
+          onboarding_pending?: boolean;
           is_guest_user?: boolean;
           is_timeline_public?: boolean;
           created_by_user_id?: string | null;

@@ -3,9 +3,15 @@ import Link from "next/link";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { BoatSelector } from "@/components/boats/boat-selector";
 import { LastBoatTracker } from "@/components/boats/last-boat-tracker";
+import { BoatSettingsDialog } from "@/components/boats/boat-settings-dialog";
 import { getBoatWorkspace } from "@/lib/boat-data";
 import { getPermissionLabelForLocale, t } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n-server";
+import {
+  removeBoatProfileImage,
+  saveBoatProfile,
+  uploadBoatProfileImage,
+} from "./actions";
 
 export default async function BoatLayout({
   children,
@@ -18,6 +24,7 @@ export default async function BoatLayout({
   const locale = await getRequestLocale();
   const workspace = await getBoatWorkspace(boatId);
   const isSuperuser = workspace.viewer.isSuperuser;
+  const canEditBoat = isSuperuser || Boolean(workspace.permission?.can_edit);
   const canManageUsers =
     isSuperuser || Boolean(workspace.permission?.can_manage_boat_users);
 
@@ -44,6 +51,14 @@ export default async function BoatLayout({
               isSuperuser,
             )}
           </span>
+          {canEditBoat ? (
+            <BoatSettingsDialog
+              boat={workspace.boat}
+              onRemoveImage={removeBoatProfileImage}
+              onSave={saveBoatProfile}
+              onUploadImage={uploadBoatProfileImage}
+            />
+          ) : null}
           {isSuperuser && (
             <Link className="secondary-button" href="/admin/boats">
               {t(locale, "boatLayout.editBoats")}

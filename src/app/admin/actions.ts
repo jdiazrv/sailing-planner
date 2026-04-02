@@ -21,6 +21,28 @@ const asOptionalString = (value: FormDataEntryValue | null) => {
   return normalized ? normalized : null;
 };
 
+const parseOptionalYear = (value: FormDataEntryValue | null) => {
+  const normalized = asOptionalString(value);
+  if (!normalized) {
+    return null;
+  }
+
+  const parsed = Number(normalized);
+  if (!Number.isInteger(parsed) || parsed < 1800 || parsed > 3000) {
+    throw new Error("Year built must be a valid year.");
+  }
+
+  return parsed;
+};
+
+const getBoatImageExtension = (file: File) => {
+  if (file.type === "image/png") return "png";
+  if (file.type === "image/webp") return "webp";
+  if (file.type === "image/gif") return "gif";
+  if (file.type === "image/svg+xml") return "svg";
+  return "jpg";
+};
+
 const toBoolean = (value: FormDataEntryValue | null) => value?.toString() === "on";
 const throwIfError = (error: { message?: string } | null) => {
   if (error) {
@@ -76,14 +98,17 @@ export async function saveBoat(formData: FormData) {
   const { supabase } = await requireSuperuser();
   const db = supabase as any;
   const boatId = asOptionalString(formData.get("boat_id"));
+  const name = formData.get("name")?.toString().trim() ?? "";
+
+  if (!name) {
+    throw new Error("Boat name is required.");
+  }
 
   const payload = {
-    name: formData.get("name")?.toString().trim() ?? "",
+    name,
     description: asOptionalString(formData.get("description")),
     model: asOptionalString(formData.get("model")),
-    year_built: asOptionalString(formData.get("year_built"))
-      ? Number(formData.get("year_built"))
-      : null,
+    year_built: parseOptionalYear(formData.get("year_built")),
     home_port: asOptionalString(formData.get("home_port")),
     notes: asOptionalString(formData.get("notes")),
     is_active: toBoolean(formData.get("is_active")),
@@ -148,9 +173,7 @@ export async function uploadBoatImage(formData: FormData) {
     .eq("id", boatId)
     .single();
 
-  const extension = file.name.includes(".")
-    ? file.name.split(".").pop()?.toLowerCase() ?? "jpg"
-    : "jpg";
+  const extension = getBoatImageExtension(file);
   const nextPath = `${boatId}/cover-${Date.now()}.${extension}`;
 
   const { error: uploadError } = await supabase.storage.from("boat-images").upload(nextPath, file, {
@@ -201,21 +224,25 @@ export async function saveUserProfile(formData: FormData) {
   const userId = formData.get("user_id")?.toString() ?? "";
   const isSuperuser = toBoolean(formData.get("is_superuser"));
   const isTimelinePublic = toBoolean(formData.get("is_timeline_public"));
+  const onboardingPending = toBoolean(formData.get("onboarding_pending"));
 
   if (!viewer.isSuperuser && isSuperuser) {
     throw new Error("Only a superuser can grant superuser access.");
   }
 
+  const profilePayload = {
+    display_name: asOptionalString(formData.get("display_name")),
+    is_superuser: viewer.isSuperuser ? isSuperuser : false,
+    is_timeline_public: isTimelinePublic,
+    preferred_language:
+      (formData.get("preferred_language")?.toString() as PreferredLanguage) ??
+      "es",
+    ...(viewer.isSuperuser ? { onboarding_pending: onboardingPending } : {}),
+  };
+
   const { error } = await db
     .from("profiles")
-    .update({
-      display_name: asOptionalString(formData.get("display_name")),
-      is_superuser: viewer.isSuperuser ? isSuperuser : false,
-      is_timeline_public: isTimelinePublic,
-      preferred_language:
-        (formData.get("preferred_language")?.toString() as PreferredLanguage) ??
-        "es",
-    })
+    .update(profilePayload)
     .eq("id", userId);
   throwIfError(error);
 
@@ -359,6 +386,7 @@ export async function createUserAccount(formData: FormData) {
       .from("profiles")
       .update({
         preferred_language: preferredLanguage,
+        onboarding_pending: true,
         is_guest_user: isGuestUser,
         created_by_user_id: user.id,
       })
@@ -432,6 +460,7 @@ export async function inviteUserAccount(formData: FormData) {
       .update({
         display_name: displayName,
         preferred_language: preferredLanguage,
+        onboarding_pending: true,
         is_guest_user: isGuestUser,
         created_by_user_id: user.id,
       })
@@ -632,10 +661,9 @@ export async function revokeSeasonAccessLink(formData: FormData) {
 
   const { error } = await db
     .from("season_access_links")
-    .update({ revoked_at: new Date().toISOString() })
+    .delete()
     .eq("id", linkId)
-    .eq("boat_id", boatId)
-    .is("revoked_at", null);
+    .eq("boat_id", boatId);
   throwIfError(error);
 
   refreshAdminRoutes(boatId);
