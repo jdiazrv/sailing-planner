@@ -51,8 +51,17 @@ export const getSeasonAccessExpiry = (
   return baseDate.toISOString();
 };
 
+const safeBuildAppUrl = (path: string) => {
+  try {
+    return buildAuthRedirectUrl(path);
+  } catch {
+    // Fallback to relative URL if NEXT_PUBLIC_APP_URL is invalid in runtime env.
+    return path;
+  }
+};
+
 export const buildSeasonAccessUrl = (token: string) =>
-  buildAuthRedirectUrl(`/season-access/${token}`);
+  safeBuildAppUrl(`/season-access/${token}`);
 
 export const serializeSeasonAccessCookie = (
   payload: SeasonAccessCookiePayload,
@@ -112,7 +121,12 @@ export const getSeasonAccessCookieOptions = (expiresAt: string | Date) => ({
 });
 
 export const getSeasonAccessErrorUrl = (reason: string) => {
-  const url = new URL("/season-access/error", getEnv().NEXT_PUBLIC_APP_URL);
+  let url: URL;
+  try {
+    url = new URL("/season-access/error", getEnv().NEXT_PUBLIC_APP_URL);
+  } catch {
+    url = new URL("/season-access/error", "http://localhost:3000");
+  }
   url.searchParams.set("reason", reason);
   return url;
 };

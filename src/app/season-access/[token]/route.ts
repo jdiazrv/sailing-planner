@@ -10,7 +10,7 @@ import {
 } from "@/lib/season-access";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ token: string }> },
 ) {
   const { token } = await params;
@@ -52,10 +52,18 @@ export async function GET(
   const cookieValue = serializeSeasonAccessCookie(payload);
   const cookieOptions = getSeasonAccessCookieOptions(link.expires_at as string);
 
-  const destination = new URL(
-    `/guest/${link.boat_id}/${link.season_id}`,
-    process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-  );
+  let destination: URL;
+  try {
+    destination = new URL(
+      `/guest/${link.boat_id}/${link.season_id}`,
+      process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin,
+    );
+  } catch {
+    destination = new URL(
+      `/guest/${link.boat_id}/${link.season_id}`,
+      request.nextUrl.origin,
+    );
+  }
 
   const response = NextResponse.redirect(destination.toString());
   response.cookies.set(SEASON_ACCESS_COOKIE_NAME, cookieValue, cookieOptions);
