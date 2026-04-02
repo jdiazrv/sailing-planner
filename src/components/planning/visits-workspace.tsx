@@ -105,7 +105,7 @@ export function VisitsWorkspace({
       <section
         className={`workspace-grid workspace-grid--single workspace-panel workspace-panel--filters${mobilePanel === "visits" ? " is-active" : ""}`}
       >
-        <article className="dashboard-card workspace-main">
+        <article className="dashboard-card workspace-main" data-tour="boat-visits-card">
           <div className="card-header">
             <div>
               <p className="eyebrow">{t("planning.visitsList")}</p>

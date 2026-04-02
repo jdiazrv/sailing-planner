@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { recordCurrentUserAccess } from "@/app/actions";
@@ -103,9 +104,17 @@ export const AuthForm = ({
     <form className={["auth-card", className].filter(Boolean).join(" ")} onSubmit={handleSubmit}>
       {showHeader ? (
         <div className="auth-card__header">
-          <p className="eyebrow">Sailing Planner</p>
-          <h1>{t("auth.title")}</h1>
-          <p className="muted">{t("auth.subtitle")}</p>
+          <Image
+            alt="Sailing Planner"
+            height={48}
+            priority
+            src="/sailing-planner-logo.svg"
+            width={48}
+          />
+          <div>
+            <h1>{t("auth.title")}</h1>
+            <p className="muted">{t("auth.subtitle")}</p>
+          </div>
         </div>
       ) : null}
 

@@ -82,6 +82,16 @@ export function GuestOnboardingTour({
           body:
             "El mapa ayuda a ubicar visualmente el recorrido y los puntos importantes de la temporada.",
         },
+        ...(isVisitsView
+          ? [
+              {
+                target: '[data-tour="boat-visits-card"]',
+                title: "Visitas",
+                body:
+                  "Aqui tienes la card de visitas, equivalente a la de tramos: sirve para revisar de un vistazo los invitados previstos, sus fechas, lugares y estado dentro de la temporada.",
+              },
+            ]
+          : []),
       ] satisfies TourStep[],
     [canViewVisits, isVisitsView, variant],
   );

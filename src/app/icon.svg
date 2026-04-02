@@ -1,0 +1,30 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="s" x1="17" y1="5" x2="27" y2="24" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#48cae4"/>
+      <stop offset="1" stop-color="#00b4d8"/>
+    </linearGradient>
+    <linearGradient id="h" x1="9" y1="23" x2="23" y2="26" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#d99152"/>
+      <stop offset="1" stop-color="#f0bf80"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="32" height="32" rx="7" fill="#0e1520"/>
+
+  <!-- Jib sail -->
+  <path d="M17 11 L17 24 L10 24 Z" fill="#ffffff" fill-opacity="0.07"/>
+
+  <!-- Main sail -->
+  <path d="M17 5 L17 24 L27 24 Z" fill="url(#s)"/>
+
+  <!-- Mast -->
+  <line x1="17" y1="4" x2="17" y2="25" stroke="#d6dde6" stroke-width="1.4" stroke-linecap="round" stroke-opacity="0.4"/>
+
+  <!-- Hull -->
+  <path d="M9 23 Q13 26 17 26 Q21 26 23 23" stroke="url(#h)" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+
+  <!-- Water -->
+  <path d="M6 28.5 Q11.5 30 17 30 Q22.5 30 26 28.5" stroke="#00b4d8" stroke-width="1.4" stroke-linecap="round" fill="none" opacity="0.55"/>
+</svg>

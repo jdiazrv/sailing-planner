@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -41,7 +42,14 @@ export default async function DashboardPage({
     <main className="shell">
       <header className="dashboard-header">
         <div>
-          <p className="eyebrow">Sailing Planner</p>
+          <Image
+            alt="Sailing Planner"
+            className="app-logo"
+            height={28}
+            priority
+            src="/sailing-planner-logo.svg"
+            width={28}
+          />
           <h1>{viewer.isSuperuser ? t(locale, "dashboard.titleAll") : t(locale, "dashboard.titleOwn")}</h1>
           <p className="meta">{releaseLabel}</p>
           {viewer.isSuperuser && (

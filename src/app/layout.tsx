@@ -11,6 +11,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Sailing Planner",
   description: "Multi-boat planning platform powered by Next.js and Supabase.",
+  icons: { icon: "/icon.svg", shortcut: "/icon.svg" },
 };
 
 export default async function RootLayout({

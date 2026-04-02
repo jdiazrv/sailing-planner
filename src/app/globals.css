@@ -542,8 +542,24 @@ textarea {
 .inline-actions,
 .auth-card__header {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.auth-card__header > div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.auth-card__header h1 {
+  font-size: clamp(1.1rem, 3vw, 1.35rem);
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.app-logo {
+  border-radius: 8px;
+  flex-shrink: 0;
 }
 
 .hero__actions {

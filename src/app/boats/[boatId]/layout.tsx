@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { LogoutButton } from "@/components/auth/logout-button";
@@ -34,8 +35,13 @@ export default async function BoatLayout({
       <header className="workspace-header">
         <div className="workspace-header__title">
           <div className="workspace-header__eyebrow">
-            <span className="workspace-header__eyebrow-mark" aria-hidden="true" />
-            <p className="eyebrow">{t(locale, "boatLayout.eyebrow")}</p>
+            <Image
+              alt="Sailing Planner"
+              className="app-logo"
+              height={24}
+              src="/sailing-planner-logo.svg"
+              width={24}
+            />
           </div>
           <h1>{workspace.boat.name}</h1>
           <p className="muted">
