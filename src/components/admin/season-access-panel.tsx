@@ -12,7 +12,9 @@ type Props = {
   seasonId: string;
   activeLink: SeasonAccessLinkSummary | null;
   latestLink: SeasonAccessLinkSummary | null;
-  onGenerate: (fd: FormData) => Promise<{ id: string; expiresAt: string; url: string }>;
+  onGenerate: (
+    fd: FormData,
+  ) => Promise<{ id: string; expiresAt: string; url: string } | { error: string }>;
   onRevoke: (fd: FormData) => Promise<void>;
 };
 
@@ -118,6 +120,10 @@ export function SeasonAccessPanel({
     startTransition(async () => {
       try {
         const result = await onGenerate(formData);
+        if ("error" in result) {
+          toast.error(result.error);
+          return;
+        }
         setGeneratedUrl(result.url);
         toast.success(activeLink ? text.invalidated : text.generated);
         router.refresh();

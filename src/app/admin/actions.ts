@@ -528,73 +528,82 @@ export async function deleteUserAccount(formData: FormData) {
 }
 
 export async function generateSeasonAccessLink(formData: FormData) {
-  const { supabase, user, manageableBoatIds } = await requireUserAdminAccess();
-  const db = supabase as any;
-  const boatId = formData.get("boat_id")?.toString() ?? "";
-  const seasonId = formData.get("season_id")?.toString() ?? "";
-  const canViewVisits = formData.get("can_view_visits")?.toString() !== "off";
-  const window =
-    (formData.get("access_window")?.toString() as SeasonAccessWindow) ?? "season_end";
+  try {
+    const { supabase, user, manageableBoatIds } = await requireUserAdminAccess();
+    const db = supabase as any;
+    const boatId = formData.get("boat_id")?.toString() ?? "";
+    const seasonId = formData.get("season_id")?.toString() ?? "";
+    const canViewVisits = formData.get("can_view_visits")?.toString() !== "off";
+    const window =
+      (formData.get("access_window")?.toString() as SeasonAccessWindow) ?? "season_end";
 
-  assertManageableBoat(manageableBoatIds, boatId);
+    assertManageableBoat(manageableBoatIds, boatId);
 
-  const { data: season, error: seasonError } = await db
-    .from("seasons")
-    .select("id, boat_id, end_date")
-    .eq("id", seasonId)
-    .eq("boat_id", boatId)
-    .single();
-  throwIfError(seasonError);
+    const { data: season, error: seasonError } = await db
+      .from("seasons")
+      .select("id, boat_id, end_date")
+      .eq("id", seasonId)
+      .eq("boat_id", boatId)
+      .single();
+    throwIfError(seasonError);
 
-  const { error: revokeExistingError } = await db
-    .from("season_access_links")
-    .update({ revoked_at: new Date().toISOString() })
-    .eq("boat_id", boatId)
-    .eq("season_id", seasonId)
-    .is("revoked_at", null);
-  throwIfError(revokeExistingError);
-
-  const token = generateSeasonAccessToken();
-  const expiresAt = getSeasonAccessExpiry(season.end_date, window);
-  const baseInsert = {
-    boat_id: boatId,
-    season_id: seasonId,
-    token_hash: hashSeasonAccessToken(token),
-    created_by_user_id: user.id,
-    expires_at: expiresAt,
-  };
-
-  let data: { id: string; expires_at: string } | null = null;
-
-  const withVisibility = await db
-    .from("season_access_links")
-    .insert({
-      ...baseInsert,
-      can_view_visits: canViewVisits,
-    })
-    .select("id, expires_at")
-    .single();
-
-  if (withVisibility.error?.message?.includes("can_view_visits")) {
-    const legacyInsert = await db
+    const { error: revokeExistingError } = await db
       .from("season_access_links")
-      .insert(baseInsert)
+      .update({ revoked_at: new Date().toISOString() })
+      .eq("boat_id", boatId)
+      .eq("season_id", seasonId)
+      .is("revoked_at", null);
+    throwIfError(revokeExistingError);
+
+    const token = generateSeasonAccessToken();
+    const expiresAt = getSeasonAccessExpiry(season.end_date, window);
+    const baseInsert = {
+      boat_id: boatId,
+      season_id: seasonId,
+      token_hash: hashSeasonAccessToken(token),
+      created_by_user_id: user.id,
+      expires_at: expiresAt,
+    };
+
+    let data: { id: string; expires_at: string } | null = null;
+
+    const withVisibility = await db
+      .from("season_access_links")
+      .insert({
+        ...baseInsert,
+        can_view_visits: canViewVisits,
+      })
       .select("id, expires_at")
       .single();
-    throwIfError(legacyInsert.error);
-    data = legacyInsert.data;
-  } else {
-    throwIfError(withVisibility.error);
-    data = withVisibility.data;
+
+    if (withVisibility.error?.message?.includes("can_view_visits")) {
+      const legacyInsert = await db
+        .from("season_access_links")
+        .insert(baseInsert)
+        .select("id, expires_at")
+        .single();
+      throwIfError(legacyInsert.error);
+      data = legacyInsert.data;
+    } else {
+      throwIfError(withVisibility.error);
+      data = withVisibility.data;
+    }
+
+    refreshAdminRoutes(boatId);
+
+    return {
+      id: data?.id ?? "",
+      expiresAt: data?.expires_at ?? expiresAt,
+      url: buildSeasonAccessUrl(token),
+    };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "No se pudo generar el enlace temporal.",
+    };
   }
-
-  refreshAdminRoutes(boatId);
-
-  return {
-    id: data?.id ?? "",
-    expiresAt: data?.expires_at ?? expiresAt,
-    url: buildSeasonAccessUrl(token),
-  };
 }
 
 export async function revokeSeasonAccessLink(formData: FormData) {
