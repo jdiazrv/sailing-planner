@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useI18n } from "@/components/i18n/provider";
 import { BoatPlaceholder } from "@/components/ui/boat-placeholder";
@@ -16,7 +16,17 @@ type BoatSelectorProps = {
 export const BoatSelector = ({ boats, activeBoatId }: BoatSelectorProps) => {
   const { locale, t } = useI18n();
   const [query, setQuery] = useState("");
-  const useCompactList = boats.length > 8;
+  const [isMobile, setIsMobile] = useState(false);
+  const useCompactList = boats.length > (isMobile ? 6 : 12);
+  const hasQuery = query.trim().length > 0;
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 680px)");
+    const update = () => setIsMobile(mediaQuery.matches);
+    update();
+    mediaQuery.addEventListener("change", update);
+    return () => mediaQuery.removeEventListener("change", update);
+  }, []);
   const formatLastAccess = (value: string | null | undefined) => {
     if (!value) {
       return locale === "es" ? "Sin acceso" : "No access";
@@ -33,7 +43,7 @@ export const BoatSelector = ({ boats, activeBoatId }: BoatSelectorProps) => {
   const filteredBoats = useMemo(
     () =>
       boats.filter((boat) =>
-        [boat.boat_name, boat.home_port, boat.description]
+        [boat.boat_name, boat.home_port, boat.description, boat.user_display_name]
           .filter(Boolean)
           .join(" ")
           .toLowerCase()
@@ -47,40 +57,41 @@ export const BoatSelector = ({ boats, activeBoatId }: BoatSelectorProps) => {
       <section className="boat-selector-list">
         <div className="form-grid">
           <label className="form-grid__wide">
-            <span>{locale === "es" ? "Buscar barco" : "Search boat"}</span>
+            <span>{t("admin.users.searchBoat")}</span>
             <input
               onChange={(event) => setQuery(event.target.value)}
-              placeholder={locale === "es" ? "Nombre o puerto base" : "Name or home port"}
+              placeholder={
+                locale === "es"
+                  ? "Nombre del barco o del usuario"
+                  : "Boat name or user name"
+              }
               value={query}
             />
           </label>
         </div>
-        <div className="data-sheet">
-          {filteredBoats.map((boat) => (
-            <Link
-              className={`data-row boat-list-row ${boat.boat_id === activeBoatId ? "is-active" : ""}`}
-              href={`/boats/${boat.boat_id}/trip`}
-              key={boat.boat_id}
-            >
-              <div className="table-stack">
-                <strong>{boat.boat_name}</strong>
-                <span className="muted">
-                  {boat.home_port
-                    ? `${t("dashboard.homePort")}: ${boat.home_port}`
-                    : t("boatSelector.homePortMissing")}
-                </span>
+        {hasQuery
+          ? filteredBoats.length ? (
+              <div className="boat-combobox__menu" role="listbox">
+                {filteredBoats.map((boat) => (
+                  <Link
+                    className={`data-row boat-list-row ${boat.boat_id === activeBoatId ? "is-active" : ""}`}
+                    href={`/boats/${boat.boat_id}/trip`}
+                    key={boat.boat_id}
+                  >
+                    <div className="table-stack">
+                      <strong>{boat.boat_name}</strong>
+                      <span className="muted">
+                        {boat.user_display_name ?? "—"} ·{" "}
+                        {boat.home_port || t("boatSelector.homePortMissing")}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
               </div>
-              <div className="table-actions">
-                <span className={`status-pill ${boat.is_active ? "is-good" : "is-muted"}`}>
-                  {boat.is_active ? t("common.active") : t("common.inactive")}
-                </span>
-                {boat.boat_id === activeBoatId ? (
-                  <span className="status-pill is-good">{t("boatSelector.currentBoat")}</span>
-                ) : null}
-              </div>
-            </Link>
-          ))}
-        </div>
+            ) : (
+              <p className="muted">{t("admin.users.noBoatMatches")}</p>
+            )
+          : null}
       </section>
     );
   }

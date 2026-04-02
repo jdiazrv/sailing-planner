@@ -39,3 +39,7 @@ enable_anonymous_sign_ins = false
 enable_signup = true
 double_confirm_changes = true
 enable_confirmations = false
+
+[auth.email.template.invite]
+subject = "Te han invitado a Sailing Planner"
+content_path = "./templates/invite.html"

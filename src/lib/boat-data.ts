@@ -304,10 +304,134 @@ export const getAdminBoats = async () => {
     query = query.in("id", manageableBoatIds);
   }
   const { data } = await query;
+  const boatRows = (data ?? []) as BoatRow[];
+  const boatIds = boatRows.map((boat) => boat.id);
 
-  return ((data ?? []) as BoatRow[]).map((boat) => ({
+  const tripSegmentsCountByBoat = new Map<string, number>();
+  const visitsCountByBoat = new Map<string, number>();
+  const activeInvitesCountByBoat = new Map<string, number>();
+  const userLastAccessByBoat = new Map<
+    string,
+    { lastAccessAt: string | null; displayName: string | null }
+  >();
+  const usersCountByBoat = new Map<string, number>();
+
+  if (boatIds.length) {
+    const [{ data: seasonsData }, { data: linksData }, { data: permissionsData }] =
+      await Promise.all([
+        db.from("seasons").select("id, boat_id").in("boat_id", boatIds),
+        db
+          .from("season_access_links")
+          .select("boat_id, revoked_at, expires_at, single_use, redeemed_at")
+          .in("boat_id", boatIds),
+        db
+          .from("user_boat_permissions")
+          .select("boat_id, user_id, created_at")
+          .in("boat_id", boatIds)
+          .order("created_at", { ascending: true }),
+      ]);
+
+    const permissionRows = (permissionsData ?? []) as Pick<
+      PermissionRow,
+      "boat_id" | "user_id" | "created_at"
+    >[];
+    const userIds = [...new Set(permissionRows.map((permission) => permission.user_id))];
+    const { data: profilesData } = userIds.length
+      ? await db
+          .from("profiles")
+          .select("id, display_name, is_superuser, last_sign_in_at")
+          .in("id", userIds)
+      : { data: [] };
+
+    const seasonRows = (seasonsData ?? []) as Pick<SeasonRow, "id" | "boat_id">[];
+    const seasonById = new Map(seasonRows.map((season) => [season.id, season.boat_id]));
+    const seasonIds = seasonRows.map((season) => season.id);
+
+    if (seasonIds.length) {
+      const [{ data: tripRows }, { data: visitRows }] = await Promise.all([
+        db.from("trip_segments").select("season_id").in("season_id", seasonIds),
+        db.from("visits").select("season_id").in("season_id", seasonIds),
+      ]);
+
+      ((tripRows ?? []) as Pick<Database["public"]["Tables"]["trip_segments"]["Row"], "season_id">[])
+        .forEach((row) => {
+          const boatId = seasonById.get(row.season_id);
+          if (!boatId) return;
+          tripSegmentsCountByBoat.set(boatId, (tripSegmentsCountByBoat.get(boatId) ?? 0) + 1);
+        });
+
+      ((visitRows ?? []) as Pick<Database["public"]["Tables"]["visits"]["Row"], "season_id">[])
+        .forEach((row) => {
+          const boatId = seasonById.get(row.season_id);
+          if (!boatId) return;
+          visitsCountByBoat.set(boatId, (visitsCountByBoat.get(boatId) ?? 0) + 1);
+        });
+    }
+
+    const now = Date.now();
+    (
+      (linksData ?? []) as Pick<
+        SeasonAccessLinkRow,
+        "boat_id" | "revoked_at" | "expires_at" | "single_use" | "redeemed_at"
+      >[]
+    ).forEach((row) => {
+      const isActive =
+        !row.revoked_at &&
+        new Date(row.expires_at).getTime() > now &&
+        !(row.single_use && row.redeemed_at);
+
+      if (!isActive) return;
+      activeInvitesCountByBoat.set(
+        row.boat_id,
+        (activeInvitesCountByBoat.get(row.boat_id) ?? 0) + 1,
+      );
+    });
+
+    const profileById = new Map(
+      (
+        (profilesData ?? []) as Pick<
+          ProfileRow,
+          "id" | "display_name" | "is_superuser" | "last_sign_in_at"
+        >[]
+      ).map((profile) => [profile.id, profile]),
+    );
+
+    const usersByBoat = new Map<string, Set<string>>();
+
+    permissionRows.forEach((permission) => {
+      const users = usersByBoat.get(permission.boat_id) ?? new Set<string>();
+      users.add(permission.user_id);
+      usersByBoat.set(permission.boat_id, users);
+
+      if (userLastAccessByBoat.has(permission.boat_id)) {
+        return;
+      }
+
+      const profile = profileById.get(permission.user_id);
+      if (!profile || profile.is_superuser) {
+        return;
+      }
+
+      userLastAccessByBoat.set(permission.boat_id, {
+        lastAccessAt: profile.last_sign_in_at ?? null,
+        displayName: profile.display_name ?? null,
+      });
+    });
+
+    usersByBoat.forEach((users, boatId) => {
+      usersCountByBoat.set(boatId, users.size);
+    });
+  }
+
+  return boatRows.map((boat) => ({
     ...boat,
     image_url: getBoatImageUrl(supabase, boat.image_path, boat.updated_at),
+    trip_segments_count: tripSegmentsCountByBoat.get(boat.id) ?? 0,
+    visits_count: visitsCountByBoat.get(boat.id) ?? 0,
+    active_invites_count: activeInvitesCountByBoat.get(boat.id) ?? 0,
+    user_last_access_at: userLastAccessByBoat.get(boat.id)?.lastAccessAt ?? null,
+    user_display_name: userLastAccessByBoat.get(boat.id)?.displayName ?? null,
+    users_count: usersCountByBoat.get(boat.id) ?? 0,
   })) as BoatDetails[];
 };
 

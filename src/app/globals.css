@@ -910,6 +910,18 @@ body:has(.auth-layout) .theme-switcher button.is-active {
   margin: 0.75rem 0 1.25rem;
 }
 
+.boat-combobox__menu {
+  display: grid;
+  gap: 0.35rem;
+  max-height: 18rem;
+  overflow-y: auto;
+  padding: 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
 .boat-list-row {
   display: flex;
   justify-content: space-between;
@@ -1791,9 +1803,38 @@ body:has(.auth-layout) .theme-switcher button.is-active {
   margin-bottom: 1rem;
 }
 
+.shared-compare-maps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.shared-compare-maps__item {
+  min-width: 0;
+}
+
 .admin-card {
   display: grid;
   gap: 1rem;
+}
+
+.admin-boat-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.admin-boat-summary span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.78rem;
 }
 
 .admin-card--section {
@@ -2634,6 +2675,10 @@ body:has(.auth-layout) .theme-switcher button.is-active {
   .boat-card p {
     margin: 0;
   }
+
+  .shared-compare-maps {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 680px) {
@@ -2723,4 +2768,3 @@ body:has(.auth-layout) .theme-switcher button.is-active {
     grid-template-columns: 1fr;
   }
 }
-

@@ -492,6 +492,7 @@ export async function inviteUserAccount(formData: FormData) {
     data: {
       ...(displayName ? { display_name: displayName } : {}),
       preferred_language: preferredLanguage,
+      inviter_email: user.email ?? "",
     },
     redirectTo: buildAuthRedirectUrl("/auth/set-password"),
   });

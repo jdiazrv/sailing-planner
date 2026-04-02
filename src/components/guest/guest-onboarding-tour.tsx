@@ -36,69 +36,117 @@ export function GuestOnboardingTour({
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<RectState>(null);
   const isVisitsView = pathname.includes("/visits") || searchParams.get("view") === "visits";
-  const visitsStepIndex = useMemo(
-    () => (canViewVisits ? (variant === "guest" ? 6 : 5) : -1),
-    [canViewVisits, variant],
-  );
+  const visitsStepIndex = useMemo(() => (canViewVisits ? 6 : -1), [canViewVisits]);
 
-  const steps = useMemo<TourStep[]>(
-    () =>
-      [
-        ...(variant === "guest"
-          ? [
-              {
-                target: '[data-tour="guest-header"]',
-                title: "Bienvenido",
-                body:
-                  "Esta vista es de solo lectura. Desde aqui puedes seguir el plan completo de la temporada sin modificar datos.",
-              },
-            ]
-          : []),
+  const steps = useMemo<TourStep[]>(() => {
+    if (variant === "member") {
+      return [
+        {
+          target: '[data-tour="boat-nav"]',
+          title: "Panel del barco",
+          body:
+            "Este panel es el espacio para gestionar la informacion de la temporada. Desde aqui puedes organizar el plan, revisar el contexto del barco y mantener al dia tramos y visitas.",
+        },
         {
           target: '[data-tour="boat-nav"]',
           title: "Tramos",
           body:
-            "Desde aqui puedes moverte por la planificacion principal del barco y volver siempre al listado de tramos.",
+            "Desde esta navegacion puedes volver a Tramos cuando quieras. Es la entrada a la vista donde crear, editar y ajustar el plan de viaje.",
         },
         {
           target: '[data-tour="boat-nav"]',
           title: "Visitas",
           body: canViewVisits
-            ? "Desde la pestana Visitas puedes abrir la vista de invitados para revisar incorporaciones, fechas, lugares de embarque y desembarque, y movimientos previstos durante la temporada."
-            : "Si este acceso incluyera Visitas, tambien podrias cambiar a esa vista desde aqui.",
+            ? "Desde la pestana Visitas accedes al area para crear, editar y revisar invitados, incorporaciones, fechas y lugares de embarque y desembarque."
+            : "Si este acceso incluyera Visitas, tambien podrias abrir esa zona desde aqui.",
         },
         {
           target: '[data-tour="boat-timeline"]',
           title: "Timeline",
           body:
-            "El timeline te da una vision rapida de toda la temporada. Si pausas el raton sobre una barra de un tramo o de una visita, apareceran mas detalles.",
+            "El timeline te da una vision general de la temporada y te ayuda a entender rapidamente como encajan tramos y visitas.",
         },
         {
-          target: '[data-tour="boat-detail"]',
-          title: isVisitsView ? "Detalle de visitas" : "Detalle",
+          target: isVisitsView
+            ? '[data-tour-detail="boat-detail"]'
+            : '[data-tour="boat-detail"]',
+          title: isVisitsView ? "Detalle de visitas" : "Detalle de tramos",
           body: isVisitsView
-            ? "En esta zona ves el detalle de las visitas: invitado, fechas, lugares y estado. Si vuelves a Tramos, este panel cambia para mostrar el plan de navegacion."
-            : "Aqui ves el detalle estructurado de los tramos. Cuando cambies a Visitas, este mismo panel te mostrara las incorporaciones previstas, con fechas, lugares y estado.",
+            ? "En esta zona gestionas el detalle de las visitas. Aqui puedes revisar la informacion de cada invitado y crear, modificar o ajustar fechas, lugares y estado."
+            : "Aqui gestionas el detalle de los tramos. Es la zona para crear nuevos, editar el plan existente y ajustar fechas, estados y ubicaciones.",
         },
         {
           target: '[data-tour="boat-map"]',
           title: "Mapa",
           body:
-            "El mapa ayuda a ubicar visualmente el recorrido y los puntos importantes de la temporada.",
+            "El mapa te ayuda a situar visualmente el recorrido y los puntos clave de la temporada mientras gestionas el plan.",
         },
         ...(canViewVisits
           ? [
               {
                 target: '[data-tour="boat-visits-card"]',
-                title: "Visitas",
+                title: "Card de visitas",
                 body:
-                  "Aqui tienes la card de visitas, equivalente a la de tramos: sirve para revisar de un vistazo los invitados previstos, sus fechas, lugares y estado dentro de la temporada.",
+                  "Esta card es el equivalente de gestion para las visitas: aqui puedes crear nuevas, modificar las existentes y mantener claro quien viene, cuando y desde donde.",
               },
             ]
           : []),
-      ] satisfies TourStep[],
-    [canViewVisits, variant],
-  );
+      ];
+    }
+
+    return [
+      {
+        target: '[data-tour="guest-header"]',
+        title: "Bienvenido",
+        body:
+          "Esta vista es de solo lectura. Desde aqui puedes seguir el plan completo de la temporada sin modificar ningun dato.",
+      },
+      {
+        target: '[data-tour="boat-nav"]',
+        title: "Tramos",
+        body:
+          "Desde aqui puedes moverte por la planificacion del barco y volver a la vista de tramos. Todo lo que ves en este recorrido es de consulta.",
+      },
+      {
+        target: '[data-tour="boat-nav"]',
+        title: "Visitas",
+        body: canViewVisits
+          ? "Desde la pestana Visitas puedes abrir la vista donde consultar invitados previstos, fechas, lugares de embarque y desembarque y movimientos de la temporada."
+          : "Este acceso no incluye la vista de Visitas. Si la incluyera, podrias abrirla desde aqui en modo de solo lectura.",
+      },
+      {
+        target: '[data-tour="boat-timeline"]',
+        title: "Timeline",
+        body:
+          "El timeline te permite ver de un vistazo el plan de la temporada. Si pausas el raton sobre una barra, apareceran detalles adicionales, siempre en modo consulta.",
+      },
+      {
+        target: isVisitsView
+          ? '[data-tour-detail="boat-detail"]'
+          : '[data-tour="boat-detail"]',
+        title: isVisitsView ? "Detalle de visitas" : "Detalle de tramos",
+        body: isVisitsView
+          ? "En esta zona puedes ver el detalle de las visitas: invitado, fechas, lugares y estado. Es una vista informativa, sin opciones de edicion."
+          : "Aqui puedes ver el detalle estructurado de los tramos del viaje. Es una vista de consulta para entender mejor el plan, sin modificarlo.",
+      },
+      {
+        target: '[data-tour="boat-map"]',
+        title: "Mapa",
+        body:
+          "El mapa te ayuda a ubicar visualmente el recorrido y los puntos importantes de la temporada, siempre en modo de solo lectura.",
+      },
+      ...(canViewVisits
+        ? [
+            {
+              target: '[data-tour="boat-visits-card"]',
+              title: "Card de visitas",
+              body:
+                "Aqui puedes consultar de un vistazo las visitas previstas, con sus fechas, lugares y estado, sin posibilidad de editar.",
+            },
+          ]
+        : []),
+    ];
+  }, [canViewVisits, isVisitsView, variant]);
 
   useEffect(() => {
     if (!isOpen || !canViewVisits || stepIndex !== visitsStepIndex) {

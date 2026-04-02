@@ -1,10 +1,11 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 
 import { LogoutButton } from "@/components/auth/logout-button";
-import { MapPanel } from "@/components/planning/map-panel";
-import { Timeline } from "@/components/planning/timeline";
+import { SharedBoatPicker } from "@/components/shared/shared-boat-picker";
+import { SharedTimelineCompare } from "@/components/shared/shared-timeline-compare";
 import { TimelineVisibilityPanel } from "@/components/shared/timeline-visibility-panel";
-import { getSharedTimelineWorkspace } from "@/lib/boat-data";
+import { getAccessibleBoats, getBoatWorkspace, getSharedTimelineWorkspace } from "@/lib/boat-data";
 import { t } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n-server";
 
@@ -17,90 +18,85 @@ export default async function SharedPage({
   const { boat, season } = await searchParams;
   try {
     const workspace = await getSharedTimelineWorkspace(boat, season);
-  const selected = workspace.selectedBoat;
-
-  return (
-    <main className="shell">
-      <header className="workspace-header">
-        <div>
-          <p className="eyebrow">{t(locale, "dashboard.sharedTimelines")}</p>
-          <h1>{t(locale, "shared.title")}</h1>
-          <p className="muted">{t(locale, "shared.subtitle")}</p>
-        </div>
-        <div className="workspace-header__actions">
-          <Link className="secondary-button" href="/dashboard?change=1">
-            {t(locale, "common.dashboard")}
-          </Link>
-          <LogoutButton />
-        </div>
-      </header>
-
-      {!workspace.viewer.isSuperuser && !workspace.viewer.profile?.is_timeline_public ? (
-        <TimelineVisibilityPanel isPublic={false} />
-      ) : workspace.boats.length === 0 ? (
-        <article className="dashboard-card">
-          <p className="eyebrow">{t(locale, "shared.emptyTitle")}</p>
-          <p className="muted">{t(locale, "shared.emptyBody")}</p>
-        </article>
-      ) : (
-        <>
-          <div className="shared-boat-grid">
-            {workspace.boats.map((entry) => (
-              <Link
-                className={`boat-card ${entry.boat.id === workspace.selectedBoatId ? "is-active" : ""}`}
-                href={
-                  entry.season
-                    ? `/shared?boat=${entry.boat.id}&season=${entry.season.id}`
-                    : `/shared?boat=${entry.boat.id}`
-                }
-                key={entry.boat.id}
-              >
-                <div className="boat-card__header">
-                  <p className="eyebrow">{t(locale, "shared.boat")}</p>
-                  <span className="status-pill is-good">{t(locale, "shared.open")}</span>
-                </div>
-                <h3>{entry.boat.name}</h3>
-                <p className="muted">
-                  {entry.season?.name ?? t(locale, "planning.noSeasonSelected")}
-                </p>
-                <p className="meta">
-                  {t(locale, "shared.owner")}: {entry.ownerDisplayName ?? "—"}
-                </p>
-              </Link>
-            ))}
+    const selected = workspace.selectedBoat;
+    const availableBoats = await getAccessibleBoats();
+    const cookieStore = await cookies();
+    const lastBoatId = cookieStore.get("lastBoatId")?.value ?? null;
+    const ownBoatId =
+      (lastBoatId && availableBoats.some((entry) => entry.boat_id === lastBoatId)
+        ? lastBoatId
+        : availableBoats[0]?.boat_id) ?? null;
+    const ownWorkspace = ownBoatId ? await getBoatWorkspace(ownBoatId) : null;
+    const isSameBoatAsOwn = Boolean(
+      ownWorkspace?.boat.id && selected?.boat.id && ownWorkspace.boat.id === selected.boat.id,
+    );
+    return (
+      <main className="shell">
+        <header className="workspace-header">
+          <div>
+            <p className="eyebrow">{t(locale, "shared.eyebrow")}</p>
+            <h1>{t(locale, "shared.title")}</h1>
+            <p className="muted">{t(locale, "shared.subtitle")}</p>
           </div>
+          <div className="workspace-header__actions">
+            <Link className="secondary-button" href="/dashboard?change=1">
+              {t(locale, "common.dashboard")}
+            </Link>
+            <LogoutButton />
+          </div>
+        </header>
 
-          {selected && selected.season ? (
-            <>
-              <section className="workspace-grid workspace-grid--single">
-                <Timeline
-                  season={selected.season}
-                  showAvailability={false}
-                  showVisits={false}
-                  subtitle=""
-                  title={t(locale, "shared.title")}
-                  tripSegments={selected.tripSegments}
-                  visits={[]}
-                />
-              </section>
-              <section className="workspace-grid workspace-grid--single">
-                <MapPanel
-                  tall
-                  title={selected.boat.name}
-                  tripSegments={selected.tripSegments}
-                  visits={[]}
-                />
-              </section>
-            </>
-          ) : (
-            <article className="dashboard-card">
-              <p className="muted">{t(locale, "planning.noSeasonSelected")}</p>
-            </article>
-          )}
-        </>
-      )}
-    </main>
-  );
+        {!workspace.viewer.isSuperuser && !workspace.viewer.profile?.is_timeline_public ? (
+          <TimelineVisibilityPanel isPublic={false} />
+        ) : workspace.boats.length === 0 ? (
+          <article className="dashboard-card">
+            <p className="eyebrow">{t(locale, "shared.emptyTitle")}</p>
+            <p className="muted">{t(locale, "shared.emptyBody")}</p>
+          </article>
+        ) : (
+          <>
+            <SharedBoatPicker
+              entries={workspace.boats.map((entry) => ({
+                boatId: entry.boat.id,
+                boatName: entry.boat.name,
+                homePort: entry.boat.home_port ?? null,
+                seasonId: entry.season?.id ?? null,
+                seasonName: entry.season?.name ?? null,
+                ownerDisplayName: entry.ownerDisplayName ?? null,
+                isActive: entry.boat.id === workspace.selectedBoatId,
+              }))}
+              selectedBoatId={workspace.selectedBoatId}
+            />
+
+            {selected && selected.season ? (
+              <SharedTimelineCompare
+                ownEntry={
+                  ownWorkspace?.boat && ownWorkspace.selectedSeason && !isSameBoatAsOwn
+                    ? {
+                        boat: ownWorkspace.boat,
+                        season: ownWorkspace.selectedSeason,
+                        tripSegments: ownWorkspace.tripSegments,
+                        label: ownWorkspace.boat.name,
+                      }
+                    : null
+                }
+                selectedEntry={{
+                  boat: selected.boat,
+                  season: selected.season,
+                  tripSegments: selected.tripSegments,
+                  ownerDisplayName: selected.ownerDisplayName,
+                  label: selected.boat.name,
+                }}
+              />
+            ) : (
+              <article className="dashboard-card">
+                <p className="muted">{t(locale, "planning.noSeasonSelected")}</p>
+              </article>
+            )}
+          </>
+        )}
+      </main>
+    );
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Shared timelines unavailable.";
@@ -109,7 +105,7 @@ export default async function SharedPage({
       <main className="shell">
         <header className="workspace-header">
           <div>
-            <p className="eyebrow">{t(locale, "dashboard.sharedTimelines")}</p>
+            <p className="eyebrow">{t(locale, "shared.eyebrow")}</p>
             <h1>{t(locale, "shared.title")}</h1>
           </div>
           <div className="workspace-header__actions">

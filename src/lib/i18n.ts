@@ -330,11 +330,14 @@ const dictionary = {
     "admin.users.searchBoat": "Buscar barco",
     "admin.users.noBoatMatches": "Ningún barco coincide con la búsqueda.",
     "shared.title": "Timelines compartidos",
+    "shared.eyebrow": "Comparativa entre barcos",
     "shared.subtitle":
-      "Ve los viajes y el mapa de otros barcos que también comparten su timeline.",
+      "Elige un barco y compara ambos planes de viaje en paralelo.",
     "shared.enableTitle": "Activa tu timeline público",
     "shared.enableBody":
       "Para ver timelines de otros barcos, primero tienes que hacer público el tuyo. No se comparten visitas ni disponibilidad.",
+    "shared.enableBodySuperuser":
+      "Como superusuario puedes ver cualquier timeline aunque tu barco no esté visible. Este ajuste solo controla si otros usuarios podrán ver el tuyo cuando aplique la visibilidad entre barcos.",
     "shared.emptyTitle": "No hay timelines compartidos",
     "shared.emptyBody":
       "Todavía no hay otros barcos compartiendo su timeline de forma recíproca.",
@@ -342,10 +345,13 @@ const dictionary = {
     "shared.boat": "Barco",
     "shared.season": "Temporada",
     "shared.owner": "Publicado por",
+    "shared.yourBoat": "Tu barco",
     "shared.publicOn": "Timeline público activo",
     "shared.publicOff": "Timeline privado",
     "shared.toggleOn": "Hacer público",
     "shared.toggleOff": "Ocultar timeline",
+    "shared.showMap": "Mostrar mapa",
+    "shared.hideMap": "Ocultar mapa",
     "shared.visibilitySaved": "Preferencia de timeline actualizada",
   },
   en: {
@@ -667,11 +673,14 @@ const dictionary = {
     "admin.users.searchBoat": "Search boat",
     "admin.users.noBoatMatches": "No boats match the search.",
     "shared.title": "Shared timelines",
+    "shared.eyebrow": "Cross-boat comparison",
     "shared.subtitle":
-      "See trip timelines and map context from other boats that also share theirs.",
+      "Pick a boat and compare both trip plans side by side.",
     "shared.enableTitle": "Enable your public timeline",
     "shared.enableBody":
       "To view other boats, you first need to share your own timeline. Visits and derived availability stay private.",
+    "shared.enableBodySuperuser":
+      "As a superuser you can view any timeline even if your boat is not visible. This setting only controls whether other users may see yours when cross-boat visibility applies.",
     "shared.emptyTitle": "No shared timelines yet",
     "shared.emptyBody":
       "No other boats are sharing their timeline reciprocally yet.",
@@ -679,10 +688,13 @@ const dictionary = {
     "shared.boat": "Boat",
     "shared.season": "Season",
     "shared.owner": "Published by",
+    "shared.yourBoat": "Your boat",
     "shared.publicOn": "Public timeline on",
     "shared.publicOff": "Private timeline",
     "shared.toggleOn": "Make public",
     "shared.toggleOff": "Hide timeline",
+    "shared.showMap": "Show map",
+    "shared.hideMap": "Hide map",
     "shared.visibilitySaved": "Timeline preference updated",
   },
 } as const;

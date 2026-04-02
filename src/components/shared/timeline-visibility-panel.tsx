@@ -10,9 +10,11 @@ import { useI18n } from "@/components/i18n/provider";
 
 export function TimelineVisibilityPanel({
   isPublic,
+  isSuperuser = false,
   compact = false,
 }: {
   isPublic: boolean;
+  isSuperuser?: boolean;
   compact?: boolean;
 }) {
   const router = useRouter();
@@ -42,7 +44,11 @@ export function TimelineVisibilityPanel({
           {isPublic ? t("common.active") : t("common.inactive")}
         </span>
       </div>
-      {!compact ? <p className="muted">{t("shared.enableBody")}</p> : null}
+      {!compact ? (
+        <p className="muted">
+          {isSuperuser ? t("shared.enableBodySuperuser") : t("shared.enableBody")}
+        </p>
+      ) : null}
       <div className="workspace-header__actions">
         <button
           className="secondary-button"

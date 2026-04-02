@@ -29,6 +29,12 @@ export type BoatSummary = Database["public"]["Views"]["boat_access_overview"]["R
 
 export type BoatDetails = BoatRow & {
   image_url?: string | null;
+  trip_segments_count?: number;
+  visits_count?: number;
+  active_invites_count?: number;
+  user_last_access_at?: string | null;
+  user_display_name?: string | null;
+  users_count?: number;
 };
 
 export type UserAdminProfile = ProfileRow & {

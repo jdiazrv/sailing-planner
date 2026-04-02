@@ -30,6 +30,8 @@ type TimelineProps = {
   selectedEntityId?: string | null;
   showVisits?: boolean;
   showAvailability?: boolean;
+  zoom?: number;
+  onZoomChange?: (zoom: number) => void;
 };
 
 type TimelineTooltipState = {
@@ -111,15 +113,27 @@ export const Timeline = ({
   selectedEntityId,
   showVisits = true,
   showAvailability = true,
+  zoom: controlledZoom,
+  onZoomChange,
 }: TimelineProps) => {
   const { t } = useI18n();
   const [expandedVisitId, setExpandedVisitId] = useState<string | null>(null);
   const [selectedAvailabilityIndex, setSelectedAvailabilityIndex] = useState<number | null>(
     null,
   );
-  const [zoom, setZoom] = useState(1);
+  const [internalZoom, setInternalZoom] = useState(1);
   const [tooltip, setTooltip] = useState<TimelineTooltipState>(null);
   const tooltipTimeoutRef = useRef<number | null>(null);
+  const zoom = controlledZoom ?? internalZoom;
+
+  const handleZoomChange = (nextZoom: number) => {
+    if (onZoomChange) {
+      onZoomChange(nextZoom);
+      return;
+    }
+
+    setInternalZoom(nextZoom);
+  };
 
   if (!season) {
     return (
@@ -208,7 +222,7 @@ export const Timeline = ({
             <input
               max="2.4"
               min="0.8"
-              onChange={(event) => setZoom(Number(event.target.value))}
+              onChange={(event) => handleZoomChange(Number(event.target.value))}
               step="0.2"
               type="range"
               value={zoom}

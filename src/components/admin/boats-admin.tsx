@@ -21,6 +21,12 @@ type BoatEditorValue = {
   id?: string;
   image_path?: string | null;
   image_url?: string | null;
+  trip_segments_count?: number;
+  visits_count?: number;
+  active_invites_count?: number;
+  user_last_access_at?: string | null;
+  user_display_name?: string | null;
+  users_count?: number;
   name: string;
   description: string | null | "";
   model: string | null | "";
@@ -168,6 +174,12 @@ function BoatEditorCard({
           newBoat: "Nuevo barco",
           active: "Activo",
           inactive: "Inactivo",
+          users: "Usuarios",
+          invites: "Invitaciones",
+          segments: "Tramos",
+          visits: "Visitas",
+          lastAccess: "Último acceso",
+          noAccess: "Sin acceso",
           noImage: "Sin imagen",
           boatImage: "Imagen del barco",
           uploadImage: "Subir imagen",
@@ -200,6 +212,12 @@ function BoatEditorCard({
           newBoat: "New boat",
           active: "Active",
           inactive: "Inactive",
+          users: "Users",
+          invites: "Invites",
+          segments: "Segments",
+          visits: "Visits",
+          lastAccess: "Last access",
+          noAccess: "No access",
           noImage: "No image",
           boatImage: "Boat image",
           uploadImage: "Upload image",
@@ -317,6 +335,28 @@ function BoatEditorCard({
           {boat.is_active ? text.active : text.inactive}
         </span>
       </div>
+
+      {boat.id ? (
+        <div className="admin-boat-summary">
+          <span>{text.users}: {boat.users_count ?? 0}</span>
+          <span>{text.invites}: {boat.active_invites_count ?? 0}</span>
+          <span>{text.segments}: {boat.trip_segments_count ?? 0}</span>
+          <span>{text.visits}: {boat.visits_count ?? 0}</span>
+          <span>
+            {text.lastAccess}:{" "}
+            {boat.user_last_access_at
+              ? new Intl.DateTimeFormat(locale, {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }).format(new Date(boat.user_last_access_at))
+              : text.noAccess}
+          </span>
+          {boat.user_display_name ? <span>{boat.user_display_name}</span> : null}
+        </div>
+      ) : null}
 
       <div className="admin-boat-grid">
         <div className="boat-image-card">

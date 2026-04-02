@@ -86,7 +86,10 @@ export default async function DashboardPage({
       )}
 
       <section style={{ marginTop: "1rem" }}>
-        <TimelineVisibilityPanel isPublic={Boolean(viewer.profile?.is_timeline_public)} />
+        <TimelineVisibilityPanel
+          isPublic={Boolean(viewer.profile?.is_timeline_public)}
+          isSuperuser={viewer.isSuperuser}
+        />
       </section>
 
       {viewer.isSuperuser && boats.length > 0 && (

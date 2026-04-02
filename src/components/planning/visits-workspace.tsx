@@ -105,7 +105,7 @@ export function VisitsWorkspace({
       <section
         className={`workspace-grid workspace-grid--single workspace-panel workspace-panel--filters${mobilePanel === "visits" ? " is-active" : ""}`}
       >
-        <article className="dashboard-card workspace-main" data-tour="boat-visits-card">
+        <article className="dashboard-card workspace-main">
           <div className="card-header">
             <div>
               <p className="eyebrow">{t("planning.visitsList")}</p>
@@ -157,7 +157,8 @@ export function VisitsWorkspace({
       <section className="workspace-grid workspace-grid--visits workspace-grid--mobile-panels">
         <article
           className={`dashboard-card workspace-main workspace-panel${mobilePanel === "visits" ? " is-active" : ""}`}
-          data-tour="boat-detail"
+          data-tour="boat-visits-card"
+          data-tour-detail="boat-detail"
         >
           {season && seasonId ? (
             <VisitsManager

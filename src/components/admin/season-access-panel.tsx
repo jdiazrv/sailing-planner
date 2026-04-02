@@ -40,6 +40,7 @@ export function SeasonAccessPanel({
   const [generatedLink, setGeneratedLink] = useState<GeneratedLinkState>(null);
   const [canViewVisits, setCanViewVisits] = useState(true);
   const [inviteeName, setInviteeName] = useState("");
+  const [revokingLinkId, setRevokingLinkId] = useState<string | null>(null);
   const [accessWindow, setAccessWindow] = useState<
     "one_use" | "one_day" | "one_week" | "season_end" | "season_plus_7"
   >("season_end");
@@ -178,6 +179,7 @@ export function SeasonAccessPanel({
     formData.set("boat_id", boatId);
     formData.set("link_id", linkId);
 
+    setRevokingLinkId(linkId);
     startTransition(async () => {
       try {
         await onRevoke(formData);
@@ -188,6 +190,8 @@ export function SeasonAccessPanel({
         router.refresh();
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Unexpected error");
+      } finally {
+        setRevokingLinkId((current) => (current === linkId ? null : current));
       }
     });
   };
@@ -359,11 +363,11 @@ export function SeasonAccessPanel({
                     <div className="season-access-item__actions">
                       <button
                         className="secondary-button secondary-button--danger"
-                        disabled={isPending}
+                        disabled={Boolean(revokingLinkId)}
                         onClick={() => handleRevoke(link.id)}
                         type="button"
                       >
-                        {isPending ? text.revoking : text.revoke}
+                        {revokingLinkId === link.id ? text.revoking : text.revoke}
                       </button>
                     </div>
                   </div>
