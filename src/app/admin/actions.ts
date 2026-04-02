@@ -65,6 +65,15 @@ const requireProfileAdminClient = () => {
   return admin as any;
 };
 
+const getRequestOriginFromHeaders = async () => {
+  const headerStore = await headers();
+  const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "";
+  const forwardedProto = headerStore.get("x-forwarded-proto");
+  const isLocalhost = host.startsWith("localhost") || host.startsWith("127.0.0.1");
+  const proto = forwardedProto ?? (isLocalhost ? "http" : "https");
+  return host ? `${proto}://${host}` : null;
+};
+
 const assertManageableUser = async (
   db: any,
   actorUserId: string,
@@ -488,13 +497,16 @@ export async function inviteUserAccount(formData: FormData) {
     assertManageableBoat(manageableBoatIds, boatId);
   }
 
+  const requestOrigin = await getRequestOriginFromHeaders();
   const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
     data: {
       ...(displayName ? { display_name: displayName } : {}),
       preferred_language: preferredLanguage,
       inviter_email: user.email ?? "",
     },
-    redirectTo: buildAuthRedirectUrl("/auth/set-password"),
+    redirectTo: buildAuthRedirectUrl("/auth/set-password", {
+      requestOrigin: resolveAppOrigin({ requestOrigin }),
+    }),
   });
 
   if (error) {
@@ -668,12 +680,7 @@ export async function generateSeasonAccessLink(formData: FormData) {
     refreshAdminRoutes(boatId);
 
     // Build the absolute URL using the real request origin (reliable in all envs).
-    const headerStore = await headers();
-    const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "";
-    const forwardedProto = headerStore.get("x-forwarded-proto");
-    const isLocalhost = host.startsWith("localhost") || host.startsWith("127.0.0.1");
-    const proto = forwardedProto ?? (isLocalhost ? "http" : "https");
-    const requestOrigin = host ? `${proto}://${host}` : null;
+    const requestOrigin = await getRequestOriginFromHeaders();
     const url = buildSeasonAccessUrl(token, {
       requestOrigin: resolveAppOrigin({ requestOrigin }),
     });
