@@ -116,6 +116,8 @@ export function UsersAdmin({
 }: UsersAdminProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [showCreateUserForm, setShowCreateUserForm] = useState(false);
+  const [showInviteForm, setShowInviteForm] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(users[0]?.id ?? "");
   const { locale, t } = useI18n();
   const sortedUsers = [...users].sort((a, b) =>
@@ -176,14 +178,24 @@ export function UsersAdmin({
               <p className="eyebrow">{t("admin.users.newEyebrow")}</p>
               <h2>{t("admin.users.newTitle")}</h2>
             </div>
+            <button
+              className="secondary-button"
+              onClick={() => setShowCreateUserForm((value) => !value)}
+              type="button"
+            >
+              {showCreateUserForm
+                ? t("admin.users.hideForm")
+                : t("admin.users.openForm")}
+            </button>
           </div>
-          {canInviteUsers ? (
+          {showCreateUserForm ? canInviteUsers ? (
             <form
               className="editor-form"
               onSubmit={(event) => {
                 event.preventDefault();
                 inviteUser(new FormData(event.currentTarget));
                 event.currentTarget.reset();
+                setShowCreateUserForm(false);
               }}
             >
               <div className="form-grid">
@@ -221,6 +233,8 @@ export function UsersAdmin({
             </form>
           ) : (
             <p className="muted">{t("admin.users.serviceRoleMissing")}</p>
+          ) : (
+            <p className="muted">{t("admin.users.formCollapsedHelp")}</p>
           )}
         </article>
       )}
@@ -231,8 +245,17 @@ export function UsersAdmin({
             <p className="eyebrow">{t("admin.users.invitationEyebrow")}</p>
             <h2>{t("admin.users.invitationTitle")}</h2>
           </div>
+          <button
+            className="secondary-button"
+            onClick={() => setShowInviteForm((value) => !value)}
+            type="button"
+          >
+            {showInviteForm
+              ? t("admin.users.hideForm")
+              : t("admin.users.openForm")}
+          </button>
         </div>
-        {canInviteUsers ? (
+        {showInviteForm ? canInviteUsers ? (
           <InviteUserForm
             boats={boats}
             isPending={isPending}
@@ -242,6 +265,8 @@ export function UsersAdmin({
           />
         ) : (
           <p className="muted">{t("admin.users.serviceRoleMissing")}</p>
+        ) : (
+          <p className="muted">{t("admin.users.formCollapsedHelp")}</p>
         )}
       </article>
 
@@ -969,6 +994,8 @@ function PermissionEditorRow({
           save: "Guardar acceso",
           grant: "Conceder acceso",
           remove: "Quitar acceso",
+          presetHint:
+            "Cambiar el perfil aplica permisos recomendados y luego puedes ajustarlos.",
         }
       : {
           existing: "Existing access",
@@ -986,7 +1013,21 @@ function PermissionEditorRow({
           save: "Save access",
           grant: "Grant access",
           remove: "Remove access",
+          presetHint:
+            "Changing the profile applies recommended permissions and you can then fine-tune them.",
         };
+
+  const [permissions, setPermissions] = useState<InvitePermissionsState>({
+    permissionLevel:
+      (permission?.permission_level as PermissionLevel | undefined) ?? "viewer",
+    canEdit: permission?.can_edit ?? false,
+    canViewAllVisits: permission?.can_view_all_visits ?? false,
+    canViewVisitNames: permission?.can_view_visit_names ?? false,
+    canViewPrivateNotes: permission?.can_view_private_notes ?? false,
+    canViewOnlyOwnVisit: permission?.can_view_only_own_visit ?? false,
+    canManageBoatUsers: permission?.can_manage_boat_users ?? false,
+    canViewAvailability: permission?.can_view_availability ?? false,
+  });
 
   return (
     <form
@@ -998,71 +1039,134 @@ function PermissionEditorRow({
     >
       <input name="user_id" type="hidden" value={userId} />
       <input name="boat_id" type="hidden" value={boat.id} />
+      <input name="permission_level" type="hidden" value={permissions.permissionLevel} />
 
       <div className="permission-row__header">
         <div>
           <strong>{boat.name}</strong>
           <p className="muted">{permission ? text.existing : text.none}</p>
         </div>
-        <select
-          defaultValue={(permission?.permission_level ?? "viewer") as PermissionLevel}
-          name="permission_level"
-        >
-          <option value="viewer">{text.viewer}</option>
-          <option value="editor">{text.editor}</option>
-          <option value="manager">{text.manager}</option>
-        </select>
       </div>
+
+      <div className="permission-presets">
+        {([
+          ["viewer", text.viewer],
+          ["editor", text.editor],
+          ["manager", text.manager],
+        ] as const).map(([value, label]) => (
+          <button
+            className={`permission-preset${permissions.permissionLevel === value ? " is-active" : ""}`}
+            key={value}
+            onClick={() => setPermissions(getPermissionPreset(value))}
+            type="button"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <p className="muted">{text.presetHint}</p>
 
       <div className="permission-grid">
         <label className="checkbox-field">
-          <input defaultChecked={permission?.can_edit ?? false} name="can_edit" type="checkbox" />
+          <input
+            checked={permissions.canEdit}
+            name="can_edit"
+            onChange={(event) =>
+              setPermissions((current) => ({
+                ...current,
+                canEdit: event.target.checked,
+              }))
+            }
+            type="checkbox"
+          />
           <span>{text.canEdit}</span>
         </label>
         <label className="checkbox-field">
           <input
-            defaultChecked={permission?.can_view_all_visits ?? false}
+            checked={permissions.canViewAllVisits}
             name="can_view_all_visits"
+            onChange={(event) =>
+              setPermissions((current) => ({
+                ...current,
+                canViewAllVisits: event.target.checked,
+                canViewOnlyOwnVisit: event.target.checked
+                  ? false
+                  : current.canViewOnlyOwnVisit,
+              }))
+            }
             type="checkbox"
           />
           <span>{text.viewAllVisits}</span>
         </label>
         <label className="checkbox-field">
           <input
-            defaultChecked={permission?.can_view_visit_names ?? false}
+            checked={permissions.canViewVisitNames}
             name="can_view_visit_names"
+            onChange={(event) =>
+              setPermissions((current) => ({
+                ...current,
+                canViewVisitNames: event.target.checked,
+              }))
+            }
             type="checkbox"
           />
           <span>{text.viewNames}</span>
         </label>
         <label className="checkbox-field">
           <input
-            defaultChecked={permission?.can_view_private_notes ?? false}
+            checked={permissions.canViewPrivateNotes}
             name="can_view_private_notes"
+            onChange={(event) =>
+              setPermissions((current) => ({
+                ...current,
+                canViewPrivateNotes: event.target.checked,
+              }))
+            }
             type="checkbox"
           />
           <span>{text.privateNotes}</span>
         </label>
         <label className="checkbox-field">
           <input
-            defaultChecked={permission?.can_view_only_own_visit ?? false}
+            checked={permissions.canViewOnlyOwnVisit}
             name="can_view_only_own_visit"
+            onChange={(event) =>
+              setPermissions((current) => ({
+                ...current,
+                canViewOnlyOwnVisit: event.target.checked,
+                canViewAllVisits: event.target.checked
+                  ? false
+                  : current.canViewAllVisits,
+              }))
+            }
             type="checkbox"
           />
           <span>{text.ownVisits}</span>
         </label>
         <label className="checkbox-field">
           <input
-            defaultChecked={permission?.can_manage_boat_users ?? false}
+            checked={permissions.canManageBoatUsers}
             name="can_manage_boat_users"
+            onChange={(event) =>
+              setPermissions((current) => ({
+                ...current,
+                canManageBoatUsers: event.target.checked,
+              }))
+            }
             type="checkbox"
           />
           <span>{text.manageUsers}</span>
         </label>
         <label className="checkbox-field">
           <input
-            defaultChecked={permission?.can_view_availability ?? false}
+            checked={permissions.canViewAvailability}
             name="can_view_availability"
+            onChange={(event) =>
+              setPermissions((current) => ({
+                ...current,
+                canViewAvailability: event.target.checked,
+              }))
+            }
             type="checkbox"
           />
           <span>{text.availability}</span>

@@ -164,6 +164,7 @@ export interface Database {
           created_by_user_id: string;
           created_at: string;
           expires_at: string;
+          can_view_visits: boolean;
           revoked_at: string | null;
           last_access_at: string | null;
           access_count: number;
@@ -176,6 +177,7 @@ export interface Database {
           created_by_user_id: string;
           created_at?: string;
           expires_at: string;
+          can_view_visits?: boolean;
           revoked_at?: string | null;
           last_access_at?: string | null;
           access_count?: number;

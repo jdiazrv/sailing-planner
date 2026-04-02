@@ -237,6 +237,111 @@ export const getSharedTimelineWorkspace = async (
     };
   }
 
+  if (viewer.isSuperuser) {
+    const [
+      { data: boatsData, error: boatsError },
+      { data: seasonsData, error: seasonsError },
+      { data: permissionsData, error: permissionsError },
+      { data: profilesData, error: profilesError },
+    ] = await Promise.all([
+      db.from("boats").select("*").order("name"),
+      db.from("seasons").select("*").order("year", { ascending: false }),
+      db
+        .from("user_boat_permissions")
+        .select("boat_id, user_id, created_at")
+        .order("created_at", { ascending: true }),
+      db.from("profiles").select("id, display_name"),
+    ]);
+
+    if (boatsError) {
+      throw new Error(boatsError.message);
+    }
+    if (seasonsError) {
+      throw new Error(seasonsError.message);
+    }
+    if (permissionsError) {
+      throw new Error(permissionsError.message);
+    }
+    if (profilesError) {
+      throw new Error(profilesError.message);
+    }
+
+    const seasonsByBoat = new Map<string, SeasonRow[]>();
+    ((seasonsData ?? []) as SeasonRow[]).forEach((season) => {
+      const existing = seasonsByBoat.get(season.boat_id) ?? [];
+      existing.push(season);
+      seasonsByBoat.set(season.boat_id, existing);
+    });
+
+    const profileNameById = new Map(
+      ((profilesData ?? []) as Pick<ProfileRow, "id" | "display_name">[]).map((profile) => [
+        profile.id,
+        profile.display_name ?? null,
+      ]),
+    );
+
+    const firstPermissionByBoat = new Map<string, string>();
+    (
+      (permissionsData ?? []) as {
+        boat_id: string;
+        user_id: string;
+        created_at: string;
+      }[]
+    ).forEach((permission) => {
+      if (!firstPermissionByBoat.has(permission.boat_id)) {
+        firstPermissionByBoat.set(permission.boat_id, permission.user_id);
+      }
+    });
+
+    const sharedBoats = ((boatsData ?? []) as BoatRow[]).map((boat) => {
+      const seasons = seasonsByBoat.get(boat.id) ?? [];
+      const season =
+        seasons.find((entry) => entry.id === requestedSeasonId) ?? seasons[0] ?? null;
+      const ownerUserId = firstPermissionByBoat.get(boat.id) ?? null;
+
+      return {
+        boat: {
+          ...boat,
+          image_url: getBoatImageUrl(supabase, boat.image_path, boat.updated_at),
+        },
+        season,
+        ownerDisplayName: ownerUserId
+          ? profileNameById.get(ownerUserId) ?? null
+          : null,
+        tripSegments: [] as TripSegmentView[],
+      } satisfies SharedTimelineBoat;
+    });
+
+    const selectedBoat =
+      sharedBoats.find((entry) => entry.boat.id === requestedBoatId) ??
+      sharedBoats[0] ??
+      null;
+
+    if (selectedBoat?.season) {
+      const { data: tripData, error: tripError } = await db.rpc(
+        "get_season_trip_segments",
+        {
+          p_season_id: selectedBoat.season.id,
+        },
+      );
+
+      if (tripError) {
+        throw new Error(tripError.message);
+      }
+
+      selectedBoat.tripSegments = (tripData ?? []) as TripSegmentView[];
+    }
+
+    return {
+      viewer,
+      boats: sharedBoats,
+      selectedBoat,
+      selectedBoatId: selectedBoat?.boat.id ?? null,
+      seasons: selectedBoat ? seasonsByBoat.get(selectedBoat.boat.id) ?? [] : [],
+      selectedSeason: selectedBoat?.season ?? null,
+    };
+  }
+
   const { data: profilesData, error: profilesError } = await db
     .from("profiles")
     .select("id, display_name, is_timeline_public")
@@ -428,6 +533,7 @@ export const getBoatWorkspace = async (
 export const getSeasonGuestWorkspace = async (boatId: string) => {
   const session = await requireSeasonGuestSession(boatId);
   const admin = createAdminClient();
+  const canViewVisits = session.link.can_view_visits !== false;
 
   if (!admin) {
     throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for season guest access.");
@@ -444,14 +550,16 @@ export const getSeasonGuestWorkspace = async (boatId: string) => {
         .eq("season_id", session.season.id)
         .order("start_date")
         .order("end_date"),
-      db
-        .from("visits")
-        .select(
-          "id, season_id, owner_user_id, visitor_name, embark_date, disembark_date, embark_place_label, embark_latitude, embark_longitude, disembark_place_label, disembark_latitude, disembark_longitude, status, public_notes, created_at, updated_at",
-        )
-        .eq("season_id", session.season.id)
-        .order("embark_date")
-        .order("disembark_date"),
+      canViewVisits
+        ? db
+            .from("visits")
+            .select(
+              "id, season_id, owner_user_id, visitor_name, embark_date, disembark_date, embark_place_label, embark_latitude, embark_longitude, disembark_place_label, disembark_latitude, disembark_longitude, status, public_notes, created_at, updated_at",
+            )
+            .eq("season_id", session.season.id)
+            .order("embark_date")
+            .order("disembark_date")
+        : Promise.resolve({ data: [], error: null }),
     ]);
 
   if (tripError) {
@@ -478,6 +586,7 @@ export const getSeasonGuestWorkspace = async (boatId: string) => {
       profile: null,
       isSuperuser: false,
       isSeasonGuest: true,
+      seasonGuestCanViewVisits: canViewVisits,
     },
     boat: {
       ...session.boat,

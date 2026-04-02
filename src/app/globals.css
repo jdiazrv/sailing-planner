@@ -818,6 +818,14 @@ textarea {
   margin-bottom: 0.6rem;
 }
 
+.card-header__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
 .status-pill {
   display: inline-flex;
   align-items: center;

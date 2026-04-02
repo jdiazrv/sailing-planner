@@ -192,6 +192,7 @@ const dictionary = {
     "planning.mapSatellite": "Satélite",
     "planning.mapHybrid": "Híbrido",
     "planning.mapSeamarks": "Carta náutica",
+    "planning.mapRoute": "Unir puntos",
     "planning.mapSeamarksHint": "OpenSeaMap sobre el mapa base",
     "planning.tripPoint": "Punto de viaje",
     "planning.island": "Isla",
@@ -226,6 +227,10 @@ const dictionary = {
     "admin.users.displayNamePlaceholder": "Miembro de tripulación",
     "admin.users.createUser": "Crear usuario",
     "admin.users.creatingUser": "Creando...",
+    "admin.users.openForm": "Abrir formulario",
+    "admin.users.hideForm": "Ocultar formulario",
+    "admin.users.formCollapsedHelp":
+      "Formulario cerrado para reducir ruido visual. Ábrelo solo cuando necesites crear o invitar.",
     "admin.users.serviceRoleMissing":
       "Configura `SUPABASE_SERVICE_ROLE_KEY` en el entorno para habilitar la creación de usuarios desde esta pantalla.",
     "admin.users.invitationSent": "Invitación enviada",
@@ -481,6 +486,7 @@ const dictionary = {
     "planning.mapSatellite": "Satellite",
     "planning.mapHybrid": "Hybrid",
     "planning.mapSeamarks": "Sea chart",
+    "planning.mapRoute": "Connect points",
     "planning.mapSeamarksHint": "OpenSeaMap seamarks over the base map",
     "planning.tripPoint": "Trip point",
     "planning.island": "Island",
@@ -515,6 +521,10 @@ const dictionary = {
     "admin.users.displayNamePlaceholder": "Crew member",
     "admin.users.createUser": "Create user",
     "admin.users.creatingUser": "Creating...",
+    "admin.users.openForm": "Open form",
+    "admin.users.hideForm": "Hide form",
+    "admin.users.formCollapsedHelp":
+      "Form collapsed to reduce visual noise. Open it only when you need to create or invite.",
     "admin.users.serviceRoleMissing":
       "Configure `SUPABASE_SERVICE_ROLE_KEY` in the environment to enable user creation from this screen.",
     "admin.users.invitationSent": "Invitation sent",

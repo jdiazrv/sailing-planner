@@ -4,6 +4,10 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 
+import {
+  generateSeasonAccessLink as generateSeasonAccessLinkInternal,
+  revokeSeasonAccessLink as revokeSeasonAccessLinkInternal,
+} from "@/app/admin/actions";
 import { createClient } from "@/lib/supabase/server";
 import type {
   LocationType,
@@ -313,4 +317,12 @@ export async function deleteVisit(formData: FormData) {
   const { error } = await db.from("visits").delete().eq("id", visitId);
   throwIfError(error);
   refreshBoatRoutes(boatId);
+}
+
+export async function generateSeasonAccessLink(formData: FormData) {
+  return generateSeasonAccessLinkInternal(formData);
+}
+
+export async function revokeSeasonAccessLink(formData: FormData) {
+  return revokeSeasonAccessLinkInternal(formData);
 }

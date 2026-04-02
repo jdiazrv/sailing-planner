@@ -10,13 +10,11 @@ import { getRequestLocale } from "@/lib/i18n-server";
 import {
   deleteSeason,
   deleteTripSegment,
+  generateSeasonAccessLink,
+  revokeSeasonAccessLink,
   saveSeason,
   saveTripSegment,
 } from "../actions";
-import {
-  generateSeasonAccessLink,
-  revokeSeasonAccessLink,
-} from "@/app/admin/actions";
 
 export default async function BoatTripPage({
   params,

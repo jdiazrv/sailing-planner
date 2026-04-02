@@ -187,6 +187,18 @@ const buildZones = (
       order: sequenceBySegment.get(segment.id) ?? index + 1,
     }));
 
+const buildRoutePoints = (tripSegments: TripSegmentView[]) =>
+  sortTripSegments(tripSegments)
+    .filter(
+      (segment) =>
+        typeof segment.latitude === "number" &&
+        typeof segment.longitude === "number",
+    )
+    .map((segment) => ({
+      lat: Number(segment.latitude),
+      lng: Number(segment.longitude),
+    }));
+
 export const MapPanel = ({
   tripSegments,
   visits,
@@ -201,6 +213,7 @@ export const MapPanel = ({
   const [mapMessage, setMapMessage] = useState(t("planning.loadingMap"));
   const [baseMap, setBaseMap] = useState<GoogleBaseMap>("roadmap");
   const [showSeamarks, setShowSeamarks] = useState(false);
+  const [showRoute, setShowRoute] = useState(false);
   const sequenceBySegment = useMemo(
     () => buildSequenceBySegment(tripSegments),
     [tripSegments],
@@ -213,6 +226,7 @@ export const MapPanel = ({
     () => buildZones(tripSegments, sequenceBySegment),
     [sequenceBySegment, tripSegments],
   );
+  const routePoints = useMemo(() => buildRoutePoints(tripSegments), [tripSegments]);
 
   useEffect(() => {
     if (!hasGoogleMapsKey || !mapRef.current) {
@@ -280,6 +294,17 @@ export const MapPanel = ({
       zones.forEach((zone) => {
         bounds.extend({ lat: zone.latitude, lng: zone.longitude });
       });
+
+      if (showRoute && routePoints.length > 1) {
+        new maps.maps.Polyline({
+          map,
+          path: routePoints,
+          geodesic: true,
+          strokeColor: "#005f73",
+          strokeOpacity: 0.78,
+          strokeWeight: 3,
+        });
+      }
 
       if (!bounds.isEmpty()) {
         map.fitBounds(bounds, 48);
@@ -386,7 +411,16 @@ export const MapPanel = ({
       detached = true;
       window.gm_authFailure = previousAuthFailure;
     };
-  }, [baseMap, markers, selectedEntityId, showSeamarks, t, zones]);
+  }, [
+    baseMap,
+    markers,
+    routePoints,
+    selectedEntityId,
+    showRoute,
+    showSeamarks,
+    t,
+    zones,
+  ]);
 
   return (
     <article className={`dashboard-card map-panel${tall ? " map-panel--tall" : ""}`}>
@@ -417,6 +451,14 @@ export const MapPanel = ({
           />
           <span>{t("planning.mapSeamarks")}</span>
         </label>
+        <label className="checkbox-field">
+          <input
+            checked={showRoute}
+            onChange={(event) => setShowRoute(event.target.checked)}
+            type="checkbox"
+          />
+          <span>{t("planning.mapRoute")}</span>
+        </label>
       </div>
 
       {hasGoogleMapsKey && googleAvailable ? (
@@ -427,6 +469,35 @@ export const MapPanel = ({
       ) : (
         <div className="map-canvas">
           <div className="map-canvas__grid" />
+          {showRoute && routePoints.length > 1 ? (
+            <svg
+              aria-hidden="true"
+              style={{
+                inset: 0,
+                pointerEvents: "none",
+                position: "absolute",
+                zIndex: 1,
+              }}
+              viewBox="0 0 100 100"
+            >
+              <polyline
+                fill="none"
+                points={routePoints
+                  .map(({ lat, lng }) => {
+                    const point = toPoint(lat, lng);
+                    return `${point.x},${point.y}`;
+                  })
+                  .join(" ")}
+                stroke="#005f73"
+                strokeDasharray="0"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeOpacity="0.78"
+                strokeWidth="0.6"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
+          ) : null}
           {zones.map((zone) => {
             const point = toPoint(zone.latitude, zone.longitude);
 

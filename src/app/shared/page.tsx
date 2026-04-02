@@ -35,7 +35,7 @@ export default async function SharedPage({
         </div>
       </header>
 
-      {!workspace.viewer.profile?.is_timeline_public ? (
+      {!workspace.viewer.isSuperuser && !workspace.viewer.profile?.is_timeline_public ? (
         <TimelineVisibilityPanel isPublic={false} />
       ) : workspace.boats.length === 0 ? (
         <article className="dashboard-card">

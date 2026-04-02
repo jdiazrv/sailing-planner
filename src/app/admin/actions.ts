@@ -532,6 +532,7 @@ export async function generateSeasonAccessLink(formData: FormData) {
   const db = supabase as any;
   const boatId = formData.get("boat_id")?.toString() ?? "";
   const seasonId = formData.get("season_id")?.toString() ?? "";
+  const canViewVisits = formData.get("can_view_visits")?.toString() !== "off";
   const window =
     (formData.get("access_window")?.toString() as SeasonAccessWindow) ?? "season_end";
 
@@ -555,24 +556,43 @@ export async function generateSeasonAccessLink(formData: FormData) {
 
   const token = generateSeasonAccessToken();
   const expiresAt = getSeasonAccessExpiry(season.end_date, window);
-  const { data, error } = await db
+  const baseInsert = {
+    boat_id: boatId,
+    season_id: seasonId,
+    token_hash: hashSeasonAccessToken(token),
+    created_by_user_id: user.id,
+    expires_at: expiresAt,
+  };
+
+  let data: { id: string; expires_at: string } | null = null;
+
+  const withVisibility = await db
     .from("season_access_links")
     .insert({
-      boat_id: boatId,
-      season_id: seasonId,
-      token_hash: hashSeasonAccessToken(token),
-      created_by_user_id: user.id,
-      expires_at: expiresAt,
+      ...baseInsert,
+      can_view_visits: canViewVisits,
     })
     .select("id, expires_at")
     .single();
-  throwIfError(error);
+
+  if (withVisibility.error?.message?.includes("can_view_visits")) {
+    const legacyInsert = await db
+      .from("season_access_links")
+      .insert(baseInsert)
+      .select("id, expires_at")
+      .single();
+    throwIfError(legacyInsert.error);
+    data = legacyInsert.data;
+  } else {
+    throwIfError(withVisibility.error);
+    data = withVisibility.data;
+  }
 
   refreshAdminRoutes(boatId);
 
   return {
-    id: data.id,
-    expiresAt: data.expires_at,
+    id: data?.id ?? "",
+    expiresAt: data?.expires_at ?? expiresAt,
     url: buildSeasonAccessUrl(token),
   };
 }

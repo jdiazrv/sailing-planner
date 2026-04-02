@@ -41,6 +41,7 @@ export type ViewerContext = {
   profile: ProfileRow | null;
   isSuperuser: boolean;
   isSeasonGuest?: boolean;
+  seasonGuestCanViewVisits?: boolean;
 };
 
 export type BoatWorkspace = {
