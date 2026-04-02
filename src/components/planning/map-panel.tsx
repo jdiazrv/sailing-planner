@@ -211,9 +211,28 @@ export const MapPanel = ({
   const [mapReady, setMapReady] = useState(false);
   const [googleAvailable, setGoogleAvailable] = useState(hasGoogleMapsKey);
   const [mapMessage, setMapMessage] = useState(t("planning.loadingMap"));
-  const [baseMap, setBaseMap] = useState<GoogleBaseMap>("roadmap");
-  const [showSeamarks, setShowSeamarks] = useState(false);
-  const [showRoute, setShowRoute] = useState(false);
+
+  const [baseMap, setBaseMap] = useState<GoogleBaseMap>(() => {
+    try {
+      return (localStorage.getItem("map_baseMap") as GoogleBaseMap) ?? "roadmap";
+    } catch {
+      return "roadmap";
+    }
+  });
+  const [showSeamarks, setShowSeamarks] = useState(() => {
+    try {
+      return localStorage.getItem("map_showSeamarks") === "true";
+    } catch {
+      return false;
+    }
+  });
+  const [showRoute, setShowRoute] = useState(() => {
+    try {
+      return localStorage.getItem("map_showRoute") === "true";
+    } catch {
+      return false;
+    }
+  });
   const sequenceBySegment = useMemo(
     () => buildSequenceBySegment(tripSegments),
     [tripSegments],
@@ -435,7 +454,11 @@ export const MapPanel = ({
         <label>
           <span>{t("planning.mapBase")}</span>
           <select
-            onChange={(event) => setBaseMap(event.target.value as GoogleBaseMap)}
+            onChange={(event) => {
+              const value = event.target.value as GoogleBaseMap;
+              setBaseMap(value);
+              try { localStorage.setItem("map_baseMap", value); } catch { /* noop */ }
+            }}
             value={baseMap}
           >
             <option value="roadmap">{t("planning.mapRoadmap")}</option>
@@ -446,7 +469,11 @@ export const MapPanel = ({
         <label className="checkbox-field">
           <input
             checked={showSeamarks}
-            onChange={(event) => setShowSeamarks(event.target.checked)}
+            onChange={(event) => {
+              const checked = event.target.checked;
+              setShowSeamarks(checked);
+              try { localStorage.setItem("map_showSeamarks", String(checked)); } catch { /* noop */ }
+            }}
             type="checkbox"
           />
           <span>{t("planning.mapSeamarks")}</span>
@@ -454,7 +481,11 @@ export const MapPanel = ({
         <label className="checkbox-field">
           <input
             checked={showRoute}
-            onChange={(event) => setShowRoute(event.target.checked)}
+            onChange={(event) => {
+              const checked = event.target.checked;
+              setShowRoute(checked);
+              try { localStorage.setItem("map_showRoute", String(checked)); } catch { /* noop */ }
+            }}
             type="checkbox"
           />
           <span>{t("planning.mapRoute")}</span>
