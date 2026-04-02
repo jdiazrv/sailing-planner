@@ -246,6 +246,8 @@ export async function saveUserProfile(formData: FormData) {
     .eq("id", userId);
   throwIfError(error);
 
+  let primaryBoatId: string | null = null;
+
   if (!isSuperuser) {
     const { data: permissions, error: permissionsError } = await db
       .from("user_boat_permissions")
@@ -256,6 +258,7 @@ export async function saveUserProfile(formData: FormData) {
 
     const permissionRows = (permissions ?? []) as { boat_id: string; created_at: string }[];
     const [firstPermission, ...extraPermissions] = permissionRows;
+    primaryBoatId = firstPermission?.boat_id ?? null;
 
     if (firstPermission && extraPermissions.length > 0) {
       const { error: deleteError } = await db
@@ -267,7 +270,7 @@ export async function saveUserProfile(formData: FormData) {
     }
   }
 
-  refreshAdminRoutes();
+  refreshAdminRoutes(primaryBoatId);
 }
 
 export async function saveUserBoatPermission(formData: FormData) {
