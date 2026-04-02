@@ -14,25 +14,33 @@ export function LanguageSwitcher() {
   const { locale, t } = useI18n();
 
   return (
-    <label className="language-switcher">
-      <span>{t("language.label")}</span>
-      <select
-        defaultValue={locale}
-        disabled={isPending}
-        onChange={(event) => {
-          const nextLocale = event.target.value as Locale;
-          startTransition(async () => {
-            await updateLanguagePreference(nextLocale);
-            router.refresh();
-          });
-        }}
-      >
-        {locales.map((entry) => (
-          <option key={entry} value={entry}>
-            {t(`language.${entry}` as const)}
-          </option>
-        ))}
-      </select>
-    </label>
+    <div aria-label={t("language.label")} className="language-switcher" role="group">
+      {locales.map((entry) => {
+        const isActive = entry === locale;
+        const flag = entry === "es" ? "ES" : "EN";
+
+        return (
+          <button
+            aria-pressed={isActive}
+            className={isActive ? "is-active" : undefined}
+            disabled={isPending || isActive}
+            key={entry}
+            onClick={() => {
+              const nextLocale = entry as Locale;
+              startTransition(async () => {
+                await updateLanguagePreference(nextLocale);
+                router.refresh();
+              });
+            }}
+            type="button"
+          >
+            <span aria-hidden="true" className="language-switcher__flag">
+              {flag}
+            </span>
+            <span className="language-switcher__label">{t(`language.${entry}` as const)}</span>
+          </button>
+        );
+      })}
+    </div>
   );
 }

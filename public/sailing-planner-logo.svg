@@ -1,0 +1,35 @@
+<svg width="220" height="220" viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="220" y2="220" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0e1623"/>
+      <stop offset="1" stop-color="#0b1118"/>
+    </linearGradient>
+    <linearGradient id="sail-main" x1="118" y1="46" x2="174" y2="148" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0a9396"/>
+      <stop offset="1" stop-color="#005f73"/>
+    </linearGradient>
+    <linearGradient id="hull-grad" x1="62" y1="154" x2="158" y2="162" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#d99152"/>
+      <stop offset="1" stop-color="#f0bf80"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="220" height="220" rx="44" fill="url(#bg)"/>
+
+  <!-- Jib sail (left, subtle) -->
+  <path d="M118 78 L118 148 L72 148 Z" fill="#ffffff" fill-opacity="0.06"/>
+
+  <!-- Main sail (right, teal) -->
+  <path d="M118 44 L118 148 L176 148 Z" fill="url(#sail-main)"/>
+
+  <!-- Mast -->
+  <line x1="118" y1="40" x2="118" y2="156" stroke="#d6dde6" stroke-width="3.5" stroke-linecap="round" stroke-opacity="0.5"/>
+
+  <!-- Hull -->
+  <path d="M62 152 Q90 164 118 164 Q146 164 158 152" stroke="url(#hull-grad)" stroke-width="5" stroke-linecap="round" fill="none"/>
+
+  <!-- Water lines -->
+  <path d="M50 174 Q84 182 118 182 Q152 182 170 174" stroke="#0a9396" stroke-width="3.5" stroke-linecap="round" fill="none" opacity="0.55"/>
+  <path d="M62 186 Q90 192 118 192 Q146 192 158 186" stroke="#005f73" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.35"/>
+</svg>

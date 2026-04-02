@@ -11,7 +11,15 @@ import { PasswordInput } from "@/components/ui/password-input";
 
 type Mode = "password" | "magic-link";
 
-export const AuthForm = () => {
+type AuthFormProps = {
+  showHeader?: boolean;
+  className?: string;
+};
+
+export const AuthForm = ({
+  showHeader = true,
+  className,
+}: AuthFormProps = {}) => {
   const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -92,12 +100,14 @@ export const AuthForm = () => {
   };
 
   return (
-    <form className="auth-card" onSubmit={handleSubmit}>
-      <div className="auth-card__header">
-        <p className="eyebrow">Sailing Planner</p>
-        <h1>{t("auth.title")}</h1>
-        <p className="muted">{t("auth.subtitle")}</p>
-      </div>
+    <form className={["auth-card", className].filter(Boolean).join(" ")} onSubmit={handleSubmit}>
+      {showHeader ? (
+        <div className="auth-card__header">
+          <p className="eyebrow">Sailing Planner</p>
+          <h1>{t("auth.title")}</h1>
+          <p className="muted">{t("auth.subtitle")}</p>
+        </div>
+      ) : null}
 
       <label className="field">
         <span>{t("auth.email")}</span>
