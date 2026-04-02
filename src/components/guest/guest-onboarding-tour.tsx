@@ -36,6 +36,10 @@ export function GuestOnboardingTour({
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<RectState>(null);
   const isVisitsView = pathname.includes("/visits") || searchParams.get("view") === "visits";
+  const visitsStepIndex = useMemo(
+    () => (canViewVisits ? (variant === "guest" ? 6 : 5) : -1),
+    [canViewVisits, variant],
+  );
 
   const steps = useMemo<TourStep[]>(
     () =>
@@ -82,7 +86,7 @@ export function GuestOnboardingTour({
           body:
             "El mapa ayuda a ubicar visualmente el recorrido y los puntos importantes de la temporada.",
         },
-        ...(isVisitsView
+        ...(canViewVisits
           ? [
               {
                 target: '[data-tour="boat-visits-card"]',
@@ -93,8 +97,40 @@ export function GuestOnboardingTour({
             ]
           : []),
       ] satisfies TourStep[],
-    [canViewVisits, isVisitsView, variant],
+    [canViewVisits, variant],
   );
+
+  useEffect(() => {
+    if (!isOpen || !canViewVisits || stepIndex !== visitsStepIndex) {
+      return;
+    }
+
+    if (isVisitsView) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+
+    if (variant === "guest") {
+      nextParams.set("view", "visits");
+      const nextUrl = `${pathname}?${nextParams.toString()}`;
+      router.replace(nextUrl, { scroll: false });
+      return;
+    }
+
+    const nextUrl = pathname.replace(/\/trip$/, "/visits");
+    router.replace(nextUrl, { scroll: false });
+  }, [
+    canViewVisits,
+    isOpen,
+    isVisitsView,
+    pathname,
+    router,
+    searchParams,
+    stepIndex,
+    variant,
+    visitsStepIndex,
+  ]);
 
   useEffect(() => {
     setIsOpen(enabled);
