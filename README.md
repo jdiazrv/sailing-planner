@@ -10,7 +10,7 @@ Sailing Planner is a Next.js + TypeScript app for managing one or more boats, th
 - public/shared timeline comparison between boats
 - local Supabase CLI setup, migrations, seed data and invite email template
 
-Current app version: `0.3.1`
+Current app version: `0.3.3`
 
 ## Product status
 
@@ -489,13 +489,13 @@ npm run build
 
 ## Release workflow
 
-Current release version is `v0.3.1`.
+Current release version is `v0.3.3`.
 
 Typical flow:
 
 1. update `package.json` version
 2. commit and push to `main`
-3. create a GitHub release tag such as `v0.3.1`
+3. create a GitHub release tag such as `v0.3.3`
 4. deploy hosting from the updated `main`
 
 ## Notes

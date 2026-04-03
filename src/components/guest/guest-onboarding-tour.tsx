@@ -71,6 +71,16 @@ export function GuestOnboardingTour({
               },
             ]
           : []),
+        ...(canEditBoat
+          ? [
+              {
+                target: '[data-tour="sidebar-boat-settings"]',
+                title: "Detalles del barco",
+                body:
+                  "Desde esta opcion puedes actualizar los detalles visibles del barco, como imagen, modelo, puerto base y descripcion, sin salir del espacio de trabajo.",
+              },
+            ]
+          : []),
         ...(canManageUsers
           ? [
               {
@@ -84,16 +94,6 @@ export function GuestOnboardingTour({
                 title: "Tu cuenta",
                 body:
                   "Desde Mi cuenta entras directamente a tu ficha dentro de Usuarios. Ahi puedes cambiar tus datos y, si tienes permiso, tambien actualizar tu contraseña con el formulario ya existente.",
-              },
-            ]
-          : []),
-        ...(canEditBoat
-          ? [
-              {
-                target: '[data-tour="sidebar-boat-settings"]',
-                title: "Detalles del barco",
-                body:
-                  "Desde esta opcion puedes actualizar los detalles visibles del barco, como imagen, modelo, puerto base y descripcion, sin salir del espacio de trabajo.",
               },
             ]
           : []),
