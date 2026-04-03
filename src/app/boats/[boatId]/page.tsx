@@ -49,7 +49,7 @@ export default async function BoatWorkspacePage({
           canManageUsers={canManageUsers}
           canShare={canShare}
           canViewVisits
-          viewerId={`${workspace.viewer.profile?.id ?? boatId}:${workspace.selectedSeason?.id ?? "no-season"}:${currentView}`}
+          viewerId={`${workspace.viewer.profile?.id ?? boatId}:${workspace.selectedSeason?.id ?? "no-season"}`}
         />
       ) : null}
 

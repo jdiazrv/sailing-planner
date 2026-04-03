@@ -44,9 +44,8 @@ export function GuestOnboardingTour({
   const searchParams = useSearchParams();
   const [isOpen, setIsOpen] = useState(enabled);
   const [stepIndex, setStepIndex] = useState(0);
-  const [rect, setRect] = useState<RectState>(null);
-  const [popoverHeight, setPopoverHeight] = useState(220);
   const popoverRef = useRef<HTMLDivElement | null>(null);
+  const popoverHeightRef = useRef(220);
   const isVisitsView = pathname.includes("/visits") || searchParams.get("view") === "visits";
 
   const steps = useMemo<TourStep[]>(() => {
@@ -266,14 +265,17 @@ export function GuestOnboardingTour({
       .forEach((node) => node.setAttribute("data-tour-active", "false"));
 
     if (!element) {
-      setRect(null);
       return;
     }
 
     element.setAttribute("data-tour-active", "true");
-    const updateRect = () => {
+
+    const computeAndApplyPosition = () => {
+      const popover = popoverRef.current;
+      if (!popover) return;
+
       const bounds = element.getBoundingClientRect();
-      setRect({
+      const rect: RectState = {
         top: bounds.top,
         left: bounds.left,
         right: bounds.right,
@@ -281,31 +283,80 @@ export function GuestOnboardingTour({
         width: bounds.width,
         height: bounds.height,
         inSidebar: Boolean(element.closest(".app-sidebar")),
-      });
+      };
+
+      const popoverHeight = popoverHeightRef.current;
+      const popoverWidth = Math.min(360, window.innerWidth - 32);
+      const margin = 16;
+
+      let top: number;
+      let left: number;
+
+      if (rect.inSidebar) {
+        const rootStyles = window.getComputedStyle(document.documentElement);
+        const rawSidebarWidth = rootStyles.getPropertyValue("--sidebar-w").trim();
+        const sidebarWidth = Number.parseInt(rawSidebarWidth, 10) || 220;
+        const preferredLeft = Math.max(sidebarWidth + 24, rect.right + 18);
+        const fitsRight = preferredLeft + popoverWidth <= window.innerWidth - margin;
+        const centeredTop = rect.top + rect.height / 2 - popoverHeight / 2;
+        top = fitsRight
+          ? Math.max(margin, Math.min(centeredTop, window.innerHeight - popoverHeight - margin))
+          : Math.max(margin, centeredTop);
+        left = fitsRight
+          ? preferredLeft
+          : Math.max(margin, Math.min(sidebarWidth + 12, window.innerWidth - popoverWidth - margin));
+      } else if (selector === '[data-tour="boat-map"]') {
+        const preferredLeft = rect.left - popoverWidth - 18;
+        const fitsLeft = preferredLeft >= margin;
+        top = Math.max(margin, Math.min(rect.top + rect.height / 2 - popoverHeight / 2, window.innerHeight - popoverHeight - margin));
+        left = fitsLeft
+          ? preferredLeft
+          : Math.max(margin, Math.min(rect.right + 18, window.innerWidth - popoverWidth - margin));
+      } else if (
+        selector === '[data-tour="boat-detail"]' ||
+        selector === '[data-tour-detail="boat-detail"]' ||
+        selector === '[data-tour="boat-visits-card"]'
+      ) {
+        const preferredLeft = rect.right + 18;
+        const fitsRight = preferredLeft + popoverWidth <= window.innerWidth - margin;
+        const fallbackLeft = rect.left - popoverWidth - 18;
+        top = Math.max(margin, Math.min(rect.top + rect.height / 2 - popoverHeight / 2, window.innerHeight - popoverHeight - margin));
+        left = fitsRight
+          ? preferredLeft
+          : Math.max(margin, Math.min(fallbackLeft, window.innerWidth - popoverWidth - margin));
+      } else {
+        const fitsBelow = rect.bottom + 18 + popoverHeight < window.innerHeight - margin;
+        const fitsAbove = rect.top - popoverHeight - 18 >= margin;
+        top = fitsBelow
+          ? rect.bottom + 18
+          : fitsAbove
+            ? rect.top - popoverHeight - 18
+            : Math.max(margin, window.innerHeight - popoverHeight - margin);
+        left = Math.max(margin, Math.min(rect.left, window.innerWidth - popoverWidth - margin));
+      }
+
+      popover.style.top = `${top}px`;
+      popover.style.left = `${left}px`;
     };
 
-    element.scrollIntoView({
-      block: "center",
-      inline: "nearest",
-      behavior: variant === "guest" ? "auto" : "smooth",
-    });
+    // Instant scroll so the rect is stable before the rAF loop starts
+    element.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
 
     let frameId = 0;
-    const syncRect = () => {
-      updateRect();
-      frameId = window.requestAnimationFrame(syncRect);
+    const syncPosition = () => {
+      computeAndApplyPosition();
+      frameId = window.requestAnimationFrame(syncPosition);
     };
 
-    updateRect();
-    frameId = window.requestAnimationFrame(syncRect);
-    window.addEventListener("resize", updateRect);
+    frameId = window.requestAnimationFrame(syncPosition);
+    window.addEventListener("resize", computeAndApplyPosition);
 
     return () => {
       element.setAttribute("data-tour-active", "false");
       window.cancelAnimationFrame(frameId);
-      window.removeEventListener("resize", updateRect);
+      window.removeEventListener("resize", computeAndApplyPosition);
     };
-  }, [isOpen, stepIndex, steps, variant]);
+  }, [isOpen, stepIndex, steps]);
 
   const closeTour = () => {
     document
@@ -325,12 +376,7 @@ export function GuestOnboardingTour({
     }
   };
 
-  if (!isOpen) {
-    return null;
-  }
-
   const step = steps[stepIndex];
-  const isLastStep = stepIndex === steps.length - 1;
 
   useEffect(() => {
     if (!isOpen || !popoverRef.current) {
@@ -338,7 +384,9 @@ export function GuestOnboardingTour({
     }
 
     const node = popoverRef.current;
-    const updateHeight = () => setPopoverHeight(node.offsetHeight || 220);
+    const updateHeight = () => {
+      popoverHeightRef.current = node.offsetHeight || 220;
+    };
 
     updateHeight();
 
@@ -350,107 +398,16 @@ export function GuestOnboardingTour({
     };
   }, [isOpen, stepIndex, step.title, step.body]);
 
-  const popoverStyle = (() => {
-    if (!rect || typeof window === "undefined") {
-      return undefined;
-    }
+  if (!isOpen) {
+    return null;
+  }
 
-    const popoverWidth = Math.min(360, window.innerWidth - 32);
-    const margin = 16;
-
-    if (rect.inSidebar) {
-      const rootStyles = window.getComputedStyle(document.documentElement);
-      const rawSidebarWidth = rootStyles.getPropertyValue("--sidebar-w").trim();
-      const sidebarWidth = Number.parseInt(rawSidebarWidth, 10) || 220;
-      const preferredLeft = Math.max(sidebarWidth + 24, rect.right + 18);
-      const fitsRight = preferredLeft + popoverWidth <= window.innerWidth - margin;
-      const centeredTop = rect.top + rect.height / 2 - popoverHeight / 2;
-      const top = fitsRight
-        ? Math.max(margin, Math.min(centeredTop, window.innerHeight - popoverHeight - margin))
-        : Math.max(margin, rect.top + rect.height / 2 - popoverHeight / 2);
-      const left = fitsRight
-        ? preferredLeft
-        : Math.max(margin, Math.min(sidebarWidth + 12, window.innerWidth - popoverWidth - margin));
-
-      return {
-        top: `${top}px`,
-        left: `${left}px`,
-      };
-    }
-
-    const target = step?.target ?? "";
-
-    if (target === '[data-tour="boat-map"]') {
-      const preferredLeft = rect.left - popoverWidth - 18;
-      const fitsLeft = preferredLeft >= margin;
-      const top = Math.max(
-        margin,
-        Math.min(
-          rect.top + rect.height / 2 - popoverHeight / 2,
-          window.innerHeight - popoverHeight - margin,
-        ),
-      );
-      const left = fitsLeft
-        ? preferredLeft
-        : Math.max(
-            margin,
-            Math.min(rect.right + 18, window.innerWidth - popoverWidth - margin),
-          );
-
-      return {
-        top: `${top}px`,
-        left: `${left}px`,
-      };
-    }
-
-    if (
-      target === '[data-tour="boat-detail"]' ||
-      target === '[data-tour-detail="boat-detail"]' ||
-      target === '[data-tour="boat-visits-card"]'
-    ) {
-      const preferredLeft = rect.right + 18;
-      const fitsRight = preferredLeft + popoverWidth <= window.innerWidth - margin;
-      const fallbackLeft = rect.left - popoverWidth - 18;
-      const centeredTop = rect.top + rect.height / 2 - popoverHeight / 2;
-      const top = Math.max(
-        margin,
-        Math.min(centeredTop, window.innerHeight - popoverHeight - margin),
-      );
-      const left = fitsRight
-        ? preferredLeft
-        : Math.max(
-            margin,
-            Math.min(fallbackLeft, window.innerWidth - popoverWidth - margin),
-          );
-
-      return {
-        top: `${top}px`,
-        left: `${left}px`,
-      };
-    }
-
-    const fitsBelow = rect.bottom + 18 + popoverHeight < window.innerHeight - margin;
-    const fitsAbove = rect.top - popoverHeight - 18 >= margin;
-    const top = fitsBelow
-      ? rect.bottom + 18
-      : fitsAbove
-        ? rect.top - popoverHeight - 18
-        : Math.max(margin, window.innerHeight - popoverHeight - margin);
-    const left = Math.max(
-      margin,
-      Math.min(rect.left, window.innerWidth - popoverWidth - margin),
-    );
-
-    return {
-      top: `${top}px`,
-      left: `${left}px`,
-    };
-  })();
+  const isLastStep = stepIndex === steps.length - 1;
 
   return (
     <>
       <div className="tour-overlay" />
-      <div className="tour-popover" ref={popoverRef} style={popoverStyle}>
+      <div className="tour-popover" ref={popoverRef}>
         <p className="tour-popover__step">
           Paso {stepIndex + 1} de {steps.length}
         </p>

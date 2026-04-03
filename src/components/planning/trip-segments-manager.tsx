@@ -98,7 +98,7 @@ export function TripSegmentsManager({
       )}
 
       {segments.length ? (
-        <div className="data-sheet">
+        <div className={`data-sheet ${canEdit ? "data-sheet--trip-editable" : "data-sheet--trip-readonly"}`}>
           <div className="data-sheet__header data-sheet__header--trip">
             <span>#</span>
             <span>{t("planning.dates")}</span>

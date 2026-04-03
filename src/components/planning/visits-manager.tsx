@@ -106,7 +106,7 @@ export function VisitsManager({
       )}
 
       {visits.length ? (
-        <div className="data-sheet">
+        <div className={`data-sheet ${canEdit ? "data-sheet--visits-editable" : "data-sheet--visits-readonly"}`}>
           <div className="data-sheet__header data-sheet__header--visits">
             <span>{t("planning.visitor")}</span>
             <span>{t("planning.dates")}</span>
