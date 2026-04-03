@@ -2,7 +2,6 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { LogoutButton } from "@/components/auth/logout-button";
 import { BoatSelector } from "@/components/boats/boat-selector";
 import { LastBoatTracker } from "@/components/boats/last-boat-tracker";
 import { DashboardOpenBoatPanel } from "@/components/dashboard/dashboard-open-boat-panel";
@@ -71,7 +70,7 @@ export default async function DashboardPage({
   });
 
   return (
-    <main className="shell">
+    <>
       {selectedBoatId ? <LastBoatTracker boatId={selectedBoatId} /> : null}
       <header className="dashboard-header">
         <div>
@@ -87,18 +86,17 @@ export default async function DashboardPage({
         <div className="workspace-header__actions">
           {viewer.isSuperuser && (
             <>
-              <Link className="secondary-button" href="/admin/boats">
+              <Link className="secondary-button sidebar-hidden" href="/admin/boats">
                 {t(locale, "dashboard.manageBoats")}
               </Link>
-              <Link className="secondary-button" href="/admin/users">
+              <Link className="secondary-button sidebar-hidden" href="/admin/users">
                 {t(locale, "dashboard.manageUsers")}
               </Link>
-              <Link className="secondary-button" href="/admin/metrics">
+              <Link className="secondary-button sidebar-hidden" href="/admin/metrics">
                 {t(locale, "dashboard.systemMetrics")}
               </Link>
             </>
           )}
-          <LogoutButton />
         </div>
       </header>
 
@@ -151,6 +149,6 @@ export default async function DashboardPage({
           titleKey="dashboard.sharedTimelinesTitle"
         />
       </section>
-    </main>
+    </>
   );
 }

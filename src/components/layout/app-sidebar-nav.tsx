@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { type ReactNode } from "react";
 import Link from "next/link";
 
@@ -28,14 +28,6 @@ const IconRoute = () => (
     <circle cx="19" cy="12" r="2.5" />
     <path d="M7.5 12h9" />
     <path d="M5 6v3.5M19 6v3.5M5 18v-3.5M19 18v-3.5" />
-  </svg>
-);
-
-const IconCalendar = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="4" width="18" height="17" rx="2" />
-    <path d="M16 2v4M8 2v4M3 10h18" />
-    <circle cx="12" cy="15" r="1.5" fill="currentColor" stroke="none" />
   </svg>
 );
 
@@ -152,6 +144,7 @@ export type AppSidebarNavProps = {
   canManageUsers: boolean;
   boatId?: string;
   boatName?: string;
+  userName?: string | null;
   canEditBoat?: boolean;
   canShare?: boolean;
   /** ReactNode slot for BoatSettingsDialog trigger — only on desktop sidebar */
@@ -163,14 +156,13 @@ export function AppSidebarNav({
   isSuperuser,
   canManageUsers,
   boatId,
+  userName,
   canShare,
   settingsSlot,
 }: AppSidebarNavProps) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-
   const es = locale === "es";
-  const boatView = searchParams.get("view") === "visits" ? "visits" : "trip";
+  const signOutLabel = es ? "Salir" : "Sign out";
 
   const isActive = (href: string) =>
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
@@ -180,17 +172,24 @@ export function AppSidebarNav({
       {/* Brand */}
       <Link className="app-sidebar__brand" href="/dashboard">
         <SidebarLogoMark />
-        <span className="app-sidebar__brand-label">Sailing Planner</span>
+        <span className="app-sidebar__brand-copy">
+          <span className="app-sidebar__brand-label">Sailing Planner</span>
+          {userName ? (
+            <span className="app-sidebar__user-name">{userName}</span>
+          ) : null}
+        </span>
       </Link>
 
       {/* Main nav */}
       <nav className="app-sidebar__nav">
-        <NavItem
-          href="/dashboard"
-          label={es ? "Panel" : "Dashboard"}
-          icon={<IconGrid />}
-          active={pathname === "/dashboard"}
-        />
+        {!boatId ? (
+          <NavItem
+            href="/dashboard"
+            label={es ? "Panel" : "Dashboard"}
+            icon={<IconGrid />}
+            active={pathname === "/dashboard"}
+          />
+        ) : null}
 
         {/* Boat section */}
         {boatId && (
@@ -199,16 +198,10 @@ export function AppSidebarNav({
               {es ? "Barco" : "Boat"}
             </p>
             <NavItem
-              href={`/boats/${boatId}?view=trip`}
-              label={es ? "Tramos" : "Segments"}
+              href={`/boats/${boatId}`}
+              label={es ? "Plan" : "Plan"}
               icon={<IconRoute />}
-              active={pathname === `/boats/${boatId}` && boatView === "trip"}
-            />
-            <NavItem
-              href={`/boats/${boatId}?view=visits`}
-              label={es ? "Visitas" : "Visits"}
-              icon={<IconCalendar />}
-              active={pathname === `/boats/${boatId}` && boatView === "visits"}
+              active={pathname === `/boats/${boatId}`}
             />
             {canShare && (
               <NavItem
@@ -282,17 +275,12 @@ export function AppSidebarNav({
         </div>
 
         {/* Logout */}
-        <div
-          className="app-sidebar__item app-sidebar__item--button"
-          data-label={es ? "Salir" : "Sign out"}
-        >
+        <LogoutButton className="app-sidebar__item app-sidebar__logout-button">
           <span className="app-sidebar__icon">
             <IconLogout />
           </span>
-          <span className="app-sidebar__label">
-            <LogoutButton />
-          </span>
-        </div>
+          <span className="app-sidebar__label">{signOutLabel}</span>
+        </LogoutButton>
 
       </div>
     </aside>

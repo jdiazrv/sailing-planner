@@ -1,13 +1,5 @@
-import { AppLoading } from "@/components/ui/app-loading";
+import { SectionLoading } from "@/components/ui/section-loading";
 
 export default function Loading() {
-  return (
-    <main className="shell shell--loading">
-      <AppLoading
-        eyebrow="Comparativa"
-        subtitle="Preparando los timelines y la seleccion del barco con el que vas a comparar."
-        title="Cargando timelines compartidos"
-      />
-    </main>
-  );
+  return <SectionLoading />;
 }

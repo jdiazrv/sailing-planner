@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
 import { Toaster } from "sonner";
 
-import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 import { I18nProvider } from "@/components/i18n/provider";
-import { SailingBrand } from "@/components/ui/brand";
-import { ThemeSwitcher } from "@/components/ui/theme-switcher";
 import { getRequestLocale } from "@/lib/i18n-server";
 
 import "./globals.css";
@@ -33,15 +30,6 @@ export default async function RootLayout({
       </head>
       <body suppressHydrationWarning>
         <I18nProvider locale={locale}>
-          <div className="app-chrome">
-            <div className="app-chrome__inner">
-              <SailingBrand className="app-chrome__brand" compact size={28} />
-              <div className="app-language">
-                <ThemeSwitcher />
-                <LanguageSwitcher />
-              </div>
-            </div>
-          </div>
           {children}
           <Toaster position="bottom-right" richColors />
         </I18nProvider>

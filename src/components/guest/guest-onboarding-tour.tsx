@@ -203,7 +203,10 @@ export function GuestOnboardingTour({
     }
 
     element.setAttribute("data-tour-active", "true");
-    element.scrollIntoView({ block: "center", behavior: "smooth" });
+    element.scrollIntoView({
+      block: "center",
+      behavior: variant === "guest" ? "auto" : "smooth",
+    });
 
     const updateRect = () => {
       const bounds = element.getBoundingClientRect();
@@ -215,16 +218,24 @@ export function GuestOnboardingTour({
       });
     };
 
+    const rafId = window.requestAnimationFrame(() => {
+      updateRect();
+    });
     updateRect();
+    const syncAfterScroll = window.setTimeout(updateRect, 160);
+    const syncAfterLayout = window.setTimeout(updateRect, 360);
     window.addEventListener("resize", updateRect);
     window.addEventListener("scroll", updateRect, true);
 
     return () => {
       element.setAttribute("data-tour-active", "false");
+      window.cancelAnimationFrame(rafId);
+      window.clearTimeout(syncAfterScroll);
+      window.clearTimeout(syncAfterLayout);
       window.removeEventListener("resize", updateRect);
       window.removeEventListener("scroll", updateRect, true);
     };
-  }, [isOpen, stepIndex, steps]);
+  }, [isOpen, stepIndex, steps, variant]);
 
   const closeTour = () => {
     document

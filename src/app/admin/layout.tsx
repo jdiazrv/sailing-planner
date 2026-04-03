@@ -24,6 +24,7 @@ export default async function AdminLayout({
         boatId={lastBoatId}
         canShare={true}
         locale={locale}
+        userName={access.viewer.profile?.display_name ?? access.viewer.profile?.email ?? null}
       />
       <main className="shell">{children}</main>
     </>

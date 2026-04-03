@@ -1,6 +1,5 @@
 import { cookies } from "next/headers";
 
-import { AppSidebarNav } from "@/components/layout/app-sidebar-nav";
 import { SharedBoatPicker } from "@/components/shared/shared-boat-picker";
 import { SharedTimelineCompare } from "@/components/shared/shared-timeline-compare";
 import { TimelineVisibilityPanel } from "@/components/shared/timeline-visibility-panel";
@@ -37,19 +36,8 @@ export default async function SharedPage({
     const isSameBoatAsOwn = Boolean(
       ownWorkspace?.boat.id && selected?.boat.id && ownWorkspace.boat.id === selected.boat.id,
     );
-    const ownBoatCanShare =
-      workspace.viewer.isSuperuser ||
-      Boolean(availableBoats.find((b) => b.boat_id === ownBoatId)?.can_edit);
     return (
       <>
-      <AppSidebarNav
-        isSuperuser={workspace.viewer.isSuperuser}
-        canManageUsers={workspace.viewer.isSuperuser}
-        boatId={ownBoatId ?? undefined}
-        canShare={ownBoatCanShare}
-        locale={locale}
-      />
-      <main className="shell">
         <header className="workspace-header">
           <div>
             <p className="eyebrow">{t(locale, "shared.eyebrow")}</p>
@@ -108,8 +96,7 @@ export default async function SharedPage({
             )}
           </>
         )}
-      </main>
-    </>
+      </>
     );
   } catch (error) {
     const message =
@@ -122,24 +109,17 @@ export default async function SharedPage({
 
     return (
       <>
-        <AppSidebarNav
-          isSuperuser={false}
-          canManageUsers={false}
-          locale={locale}
-        />
-        <main className="shell">
-          <header className="workspace-header">
-            <div>
-              <p className="eyebrow">{t(locale, "shared.eyebrow")}</p>
-              <h1>{t(locale, "shared.title")}</h1>
-            </div>
-          </header>
+        <header className="workspace-header">
+          <div>
+            <p className="eyebrow">{t(locale, "shared.eyebrow")}</p>
+            <h1>{t(locale, "shared.title")}</h1>
+          </div>
+        </header>
 
-          <article className="dashboard-card">
-            <p className="eyebrow">{t(locale, "shared.enableTitle")}</p>
-            <p className="muted">{message}</p>
-          </article>
-        </main>
+        <article className="dashboard-card">
+          <p className="eyebrow">{t(locale, "shared.enableTitle")}</p>
+          <p className="muted">{message}</p>
+        </article>
       </>
     );
   }

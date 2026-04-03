@@ -99,9 +99,12 @@ const dictionary = {
     "auth.passwordRequired": "La contraseña es obligatoria para entrar.",
     "auth.magicSent":
       "Enlace enviado. Revisa tu correo para completar el acceso.",
+    "auth.resetSent":
+      "Te hemos enviado un enlace para restablecer la contraseña. Revisa tu correo.",
     "auth.working": "Procesando...",
     "auth.signInPassword": "Entrar con contraseña",
     "auth.sendMagic": "Enviar magic link",
+    "auth.forgotPassword": "Olvidé mi contraseña",
     "auth.error": "Ha ocurrido un error al iniciar sesión.",
     "dashboard.titleAll": "Todos los barcos",
     "dashboard.titleOwn": "Tu espacio de trabajo",
@@ -558,9 +561,12 @@ const dictionary = {
     "auth.emailRequired": "Email is required.",
     "auth.passwordRequired": "Password is required for password login.",
     "auth.magicSent": "Magic link sent. Check your inbox to finish signing in.",
+    "auth.resetSent":
+      "We sent you a password reset link. Check your inbox to continue.",
     "auth.working": "Working...",
     "auth.signInPassword": "Sign in with password",
     "auth.sendMagic": "Send magic link",
+    "auth.forgotPassword": "Forgot my password",
     "auth.error": "Something went wrong while signing in.",
     "dashboard.titleAll": "All boats",
     "dashboard.titleOwn": "Your workspace",
@@ -943,7 +949,7 @@ export const getPermissionLabelForLocale = (
   level: PermissionLevel | null | undefined,
   isSuperuser = false,
 ) => {
-  if (isSuperuser && !level) {
+  if (isSuperuser) {
     return locale === "es" ? "superusuario" : "superuser";
   }
 
