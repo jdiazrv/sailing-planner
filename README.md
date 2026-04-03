@@ -87,7 +87,9 @@ cp .env.example .env.local
 ### Optional but recommended
 
 - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
-  Required if you want Google Places autocomplete and maps.
+  Required if you want both:
+  - Google Maps rendering in the planning screens
+  - Google Places autocomplete/search in trip and visit location fields
 - `SUPABASE_PROJECT_REF`
   Needed for Supabase CLI workflows against the hosted project.
 - `SUPABASE_DB_PASSWORD`
@@ -231,8 +233,11 @@ Set these in Netlify or your chosen platform:
 Optional:
 
 - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+  Shared key for both the live Google map and the Google place search/autocomplete UI
 - `SUPABASE_PROJECT_REF`
 - `SUPABASE_DB_PASSWORD`
+
+There is currently no separate environment variable for "Google search". The place search/autocomplete feature uses the same `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`.
 
 ### Hosting notes
 
