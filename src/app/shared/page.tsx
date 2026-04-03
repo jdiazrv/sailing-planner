@@ -5,7 +5,11 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { SharedBoatPicker } from "@/components/shared/shared-boat-picker";
 import { SharedTimelineCompare } from "@/components/shared/shared-timeline-compare";
 import { TimelineVisibilityPanel } from "@/components/shared/timeline-visibility-panel";
-import { getAccessibleBoats, getBoatWorkspace, getSharedTimelineWorkspace } from "@/lib/boat-data";
+import {
+  getAccessibleBoatsLite,
+  getBoatWorkspace,
+  getSharedTimelineWorkspace,
+} from "@/lib/boat-data";
 import { t } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n-server";
 
@@ -14,13 +18,15 @@ export default async function SharedPage({
 }: {
   searchParams: Promise<{ boat?: string; season?: string }>;
 }) {
-  const locale = await getRequestLocale();
-  const { boat, season } = await searchParams;
+  const [locale, { boat, season }, availableBoats, cookieStore] = await Promise.all([
+    getRequestLocale(),
+    searchParams,
+    getAccessibleBoatsLite(),
+    cookies(),
+  ]);
   try {
     const workspace = await getSharedTimelineWorkspace(boat, season);
     const selected = workspace.selectedBoat;
-    const availableBoats = await getAccessibleBoats();
-    const cookieStore = await cookies();
     const lastBoatId = cookieStore.get("lastBoatId")?.value ?? null;
     const ownBoatId =
       (lastBoatId && availableBoats.some((entry) => entry.boat_id === lastBoatId)

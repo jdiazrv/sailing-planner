@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { BoatSelector } from "@/components/boats/boat-selector";
 import { TimelineVisibilityPanel } from "@/components/shared/timeline-visibility-panel";
-import { getAccessibleBoats, requireViewer } from "@/lib/boat-data";
+import { getAccessibleBoatsLite, requireViewer } from "@/lib/boat-data";
 import { t } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n-server";
 import { getReleaseLabel } from "@/lib/release";
@@ -16,10 +16,12 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ change?: string }>;
 }) {
-  const locale = await getRequestLocale();
-  const { viewer } = await requireViewer();
-  const boats = await getAccessibleBoats();
-  const { change } = await searchParams;
+  const [locale, { viewer }, boats, { change }] = await Promise.all([
+    getRequestLocale(),
+    requireViewer(),
+    getAccessibleBoatsLite(),
+    searchParams,
+  ]);
   const releaseLabel = getReleaseLabel();
 
   // Single-boat users go directly to their boat

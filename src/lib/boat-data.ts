@@ -41,6 +41,58 @@ const getBoatImageUrl = (
     : data.publicUrl;
 };
 
+const getAccessibleBoatBase = async (
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  viewer: ViewerContext,
+) => {
+  const db = supabase as any;
+  const [{ data }, { data: overviewData }] = await Promise.all([
+    db
+      .from("boats")
+      .select(
+        "id, name, description, is_active, model, year_built, home_port, image_path, updated_at",
+      )
+      .order("name"),
+    db
+      .from("boat_access_overview")
+      .select("boat_id, boat_name, permission_level, can_edit, can_manage_boat_users")
+      .order("boat_name"),
+  ]);
+
+  const overviewByBoat = new Map(
+    ((overviewData ?? []) as BoatOverviewRow[]).map((row: BoatOverviewRow) => [
+      row.boat_id,
+      row,
+    ]),
+  );
+
+  const boatRows = (data ?? []) as (BoatRow & {
+    model?: string | null;
+    year_built?: number | null;
+    home_port?: string | null;
+  })[];
+
+  return boatRows.map((boat) => ({
+    boat_id: boat.id,
+    boat_name: boat.name,
+    permission_level:
+      overviewByBoat.get(boat.id)?.permission_level ??
+      (viewer.isSuperuser ? null : "viewer"),
+    can_edit:
+      overviewByBoat.get(boat.id)?.can_edit ?? Boolean(viewer.isSuperuser),
+    can_manage_boat_users:
+      overviewByBoat.get(boat.id)?.can_manage_boat_users ??
+      Boolean(viewer.isSuperuser),
+    description: boat.description,
+    home_port: boat.home_port ?? null,
+    image_path: boat.image_path ?? null,
+    image_url: getBoatImageUrl(supabase, boat.image_path, boat.updated_at),
+    model: boat.model ?? null,
+    year_built: boat.year_built ?? null,
+    is_active: boat.is_active,
+  })) as BoatSummary[];
+};
+
 export const requireViewer = cache(async () => {
   const supabase = await createClient();
   const db = supabase as any;
@@ -68,36 +120,16 @@ export const requireViewer = cache(async () => {
   return { supabase, user, viewer };
 });
 
+export const getAccessibleBoatsLite = cache(async () => {
+  const { supabase, viewer } = await requireViewer();
+  return getAccessibleBoatBase(supabase, viewer);
+});
+
 export const getAccessibleBoats = cache(async () => {
   const { supabase, viewer } = await requireViewer();
   const db = supabase as any;
-
-  const [{ data }, { data: overviewData }] = await Promise.all([
-    db
-      .from("boats")
-      .select(
-        "id, name, description, is_active, model, year_built, home_port, image_path",
-      )
-      .order("name"),
-    db
-      .from("boat_access_overview")
-      .select("boat_id, boat_name, permission_level, can_edit, can_manage_boat_users")
-      .order("boat_name"),
-  ]);
-
-  const overviewByBoat = new Map(
-    ((overviewData ?? []) as BoatOverviewRow[]).map((row: BoatOverviewRow) => [
-      row.boat_id,
-      row,
-    ]),
-  );
-
-  const boatRows = (data ?? []) as (BoatRow & {
-    model?: string | null;
-    year_built?: number | null;
-    home_port?: string | null;
-  })[];
-  const boatIds = boatRows.map((boat) => boat.id);
+  const baseBoats = await getAccessibleBoatBase(supabase, viewer);
+  const boatIds = baseBoats.map((boat) => boat.boat_id);
 
   const tripSegmentsCountByBoat = new Map<string, number>();
   const visitsCountByBoat = new Map<string, number>();
@@ -200,29 +232,13 @@ export const getAccessibleBoats = cache(async () => {
       });
   }
 
-  return boatRows.map((boat) => ({
-    boat_id: boat.id,
-    boat_name: boat.name,
-    permission_level:
-      overviewByBoat.get(boat.id)?.permission_level ??
-      (viewer.isSuperuser ? null : "viewer"),
-    can_edit:
-      overviewByBoat.get(boat.id)?.can_edit ?? Boolean(viewer.isSuperuser),
-    can_manage_boat_users:
-      overviewByBoat.get(boat.id)?.can_manage_boat_users ??
-      Boolean(viewer.isSuperuser),
-    description: boat.description,
-    home_port: boat.home_port ?? null,
-    image_path: boat.image_path ?? null,
-    image_url: getBoatImageUrl(supabase, boat.image_path, boat.updated_at),
-    model: boat.model ?? null,
-    year_built: boat.year_built ?? null,
-    is_active: boat.is_active,
-    trip_segments_count: tripSegmentsCountByBoat.get(boat.id) ?? 0,
-    visits_count: visitsCountByBoat.get(boat.id) ?? 0,
-    active_invites_count: activeInvitesCountByBoat.get(boat.id) ?? 0,
-    user_last_access_at: userLastAccessByBoat.get(boat.id)?.lastAccessAt ?? null,
-    user_display_name: userLastAccessByBoat.get(boat.id)?.displayName ?? null,
+  return baseBoats.map((boat) => ({
+    ...boat,
+    trip_segments_count: tripSegmentsCountByBoat.get(boat.boat_id) ?? 0,
+    visits_count: visitsCountByBoat.get(boat.boat_id) ?? 0,
+    active_invites_count: activeInvitesCountByBoat.get(boat.boat_id) ?? 0,
+    user_last_access_at: userLastAccessByBoat.get(boat.boat_id)?.lastAccessAt ?? null,
+    user_display_name: userLastAccessByBoat.get(boat.boat_id)?.displayName ?? null,
   })) as BoatSummary[];
 });
 
