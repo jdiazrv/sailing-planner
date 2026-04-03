@@ -1,112 +1,272 @@
 # Sailing Planner
 
-Sailing Planner is a Next.js + TypeScript starter prepared for a multi-boat, multi-user planning product backed by Supabase. The repository includes:
+Sailing Planner is a Next.js + TypeScript app for managing one or more boats, their seasons, trip segments, visits, guest access links and cross-boat timeline visibility. The current codebase is already beyond the original starter stage and includes:
 
-- Next.js App Router with Supabase browser, server and middleware clients
-- Email/password auth plus a magic-link-ready callback flow
-- Versioned SQL migrations for boats, seasons, trip segments, visits and per-boat permissions
-- RLS policies for boat isolation, per-boat editors/readers and a global superuser
-- Local Supabase CLI configuration, a minimal seed and Netlify deployment notes
+- multi-boat dashboard and boat switching
+- boat-scoped trip and visit workspaces
+- guest invitation links for a season
+- user invitations through Supabase Auth
+- onboarding tours for invited guests and authenticated users
+- public/shared timeline comparison between boats
+- local Supabase CLI setup, migrations, seed data and invite email template
 
-## Architecture summary
+Current app version: `0.3.1`
 
-The schema is designed around `boats` as the root entity.
+## Product status
 
-- A `season` belongs to a single boat.
-- A `trip_segment` belongs to a single season.
-- A `visit` belongs to a single season.
-- Boat access is controlled through `user_boat_permissions`.
-- Global platform-wide access is controlled with `profiles.is_superuser`.
-- Only visits with `status = 'confirmed'` should be treated as blocking availability.
+The repository currently implements these major flows:
 
-To protect private notes properly with Supabase RLS, private notes are stored in dedicated tables:
+- `Login`
+  Password login and magic-link login from [`src/components/auth/auth-form.tsx`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/components/auth/auth-form.tsx)
+- `Initial password setup`
+  Invited users land on [`src/app/auth/set-password/page.tsx`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/app/auth/set-password/page.tsx) and create their password there
+- `Boat planning`
+  Trips in [`src/app/boats/[boatId]/trip/page.tsx`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/app/boats/[boatId]/trip/page.tsx) and visits in [`src/app/boats/[boatId]/visits/page.tsx`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/app/boats/[boatId]/visits/page.tsx)
+- `Guest access`
+  Season guest links and guest-only route handling
+- `Shared timelines`
+  Compare your own boat with one selected external boat in [`src/app/shared/page.tsx`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/app/shared/page.tsx)
+- `Admin`
+  Boat administration and user administration for superusers and boat managers
+
+## Main architecture
+
+The schema is centered around boats:
+
+- one `boat` can have multiple `seasons`
+- one `season` can have multiple `trip_segments`
+- one `season` can have multiple `visits`
+- boat access is granted with `user_boat_permissions`
+- platform-wide access is granted with `profiles.is_superuser`
+- public cross-boat visibility is controlled with `profiles.is_timeline_public`
+- guest season links are stored in `season_access_links`
+
+Private note visibility is enforced with separate tables rather than inline fields:
 
 - `trip_segment_private_notes`
 - `visit_private_notes`
 
-This keeps the business model equivalent to your requested fields while allowing secure policies that do not leak private note columns to users who should not see them.
+This allows Supabase RLS to protect private information cleanly.
 
-## App router and auth structure
+## Code map
 
-The project uses the Next.js App Router.
+Important runtime pieces:
 
-- [`src/lib/supabase/browser.ts`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/lib/supabase/browser.ts) creates the browser client.
-- [`src/lib/supabase/server.ts`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/lib/supabase/server.ts) creates the server client.
-- [`src/lib/supabase/middleware.ts`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/lib/supabase/middleware.ts) refreshes sessions and protects authenticated routes.
-- [`src/app/login/page.tsx`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/app/login/page.tsx) provides password login and magic-link sending.
-- [`src/app/auth/callback/route.ts`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/app/auth/callback/route.ts) exchanges auth codes for sessions.
-- [`src/app/dashboard/page.tsx`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/app/dashboard/page.tsx) acts as the post-login boat selection screen.
-- [`src/app/boats/[boatId]/trip/page.tsx`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/app/boats/[boatId]/trip/page.tsx) is the main Trip/Season workspace with a timeline and segment editor.
-- [`src/app/boats/[boatId]/visits/page.tsx`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/app/boats/[boatId]/visits/page.tsx) combines visit editing, filtering, warnings and a synchronized timeline.
+- [`src/lib/supabase/browser.ts`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/lib/supabase/browser.ts)
+  Browser Supabase client
+- [`src/lib/supabase/server.ts`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/lib/supabase/server.ts)
+  Server Supabase client
+- [`src/lib/supabase/middleware.ts`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/lib/supabase/middleware.ts)
+  Session refresh and route protection
+- [`src/lib/env.ts`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/lib/env.ts)
+  URL resolution, redirect building and environment parsing
+- [`src/app/admin/actions.ts`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/app/admin/actions.ts)
+  Admin server actions, invitations and season-access link generation
+- [`src/lib/boat-data.ts`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/lib/boat-data.ts)
+  Viewer context, boat lists, workspaces and shared timeline data
 
 ## Environment variables
 
-Copy `.env.example` to `.env.local` and fill in the values:
+Copy `.env.example` to `.env.local`:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Required for the app:
+### Required
 
 - `NEXT_PUBLIC_APP_URL`
-  Local base URL for redirects, usually `http://localhost:3000`.
+  Public base URL used as a fallback for auth redirects. In local development use `http://localhost:3000`. In production this must be the real public URL of the deployed app.
 - `NEXT_PUBLIC_SUPABASE_URL`
-  Your hosted Supabase project URL.
+  Hosted Supabase project URL.
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-  The public anon key from Supabase.
+  Public browser key from Supabase.
 - `SUPABASE_SERVICE_ROLE_KEY`
-  Required for server-side admin flows such as guest season links, invitations and cross-user profile updates. Keep it server-side only.
+  Required for admin flows such as user invitations, guest season links and cross-user updates.
 
-Recommended for CLI workflows:
+### Optional but recommended
 
+- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+  Required if you want Google Places autocomplete and maps.
 - `SUPABASE_PROJECT_REF`
-  Your project ref, used by CLI scripts such as linking and type generation.
+  Needed for Supabase CLI workflows against the hosted project.
 - `SUPABASE_DB_PASSWORD`
-  Only needed for some local or linked database workflows. Do not expose it to client code.
+  Only needed for some linked CLI/database flows.
 
-The app throws a clear error at startup if `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_ANON_KEY` are missing.
+See the template in [`.env.example`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/.env.example).
 
-## What you must create manually in Supabase
+## URL and redirect logic
 
-Create a Supabase project in the dashboard and then do the following:
+This project resolves auth URLs with [`src/lib/env.ts`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/lib/env.ts).
 
-1. Copy the project URL and anon key into `.env.local`.
-2. In `Authentication > URL Configuration`, set:
-   - Site URL: your production URL, for example `https://your-site.netlify.app`
-   - Redirect URLs:
-     - `http://localhost:3000/auth/callback`
-     - `http://127.0.0.1:3000/auth/callback`
-     - `https://your-site.netlify.app/auth/callback`
-3. In `Authentication > Providers > Email`, enable:
-   - Email signups
-   - Magic links or email OTP, depending on your preference
-4. Optionally disable email confirmations in local-only workflows. The local CLI config already disables confirmations for local development.
-5. If you want CLI commands like `db push` against the hosted project, link the repo with `npm run supabase:link`.
-6. Add `SUPABASE_SERVICE_ROLE_KEY` to the runtime environment before using guest access links, invitations or other admin flows that act on behalf of other users.
+Rules that matter in practice:
+
+- if a real request origin is available and is not loopback, it is preferred
+- otherwise the app falls back to `NEXT_PUBLIC_APP_URL`
+- if that is still local, it falls back to `http://localhost:3000`
+
+This means:
+
+- in local development, `NEXT_PUBLIC_APP_URL=http://localhost:3000` is correct
+- in production, `NEXT_PUBLIC_APP_URL` must be your real public URL or emails and auth redirects may point to `localhost`
+
+## Supabase configuration
+
+### Local Supabase CLI config
+
+Local Supabase is configured in [supabase/config.toml](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/supabase/config.toml).
+
+Important local values currently in use:
+
+- `site_url = "http://localhost:3000"`
+- additional redirect URLs:
+  - `http://localhost:3000/auth/callback`
+  - `http://127.0.0.1:3000/auth/callback`
+- local invite email template:
+  - subject in Spanish
+  - content path `./supabase/templates/invite.html`
+
+The local email inbox is Inbucket on:
+
+- `http://127.0.0.1:54324`
+
+Supabase Studio local is on:
+
+- `http://127.0.0.1:54323`
+
+### Hosted Supabase dashboard checklist
+
+These values must be configured manually in the hosted Supabase project.
+
+#### 1. Authentication > URL Configuration
+
+Set:
+
+- `Site URL`
+  Your real public frontend URL
+  Example: `https://your-site.netlify.app`
+
+Add these URLs in `Additional Redirect URLs`:
+
+- `http://localhost:3000/auth/callback`
+- `http://127.0.0.1:3000/auth/callback`
+- `http://localhost:3000/auth/set-password`
+- `http://127.0.0.1:3000/auth/set-password`
+- `https://your-site.netlify.app/auth/callback`
+- `https://your-site.netlify.app/auth/set-password`
+
+If you use a custom domain, add that domain too:
+
+- `https://app.yourdomain.com/auth/callback`
+- `https://app.yourdomain.com/auth/set-password`
+
+#### 2. Authentication > Providers > Email
+
+Enable the email provider and the flows you want:
+
+- password login
+- email OTP / magic link if you want that mode active
+
+Local config disables email confirmations for convenience, but hosted behavior is controlled in the Supabase dashboard.
+
+#### 3. Authentication > Email Templates
+
+The repo includes a local invite template in:
+
+- [supabase/templates/invite.html](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/supabase/templates/invite.html)
+
+Important:
+
+- local Supabase can read that file directly from `supabase/config.toml`
+- hosted Supabase will not automatically read your repo file
+- for production you must copy the HTML into the hosted `Invite` email template in the dashboard
+
+That template expects metadata already sent by the app:
+
+- `preferred_language`
+- `inviter_email`
+- optional `display_name`
+
+#### 4. Authentication > SMTP Settings
+
+If you keep the default Supabase SMTP, email sending is rate-limited very aggressively and is not suitable for production. For real usage:
+
+- enable custom SMTP
+- configure your provider
+- then review `Authentication > Rate Limits`
+
+#### 5. Authentication > Rate Limits
+
+If invitations or magic links fail with `email rate exceeded`, check:
+
+- email sending limits
+- whether you are still using the default SMTP
+
+### Hosted database and migrations
+
+When you change schema locally, push it to the hosted project with:
+
+```bash
+npm run supabase:link
+npm run db:push
+```
+
+## Hosting configuration
+
+This project currently assumes a hosted frontend such as Netlify.
+
+### Required environment variables in the hosting platform
+
+Set these in Netlify or your chosen platform:
+
+- `NEXT_PUBLIC_APP_URL`
+  Example: `https://your-site.netlify.app`
+- `NEXT_PUBLIC_SUPABASE_URL`
+  Your Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  Your public anon key
+- `SUPABASE_SERVICE_ROLE_KEY`
+  Needed for invitations and admin server actions
+
+Optional:
+
+- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+- `SUPABASE_PROJECT_REF`
+- `SUPABASE_DB_PASSWORD`
+
+### Hosting notes
+
+- the app label shown in the dashboard uses the package version plus the current commit when available
+- after a fresh deploy, reload old open tabs if you see `Server Action was not found on the server`
+- if invitation emails point to `localhost`, the problem is almost always `NEXT_PUBLIC_APP_URL` or missing hosted redirect URLs in Supabase
 
 ## Local development
 
-Install dependencies and run the Next.js app:
+Install dependencies:
 
 ```bash
 npm install
+```
+
+Run the app:
+
+```bash
 npm run dev
 ```
 
-The app will be available at [http://localhost:3000](http://localhost:3000).
+Frontend:
 
-## Supabase CLI and local database workflow
+- [http://localhost:3000](http://localhost:3000)
 
-This repo includes standard Supabase project files in [`supabase/config.toml`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/supabase/config.toml).
+## Local Supabase workflow
 
-Install the Supabase CLI if you do not already have it:
+Install Supabase CLI if needed:
 
 ```bash
 brew install supabase/tap/supabase
 ```
 
-Useful scripts:
+Useful scripts from [package.json](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/package.json):
 
 - `npm run supabase:start`
 - `npm run supabase:stop`
@@ -118,50 +278,111 @@ Useful scripts:
 
 Suggested local flow:
 
-1. `npm run supabase:start`
-2. `npm run db:reset`
-3. `npm run dev`
+```bash
+npm run supabase:start
+npm run db:reset
+npm run dev
+```
 
-## Migrations and seed
+If `npx` complains about cache permissions on your machine, use a temporary cache for that command:
 
-Main schema migration:
+```bash
+npm_config_cache=/tmp/npm-cache npm run supabase:start
+```
 
-- [`supabase/migrations/20260331132000_initial_schema.sql`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/supabase/migrations/20260331132000_initial_schema.sql)
-- [`supabase/migrations/20260331170000_master_requirements_alignment.sql`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/supabase/migrations/20260331170000_master_requirements_alignment.sql)
+## Auth flows
 
-Optional seed:
+### Password login
 
-- [`supabase/seed.sql`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/supabase/seed.sql)
+- user enters email and password on `/login`
+- browser client signs in
+- app records access in the background
+- browser navigates directly to the next page or `/dashboard`
 
-The seed creates:
+### Magic link login
 
-- one demo boat
-- one demo season
-- two demo trip segments
-- one tentative visit
-- one confirmed visit
-- one example permission row for the first auth user if one exists
+- user enters email on `/login`
+- app sends an OTP email with `emailRedirectTo=/auth/callback`
+- callback exchanges the code for a session
+- user is redirected to `next` or `/dashboard`
 
-## Current V1 product scope
+### Invited user flow
 
-The current app already includes the core V1 workflow requested in the master specification:
+- admin invites a user from `/admin/users`
+- Supabase sends the invitation email
+- the invite points to `/auth/set-password`
+- invited user creates password there
+- app records access in the background and redirects to `/dashboard`
 
-- login and protected routes
-- multi-boat selection after login
-- boat-scoped trip/season screen
-- boat-scoped visits screen
-- synchronized timeline with trip, visits and derived availability layers
-- season, trip segment and visit creation/update/delete flows for editors
-- read-only experience for non-editors
-- undefined periods shown as a first-class availability state
-- tentative versus confirmed visit handling
-- warning-oriented conflict detection for visits
+## Guest season links
+
+Guest season links are separate from Supabase Auth invitations.
+
+They are generated from the boat sharing/admin flow and use:
+
+- season access tokens
+- guest cookies
+- guest-only routes under `/guest/...`
+
+These links depend on `SUPABASE_SERVICE_ROLE_KEY`.
+
+## Current permissions model
+
+Per-boat permissions come from `user_boat_permissions` and global access comes from `profiles.is_superuser`.
+
+- `viewer`
+  read-only with fine-grained visit visibility flags
+- `editor`
+  can create and edit planning data
+- `manager`
+  can edit planning data and manage boat users
+- `superuser`
+  can access all boats and all users
+
+Cross-boat timeline visibility is separate:
+
+- `profiles.is_timeline_public`
+  makes a boat timeline visible to other boats participating in visibility sharing
+
+Guest season links are also separate:
+
+- they are read-only
+- they do not use the same permissions model as authenticated internal users
+
+## Shared timelines
+
+The shared timeline view is in:
+
+- [`src/app/shared/page.tsx`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/app/shared/page.tsx)
+
+Current behavior:
+
+- compare your own boat with one selected other boat
+- synchronized zoom between both timelines
+- optional side-by-side maps
+- selection cards up to 12 boats on desktop and 6 on mobile
+- searchable combo box above that threshold
+
+## Dashboard and performance notes
+
+Recent performance work already done:
+
+- request-level caching for viewer/session reads
+- lighter boat list for first dashboard/shared loads
+- parallelized loading in dashboard and shared page
+- animated global loading screen in [`src/app/loading.tsx`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/app/loading.tsx)
+
+If login still feels slow after deployment, the next bottlenecks are likely:
+
+- heavy workspace queries for trips/visits
+- Google Maps loading
+- hosted Supabase latency
 
 ## How to create the first superuser
 
-1. Sign up once through the app or directly in Supabase Auth.
+1. Create the first user through the app or Supabase Auth.
 2. Open the Supabase SQL editor.
-3. Run this SQL, replacing the email with your real account:
+3. Run:
 
 ```sql
 update public.profiles
@@ -173,11 +394,7 @@ where id = (
 );
 ```
 
-That user will immediately bypass per-boat restrictions and can manage all boats and users.
-
-## How to create the first boat and assign it to a user
-
-After promoting the first superuser, run this SQL in the SQL editor with your user email:
+## How to create the first boat and assign it
 
 ```sql
 with target_user as (
@@ -216,67 +433,36 @@ select
 from target_user, new_boat;
 ```
 
-## Permission model per boat
+## Migrations and seed
 
-The RLS rules are driven by `user_boat_permissions` plus `profiles.is_superuser`.
+Schema and behavior live under [supabase/migrations](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/supabase/migrations).
 
-- `viewer`
-  Read-only by default. Fine-grained flags decide whether the user can see full visits, only names, only availability or only their own visits.
-- `editor`
-  Can create, update and delete seasons, trip segments, visits and private note records for the assigned boat.
-- `manager`
-  Same as editor, plus can manage `user_boat_permissions` for that boat.
-- `is_superuser = true`
-  Full access across all boats and users.
+Seed data lives in:
 
-Important note about private notes:
+- [supabase/seed.sql](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/supabase/seed.sql)
 
-- Private notes are not stored inline on `trip_segments` or `visits`.
-- They live in dedicated protected tables so RLS can enforce access safely.
+## Verification commands
 
-Important note about own visits:
+Useful checks:
 
-- `visits.owner_user_id` was added so `can_view_only_own_visit` has a concrete relation to the authenticated user.
+```bash
+npm run typecheck
+npm run build
+```
 
-## Availability rules
+## Release workflow
 
-Only visits with `status = 'confirmed'` block availability.
+Current release version is `v0.3.1`.
 
-The SQL helper function `public.get_season_visits(uuid)` returns `blocks_availability` so the frontend can consume the rule directly without reimplementing it in JavaScript.
+Typical flow:
 
-## Netlify setup
+1. update `package.json` version
+2. commit and push to `main`
+3. create a GitHub release tag such as `v0.3.1`
+4. deploy hosting from the updated `main`
 
-Set these variables in Netlify:
+## Notes
 
-- `NEXT_PUBLIC_APP_URL`
-  Your Netlify site URL, for example `https://your-site.netlify.app`
-- `NEXT_PUBLIC_SUPABASE_URL`
-  Hosted Supabase project URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-  Hosted Supabase anon key
-- `SUPABASE_PROJECT_REF`
-  Optional, useful for CI or admin workflows
-- `SUPABASE_DB_PASSWORD`
-  Optional, only if your build or automation needs CLI database access
-
-Do not add the Supabase service role key to frontend-exposed variables.
-
-## Exact manual dashboard checklist to finish setup
-
-1. Create the Supabase project.
-2. Fill `.env.local` with your URL and anon key.
-3. Start local Supabase and apply the schema:
-   `npm run supabase:start`
-   `npm run db:reset`
-4. Create your first auth user.
-5. Promote that user to superuser with the SQL snippet above.
-6. Create the first boat and permission row with the SQL snippet above.
-7. In Supabase dashboard auth settings, add local and Netlify callback URLs.
-8. In Netlify, add the same environment variables shown above.
-9. Deploy.
-
-## Notes and assumptions
-
-- The GitHub repository was empty when this setup started, so the Next.js app scaffold was created from scratch.
-- Because per-field RLS is not enough to protect private notes safely, protected note tables were introduced as the cleanest equivalent model.
-- No remote Supabase dashboard action has been simulated. Anything that must be done in the dashboard is documented explicitly above.
+- hosted Supabase dashboard settings are part of the real deployment and are not fully represented by repo files alone
+- local invite email template configuration does not automatically update hosted Supabase
+- stale open tabs after a deploy can produce client/server mismatch errors until the page is reloaded
