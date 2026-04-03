@@ -11,13 +11,7 @@ export function AppLoading({
 }) {
   return (
     <div className="app-loader" aria-busy="true" aria-live="polite">
-      <div className="app-loader__waveband" aria-hidden="true">
-        <span className="app-loader__wave app-loader__wave--back" />
-        <span className="app-loader__wave app-loader__wave--mid" />
-        <span className="app-loader__wave app-loader__wave--front" />
-      </div>
       <div className="app-loader__brand-wrap">
-        <div className="app-loader__brand-halo" />
         <SailingBrand className="app-loader__brand" size={64} />
       </div>
       <div className="app-loader__copy">
