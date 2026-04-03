@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 import { recordCurrentUserAccess } from "@/app/actions";
 import { buildAuthRedirectUrl } from "@/lib/env";
@@ -22,7 +21,6 @@ export const AuthForm = ({
   className,
 }: AuthFormProps = {}) => {
   const { t } = useI18n();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/dashboard";
 
@@ -51,7 +49,11 @@ export const AuthForm = ({
 
   const handleMagicLink = async () => {
     const supabase = createClient();
-    const redirectUrl = new URL(buildAuthRedirectUrl());
+    const requestOrigin =
+      typeof window !== "undefined" ? window.location.origin : undefined;
+    const redirectUrl = new URL(
+      buildAuthRedirectUrl("/auth/callback", { requestOrigin }),
+    );
     redirectUrl.searchParams.set("next", next);
 
     const { error: otpError } = await supabase.auth.signInWithOtp({
@@ -103,17 +105,8 @@ export const AuthForm = ({
     <form className={["auth-card", className].filter(Boolean).join(" ")} onSubmit={handleSubmit}>
       {showHeader ? (
         <div className="auth-card__header">
-          <Image
-            alt="Sailing Planner"
-            height={48}
-            priority
-            src="/sailing-planner-logo.svg"
-            width={48}
-          />
-          <div>
-            <h1>{t("auth.title")}</h1>
-            <p className="muted">{t("auth.subtitle")}</p>
-          </div>
+          <h1>{t("auth.title")}</h1>
+          <p className="muted">{t("auth.subtitle")}</p>
         </div>
       ) : null}
 
