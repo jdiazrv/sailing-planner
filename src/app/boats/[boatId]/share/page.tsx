@@ -7,6 +7,7 @@ import { SeasonBar } from "@/components/planning/season-bar";
 import { getBoatWorkspace, getSeasonAccessLinkStatus } from "@/lib/boat-data";
 import { t } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n-server";
+import { startServerTiming } from "@/lib/server-timing";
 
 import {
   deleteSeason,
@@ -23,6 +24,7 @@ export default async function BoatSharePage({
   params: Promise<{ boatId: string }>;
   searchParams: Promise<{ season?: string; setup?: string }>;
 }) {
+  const timing = startServerTiming("boatShare.page");
   const { boatId } = await params;
   const locale = await getRequestLocale();
   const { season: requestedSeasonId, setup } = await searchParams;
@@ -41,6 +43,13 @@ export default async function BoatSharePage({
   const seasonAccess = workspace.selectedSeason
     ? await getSeasonAccessLinkStatus(boatId, workspace.selectedSeason.id)
     : null;
+
+  timing.end({
+    boatId,
+    seasonId: workspace.selectedSeason?.id ?? null,
+    seasons: workspace.seasons.length,
+    links: seasonAccess?.links.length ?? 0,
+  });
 
   return (
     <>

@@ -15,6 +15,7 @@ import { TripOverview } from "@/components/planning/trip-overview";
 import { getDashboardBoatWorkspace } from "@/lib/boat-data";
 import { computeVisitConflicts } from "@/lib/planning";
 import { t, type Locale } from "@/lib/i18n";
+import { startServerTiming } from "@/lib/server-timing";
 
 export async function DashboardOpenBoatPanel({
   boatId,
@@ -25,6 +26,10 @@ export async function DashboardOpenBoatPanel({
   locale: Locale;
   requestedSeasonId?: string;
 }) {
+  const timing = startServerTiming("dashboard.openBoatPanel", {
+    boatId,
+    requestedSeasonId: requestedSeasonId ?? null,
+  });
   const workspace = await getDashboardBoatWorkspace(boatId, requestedSeasonId);
   const canEdit =
     workspace.viewer.isSuperuser || Boolean(workspace.permission?.can_edit);
@@ -34,6 +39,12 @@ export async function DashboardOpenBoatPanel({
     workspace.tripSegments,
     workspace.visits,
   );
+  timing.end({
+    seasonId: workspace.selectedSeason?.id ?? null,
+    tripSegments: workspace.tripSegments.length,
+    visits: workspace.visits.length,
+    conflicts: conflicts.length,
+  });
 
   if (!workspace.selectedSeason) {
     return (

@@ -3,6 +3,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 
 import { getEnv } from "@/lib/env";
+import { startServerTiming } from "@/lib/server-timing";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { requireSeasonGuestSession } from "@/lib/season-access-server";
@@ -235,6 +236,7 @@ const mapBoatRowToSummary = (
 }) as BoatSummary;
 
 export const requireViewer = cache(async () => {
+  const timing = startServerTiming("boatData.requireViewer");
   const supabase = await createClient();
   const db = supabase as any;
   const {
@@ -258,6 +260,11 @@ export const requireViewer = cache(async () => {
     isSeasonGuest: false,
   };
 
+  timing.end({
+    userId: user.id,
+    isSuperuser: viewer.isSuperuser,
+    hasProfile: Boolean(profile),
+  });
   return { supabase, user, viewer };
 });
 
@@ -267,17 +274,22 @@ export const getAccessibleBoatsLite = cache(async () => {
 });
 
 export const getAccessibleBoats = cache(async () => {
+  const timing = startServerTiming("boatData.getAccessibleBoats");
   const { supabase, viewer } = await requireViewer();
   const db = supabase as any;
   const baseBoats = await getAccessibleBoatBase(supabase, viewer);
-  return enrichBoatSummaries(db, baseBoats);
+  const boats = await enrichBoatSummaries(db, baseBoats);
+  timing.end({ boats: boats.length });
+  return boats;
 });
 
 export const getSuperuserDashboardSnapshot = cache(async (
   options?: { requestedBoatId?: string; requestedSeasonId?: string; lastBoatId?: string },
 ) => {
+  const timing = startServerTiming("boatData.getSuperuserDashboardSnapshot", options);
   const { supabase, viewer } = await requireViewer();
   if (!viewer.isSuperuser) {
+    timing.end({ skipped: true });
     return null;
   }
 
@@ -357,13 +369,20 @@ export const getSuperuserDashboardSnapshot = cache(async (
 
   const boats = selectedBoat ? await enrichBoatSummaries(db, [selectedBoat]) : [];
 
-  return {
+  const result = {
     viewer,
     boats,
     totalBoats: totalBoatsResult.count ?? 0,
     activeBoats: activeBoatsResult.count ?? 0,
     selectedSeasonName,
   };
+  timing.end({
+    boats: result.boats.length,
+    totalBoats: result.totalBoats,
+    activeBoats: result.activeBoats,
+    selectedSeasonName: result.selectedSeasonName,
+  });
+  return result;
 });
 
 export const requireSuperuser = async () => {
@@ -440,6 +459,10 @@ export const getDashboardBoatWorkspace = cache(async (
   boatId: string,
   requestedSeasonId?: string,
 ) => {
+  const timing = startServerTiming("boatData.getDashboardBoatWorkspace", {
+    boatId,
+    requestedSeasonId: requestedSeasonId ?? null,
+  });
   const { supabase, user, viewer } = await requireViewer();
   const db = supabase as any;
 
@@ -482,7 +505,7 @@ export const getDashboardBoatWorkspace = cache(async (
     visits = (visitData ?? []) as VisitView[];
   }
 
-  return {
+  const result = {
     viewer,
     boat: {
       ...(boatRowData as BoatRow),
@@ -498,6 +521,14 @@ export const getDashboardBoatWorkspace = cache(async (
     tripSegments,
     visits,
   };
+  timing.end({
+    seasonId: selectedSeason?.id ?? null,
+    seasons: seasons.length,
+    tripSegments: tripSegments.length,
+    visits: visits.length,
+    hasPermission: Boolean(permissionData),
+  });
+  return result;
 });
 
 export const getBoatTimelineSnapshot = cache(async (
@@ -1176,6 +1207,10 @@ export const getBoatWorkspace = async (
   boatId: string,
   requestedSeasonId?: string,
 ) => {
+  const timing = startServerTiming("boatData.getBoatWorkspace", {
+    boatId,
+    requestedSeasonId: requestedSeasonId ?? null,
+  });
   const { supabase, user, viewer } = await requireViewer();
   const db = supabase as any;
   const boats = await getAccessibleBoats();
@@ -1220,7 +1255,7 @@ export const getBoatWorkspace = async (
     visits = (visitData ?? []) as VisitView[];
   }
 
-  return {
+  const result = {
     viewer,
     boat: {
       ...(boatRowData as BoatRow),
@@ -1237,6 +1272,14 @@ export const getBoatWorkspace = async (
     tripSegments,
     visits,
   } satisfies BoatWorkspace;
+  timing.end({
+    boats: boats.length,
+    seasonId: selectedSeason?.id ?? null,
+    seasons: seasons.length,
+    tripSegments: tripSegments.length,
+    visits: visits.length,
+  });
+  return result;
 };
 
 export const getSeasonGuestWorkspace = async (
@@ -1334,6 +1377,10 @@ export const getSeasonAccessLinkStatus = async (
   boatId: string,
   seasonId: string,
 ) => {
+  const timing = startServerTiming("boatData.getSeasonAccessLinkStatus", {
+    boatId,
+    seasonId,
+  });
   const { supabase } = await requireBoatShareAccess(boatId);
   const db = supabase as any;
 
@@ -1360,9 +1407,14 @@ export const getSeasonAccessLinkStatus = async (
     creator_name: row.creator?.display_name ?? null,
   })) as SeasonAccessLinkSummary[];
 
-  return {
+  const result = {
     links: rows,
   };
+  timing.end({
+    links: rows.length,
+    activeLinks: rows.filter((row) => row.is_active).length,
+  });
+  return result;
 };
 
 // ---------------------------------------------------------------------------

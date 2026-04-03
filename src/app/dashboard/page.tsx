@@ -16,12 +16,14 @@ import {
 import { t } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n-server";
 import { getReleaseLabel } from "@/lib/release";
+import { startServerTiming } from "@/lib/server-timing";
 
 export default async function DashboardPage({
   searchParams,
 }: {
   searchParams: Promise<{ change?: string; boat?: string; season?: string }>;
 }) {
+  const timing = startServerTiming("dashboard.page");
   const [{ change, boat, season }, locale, viewerContext] = await Promise.all([
     searchParams,
     getRequestLocale(),
@@ -59,6 +61,14 @@ export default async function DashboardPage({
     ? boats
     : boats.filter((entry) => entry.boat_id === selectedBoatId);
   const selectedSeasonLabel = superuserSnapshot?.selectedSeasonName ?? null;
+
+  timing.end({
+    isSuperuser: viewer.isSuperuser,
+    shouldLoadAllBoats,
+    boats: boats.length,
+    selectedBoatId,
+    hasSeasonLabel: Boolean(selectedSeasonLabel),
+  });
 
   return (
     <main className="shell">
