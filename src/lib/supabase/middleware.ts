@@ -19,6 +19,11 @@ const isProtectedPath = (pathname: string) =>
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
 
+const hasSupabaseSessionCookie = (request: NextRequest) =>
+  request.cookies
+    .getAll()
+    .some((cookie) => cookie.name.startsWith("sb-") && cookie.name.includes("auth-token"));
+
 export const updateSession = async (request: NextRequest) => {
   const env = getEnv();
   let response = NextResponse.next({
@@ -37,6 +42,14 @@ export const updateSession = async (request: NextRequest) => {
     guestErrorUrl.pathname = "/season-access/error";
     guestErrorUrl.searchParams.set("reason", "missing");
     return NextResponse.redirect(guestErrorUrl);
+  }
+
+  const isProtected = isProtectedPath(request.nextUrl.pathname);
+  const isLoginPath = request.nextUrl.pathname === "/login";
+  const hasSessionCookie = hasSupabaseSessionCookie(request);
+
+  if (!isProtected && !(isLoginPath && hasSessionCookie)) {
+    return response;
   }
 
   const supabase = createServerClient<Database>(
@@ -66,7 +79,7 @@ export const updateSession = async (request: NextRequest) => {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user && isProtectedPath(request.nextUrl.pathname)) {
+  if (!user && isProtected) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set(

@@ -1,16 +1,15 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { BoatSelector } from "@/components/boats/boat-selector";
 import { LastBoatTracker } from "@/components/boats/last-boat-tracker";
+import { DashboardOpenBoatPanel } from "@/components/dashboard/dashboard-open-boat-panel";
+import { DashboardOpenBoatSkeleton } from "@/components/dashboard/dashboard-open-boat-skeleton";
 import { TimelineVisibilityPanel } from "@/components/shared/timeline-visibility-panel";
-import { NextStepCard } from "@/components/planning/next-step-card";
-import { TripOverview } from "@/components/planning/trip-overview";
 import {
   getAccessibleBoats,
-  getDashboardBoatWorkspace,
-  getBoatSelectedSeason,
   getSuperuserDashboardSnapshot,
   requireViewer,
 } from "@/lib/boat-data";
@@ -58,13 +57,7 @@ export default async function DashboardPage({
   const visibleBoats = viewer.isSuperuser && shouldLoadAllBoats
     ? boats
     : boats.filter((entry) => entry.boat_id === selectedBoatId);
-  const selectedSeasonData = selectedBoatId ? await getBoatSelectedSeason(selectedBoatId) : null;
-  const selectedSeasonLabel = selectedSeasonData?.selectedSeason
-    ? selectedSeasonData.selectedSeason.name
-    : null;
-  const dashboardWorkspace = selectedBoatId
-    ? await getDashboardBoatWorkspace(selectedBoatId)
-    : null;
+  const selectedSeasonLabel = superuserSnapshot?.selectedSeasonName ?? null;
 
   return (
     <main className="shell">
@@ -122,43 +115,11 @@ export default async function DashboardPage({
         </section>
       )}
 
-      {dashboardWorkspace ? (
+      {selectedBoatId ? (
         <section style={{ marginTop: "1rem" }}>
-          {dashboardWorkspace.selectedSeason ? (
-            <TripOverview
-              season={dashboardWorkspace.selectedSeason}
-              tripSegments={dashboardWorkspace.tripSegments}
-              visits={dashboardWorkspace.visits}
-            >
-              <article className="dashboard-card workspace-main">
-                <div className="card-header">
-                  <div>
-                    <p className="eyebrow">{dashboardWorkspace.boat.name}</p>
-                    <h2>{selectedSeasonLabel ?? dashboardWorkspace.selectedSeason.name}</h2>
-                  </div>
-                  <div className="workspace-header__actions">
-                    <Link className="secondary-button" href={`/boats/${selectedBoatId}/trip`}>
-                      {t(locale, "boatSelector.openWorkspace")}
-                    </Link>
-                  </div>
-                </div>
-                <div className="boat-card__stats">
-                  <span>{dashboardWorkspace.tripSegments.length} {t(locale, "boatSelector.tripSegmentsStat")}</span>
-                  <span>{dashboardWorkspace.visits.length} {t(locale, "boatSelector.visitsStat")}</span>
-                  <span>{dashboardWorkspace.boat.home_port || t(locale, "boatSelector.homePortMissing")}</span>
-                </div>
-              </article>
-            </TripOverview>
-          ) : (
-            <NextStepCard
-              actionHref={`/boats/${selectedBoatId}/trip?setup=create-season`}
-              actionLabel={t(locale, "planning.nextStepCreateSeasonAction")}
-              body={t(locale, "planning.nextStepCreateSeasonBody")}
-              eyebrow={t(locale, "planning.nextStepEyebrow")}
-              locale={locale}
-              title={t(locale, "planning.nextStepCreateSeasonTitle")}
-            />
-          )}
+          <Suspense fallback={<DashboardOpenBoatSkeleton />}>
+            <DashboardOpenBoatPanel boatId={selectedBoatId} locale={locale} />
+          </Suspense>
         </section>
       ) : null}
 

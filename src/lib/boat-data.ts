@@ -336,6 +336,20 @@ export const getSuperuserDashboardSnapshot = cache(async (
     }
   }
 
+  let selectedSeasonName: string | null = null;
+  if (selectedBoat) {
+    const { data: seasonData } = await db
+      .from("seasons")
+      .select("name, year")
+      .eq("boat_id", selectedBoat.boat_id)
+      .order("year", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    selectedSeasonName =
+      seasonData?.name ?? (seasonData?.year ? String(seasonData.year) : null);
+  }
+
   const boats = selectedBoat ? await enrichBoatSummaries(db, [selectedBoat]) : [];
 
   return {
@@ -343,6 +357,7 @@ export const getSuperuserDashboardSnapshot = cache(async (
     boats,
     totalBoats: totalBoatsResult.count ?? 0,
     activeBoats: activeBoatsResult.count ?? 0,
+    selectedSeasonName,
   };
 });
 
