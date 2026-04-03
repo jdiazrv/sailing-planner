@@ -416,6 +416,70 @@ export const getBoatSelectedSeason = cache(async (
   };
 });
 
+export const getDashboardBoatWorkspace = cache(async (
+  boatId: string,
+  requestedSeasonId?: string,
+) => {
+  const { supabase, user, viewer } = await requireViewer();
+  const db = supabase as any;
+
+  const [{ data: boatRowData }, { data: permissionData }, { data: seasonsData }] =
+    await Promise.all([
+      db.from("boats").select("*").eq("id", boatId).maybeSingle(),
+      db
+        .from("user_boat_permissions")
+        .select("*")
+        .eq("boat_id", boatId)
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      db.from("seasons").select("*").eq("boat_id", boatId).order("year", {
+        ascending: false,
+      }),
+    ]);
+
+  if (!boatRowData) {
+    redirect("/dashboard");
+  }
+
+  const seasons = (seasonsData ?? []) as SeasonRow[];
+  const selectedSeason =
+    seasons.find((season) => season.id === requestedSeasonId) ?? seasons[0] ?? null;
+
+  let tripSegments: TripSegmentView[] = [];
+  let visits: VisitView[] = [];
+
+  if (selectedSeason) {
+    const [{ data: tripData }, { data: visitData }] = await Promise.all([
+      db.rpc("get_season_trip_segments", {
+        p_season_id: selectedSeason.id,
+      }),
+      db.rpc("get_season_visits", {
+        p_season_id: selectedSeason.id,
+      }),
+    ]);
+
+    tripSegments = (tripData ?? []) as TripSegmentView[];
+    visits = (visitData ?? []) as VisitView[];
+  }
+
+  return {
+    viewer,
+    boat: {
+      ...(boatRowData as BoatRow),
+      image_url: getBoatImageUrl(
+        supabase,
+        (boatRowData as BoatRow | null)?.image_path,
+        (boatRowData as BoatRow | null)?.updated_at,
+      ),
+    } as BoatDetails,
+    permission: permissionData as PermissionRow | null,
+    seasons,
+    selectedSeason,
+    tripSegments,
+    visits,
+  };
+});
+
 export const getBoatTimelineSnapshot = cache(async (
   boatId: string,
   requestedSeasonId?: string,

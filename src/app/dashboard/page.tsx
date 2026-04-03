@@ -5,8 +5,11 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { BoatSelector } from "@/components/boats/boat-selector";
 import { LastBoatTracker } from "@/components/boats/last-boat-tracker";
 import { TimelineVisibilityPanel } from "@/components/shared/timeline-visibility-panel";
+import { NextStepCard } from "@/components/planning/next-step-card";
+import { TripOverview } from "@/components/planning/trip-overview";
 import {
   getAccessibleBoats,
+  getDashboardBoatWorkspace,
   getBoatSelectedSeason,
   getSuperuserDashboardSnapshot,
   requireViewer,
@@ -58,6 +61,9 @@ export default async function DashboardPage({
   const selectedSeasonData = selectedBoatId ? await getBoatSelectedSeason(selectedBoatId) : null;
   const selectedSeasonLabel = selectedSeasonData?.selectedSeason
     ? selectedSeasonData.selectedSeason.name
+    : null;
+  const dashboardWorkspace = selectedBoatId
+    ? await getDashboardBoatWorkspace(selectedBoatId)
     : null;
 
   return (
@@ -115,6 +121,46 @@ export default async function DashboardPage({
           <p className="muted">{t(locale, "dashboard.noBoatsBody")}</p>
         </section>
       )}
+
+      {dashboardWorkspace ? (
+        <section style={{ marginTop: "1rem" }}>
+          {dashboardWorkspace.selectedSeason ? (
+            <TripOverview
+              season={dashboardWorkspace.selectedSeason}
+              tripSegments={dashboardWorkspace.tripSegments}
+              visits={dashboardWorkspace.visits}
+            >
+              <article className="dashboard-card workspace-main">
+                <div className="card-header">
+                  <div>
+                    <p className="eyebrow">{dashboardWorkspace.boat.name}</p>
+                    <h2>{selectedSeasonLabel ?? dashboardWorkspace.selectedSeason.name}</h2>
+                  </div>
+                  <div className="workspace-header__actions">
+                    <Link className="secondary-button" href={`/boats/${selectedBoatId}/trip`}>
+                      {t(locale, "boatSelector.openWorkspace")}
+                    </Link>
+                  </div>
+                </div>
+                <div className="boat-card__stats">
+                  <span>{dashboardWorkspace.tripSegments.length} {t(locale, "boatSelector.tripSegmentsStat")}</span>
+                  <span>{dashboardWorkspace.visits.length} {t(locale, "boatSelector.visitsStat")}</span>
+                  <span>{dashboardWorkspace.boat.home_port || t(locale, "boatSelector.homePortMissing")}</span>
+                </div>
+              </article>
+            </TripOverview>
+          ) : (
+            <NextStepCard
+              actionHref={`/boats/${selectedBoatId}/trip?setup=create-season`}
+              actionLabel={t(locale, "planning.nextStepCreateSeasonAction")}
+              body={t(locale, "planning.nextStepCreateSeasonBody")}
+              eyebrow={t(locale, "planning.nextStepEyebrow")}
+              locale={locale}
+              title={t(locale, "planning.nextStepCreateSeasonTitle")}
+            />
+          )}
+        </section>
+      ) : null}
 
       <section style={{ marginTop: "1rem" }}>
         <TimelineVisibilityPanel
