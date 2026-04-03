@@ -21,16 +21,23 @@ export default async function SharedLayout({
     (lastBoatId && boats.some((entry) => entry.boat_id === lastBoatId)
       ? lastBoatId
       : boats[0]?.boat_id) ?? undefined;
+  const canManageUsers =
+    viewer.isSuperuser ||
+    boats.some((entry) => entry.can_manage_boat_users);
   const canShare =
     viewer.isSuperuser ||
-    Boolean(boats.find((entry) => entry.boat_id === activeBoatId)?.can_edit);
+    Boolean(
+      boats.find((entry) => entry.boat_id === activeBoatId)?.can_edit ||
+      boats.find((entry) => entry.boat_id === activeBoatId)?.can_manage_boat_users,
+    );
 
   return (
     <>
       <AppSidebarNav
         boatId={activeBoatId}
-        canManageUsers={viewer.isSuperuser}
+        canManageUsers={canManageUsers}
         canShare={canShare}
+        currentUserId={viewer.profile?.id ?? undefined}
         isSuperuser={viewer.isSuperuser}
         locale={locale}
         userName={viewer.profile?.display_name ?? viewer.profile?.email ?? null}

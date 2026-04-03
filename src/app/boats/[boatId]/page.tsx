@@ -35,13 +35,19 @@ export default async function BoatWorkspacePage({
   const workspace = await getBoatWorkspace(boatId, requestedSeasonId);
   const canEdit =
     workspace.viewer.isSuperuser || Boolean(workspace.permission?.can_edit);
-  const canShare = canEdit;
+  const canManageUsers =
+    workspace.viewer.isSuperuser ||
+    Boolean(workspace.permission?.can_manage_boat_users);
+  const canShare = canEdit || canManageUsers;
   const currentView = view === "visits" ? "visits" : "trip";
 
   return (
     <>
       {!workspace.viewer.isSuperuser && workspace.viewer.onboardingPending ? (
         <MemberFirstAccess
+          canEditBoat={canEdit}
+          canManageUsers={canManageUsers}
+          canShare={canShare}
           canViewVisits
           viewerId={workspace.viewer.profile?.id ?? boatId}
         />

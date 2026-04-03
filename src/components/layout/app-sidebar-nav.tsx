@@ -45,13 +45,13 @@ const IconCompare = () => (
   </svg>
 );
 
-const IconAnchor = () => (
+const IconBoat = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="5" r="2" />
-    <path d="M12 7v13" />
-    <path d="M5 10h14" />
-    {/* Fixed: ∩ shape — arms curve DOWN from crossbar ends */}
-    <path d="M5 10 C5 20 19 20 19 10" />
+    <path d="M11 3v12" />
+    <path d="M11 4L6.5 13H11" />
+    <path d="M11 6.5L17.2 13H11" />
+    <path d="M4 15.5h14.5" />
+    <path d="M6 18c2.1 1.3 4 1.8 6 1.8s3.9-.5 6-1.8" />
   </svg>
 );
 
@@ -68,6 +68,13 @@ const IconChart = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
     <path d="M4 20V12M9 20V8M14 20V4M19 20v-6" />
     <path d="M2 20h20" />
+  </svg>
+);
+
+const IconProfile = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="8" r="3.5" />
+    <path d="M4 20a8 8 0 0 1 16 0" />
   </svg>
 );
 
@@ -116,21 +123,36 @@ function NavItem({
   label,
   icon,
   active,
+  tourId,
 }: {
   href: string;
   label: string;
   icon: ReactNode;
   active?: boolean;
+  tourId?: string;
 }) {
   return (
     <Link
       className={`app-sidebar__item${active ? " is-active" : ""}`}
       data-label={label}
+      data-tour={tourId}
       href={href}
     >
       <span className="app-sidebar__icon">{icon}</span>
       <span className="app-sidebar__label">{label}</span>
     </Link>
+  );
+}
+
+function BoatSettingsItem({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  return (
+    <div className="app-sidebar__settings-slot" data-tour="sidebar-boat-settings">
+      {children}
+    </div>
   );
 }
 
@@ -145,6 +167,7 @@ export type AppSidebarNavProps = {
   boatId?: string;
   boatName?: string;
   userName?: string | null;
+  currentUserId?: string;
   canEditBoat?: boolean;
   canShare?: boolean;
   /** ReactNode slot for BoatSettingsDialog trigger — only on desktop sidebar */
@@ -157,12 +180,16 @@ export function AppSidebarNav({
   canManageUsers,
   boatId,
   userName,
+  currentUserId,
   canShare,
   settingsSlot,
 }: AppSidebarNavProps) {
   const pathname = usePathname();
   const es = locale === "es";
   const signOutLabel = es ? "Salir" : "Sign out";
+  const currentUserHref = currentUserId
+    ? `/admin/users?user=${encodeURIComponent(currentUserId)}&section=security`
+    : null;
 
   const isActive = (href: string) =>
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
@@ -202,6 +229,7 @@ export function AppSidebarNav({
               label={es ? "Plan" : "Plan"}
               icon={<IconRoute />}
               active={pathname === `/boats/${boatId}`}
+              tourId="sidebar-plan"
             />
             {canShare && (
               <NavItem
@@ -209,7 +237,13 @@ export function AppSidebarNav({
                 label={es ? "Invitar" : "Invite"}
                 icon={<IconLink />}
                 active={isActive(`/boats/${boatId}/share`)}
+                tourId="sidebar-invite"
               />
+            )}
+            {settingsSlot && (
+              <BoatSettingsItem>
+                {settingsSlot}
+              </BoatSettingsItem>
             )}
           </>
         )}
@@ -222,7 +256,7 @@ export function AppSidebarNav({
               <NavItem
                 href="/admin/boats"
                 label={es ? "Barcos" : "Boats"}
-                icon={<IconAnchor />}
+                icon={<IconBoat />}
                 active={isActive("/admin/boats")}
               />
             )}
@@ -231,6 +265,7 @@ export function AppSidebarNav({
               label={es ? "Usuarios" : "Users"}
               icon={<IconUsers />}
               active={isActive("/admin/users")}
+              tourId="sidebar-users"
             />
             {isSuperuser && (
               <NavItem
@@ -263,10 +298,15 @@ export function AppSidebarNav({
           />
         )}
 
-        {/* Settings slot (BoatSettingsDialog) */}
-        {settingsSlot && (
-          <div className="app-sidebar__settings-slot">{settingsSlot}</div>
-        )}
+        {currentUserHref && (isSuperuser || canManageUsers) ? (
+          <NavItem
+            href={currentUserHref}
+            label={es ? "Mi cuenta" : "My account"}
+            icon={<IconProfile />}
+            active={pathname === "/admin/users" && currentUserHref.includes("section=security")}
+            tourId="sidebar-user-settings"
+          />
+        ) : null}
 
         {/* Theme + Language */}
         <div className="app-sidebar__utils">

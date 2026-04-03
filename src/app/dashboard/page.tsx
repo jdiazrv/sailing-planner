@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 
 import { BoatSelector } from "@/components/boats/boat-selector";
 import { LastBoatTracker } from "@/components/boats/last-boat-tracker";
@@ -56,6 +57,11 @@ export default async function DashboardPage({
         boats[0]?.boat_id
       )
     : boats[0]?.boat_id;
+
+  if (!viewer.isSuperuser && selectedBoatId) {
+    redirect(`/boats/${selectedBoatId}`);
+  }
+
   const visibleBoats = viewer.isSuperuser && shouldLoadAllBoats
     ? boats
     : boats.filter((entry) => entry.boat_id === selectedBoatId);
@@ -100,7 +106,7 @@ export default async function DashboardPage({
         </div>
       </header>
 
-      {boats.length ? (
+      {boats.length > 1 ? (
         <section className="admin-stack" style={{ marginTop: "1rem" }}>
           {viewer.isSuperuser && !selectedBoatId ? (
             <article className="dashboard-card">
@@ -117,12 +123,12 @@ export default async function DashboardPage({
             selectionSubtitle={selectedSeasonLabel}
           />
         </section>
-      ) : (
+      ) : boats.length === 0 ? (
         <section className="dashboard-card" style={{ marginTop: "1.5rem" }}>
           <p className="eyebrow">{t(locale, "dashboard.noBoats")}</p>
           <p className="muted">{t(locale, "dashboard.noBoatsBody")}</p>
         </section>
-      )}
+      ) : null}
 
       {selectedBoatId ? (
         <section style={{ marginTop: "1rem" }}>

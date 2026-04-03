@@ -12,13 +12,19 @@ type TourStep = {
 type RectState = {
   top: number;
   left: number;
+  right: number;
+  bottom: number;
   width: number;
   height: number;
+  inSidebar: boolean;
 } | null;
 
 type GuestOnboardingTourProps = {
   enabled: boolean;
   canViewVisits: boolean;
+  canManageUsers?: boolean;
+  canShare?: boolean;
+  canEditBoat?: boolean;
   variant?: "guest" | "member";
   resetKey?: string;
 };
@@ -26,6 +32,9 @@ type GuestOnboardingTourProps = {
 export function GuestOnboardingTour({
   enabled,
   canViewVisits,
+  canManageUsers = false,
+  canShare = false,
+  canEditBoat = false,
   variant = "guest",
   resetKey,
 }: GuestOnboardingTourProps) {
@@ -36,30 +45,58 @@ export function GuestOnboardingTour({
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<RectState>(null);
   const isVisitsView = pathname.includes("/visits") || searchParams.get("view") === "visits";
-  const visitsStepIndex = useMemo(() => (canViewVisits ? 6 : -1), [canViewVisits]);
 
   const steps = useMemo<TourStep[]>(() => {
     if (variant === "member") {
       return [
         {
-          target: '[data-tour="boat-nav"]',
+          target: '[data-tour="sidebar-plan"]',
           title: "Panel del barco",
           body:
             "Este panel es el espacio para gestionar la informacion de la temporada. Desde aqui puedes organizar el plan, revisar el contexto del barco y mantener al dia tramos y visitas.",
         },
-        {
-          target: '[data-tour="boat-nav"]',
-          title: "Tramos",
-          body:
-            "Desde esta navegacion puedes volver a Tramos cuando quieras. Es la entrada a la vista donde crear, editar y ajustar el plan de viaje.",
-        },
-        {
-          target: '[data-tour="boat-nav"]',
-          title: "Visitas",
-          body: canViewVisits
-            ? "Desde la pestana Visitas accedes al area para crear, editar y revisar invitados, incorporaciones, fechas y lugares de embarque y desembarque."
-            : "Si este acceso incluyera Visitas, tambien podrias abrir esa zona desde aqui.",
-        },
+        ...(canShare
+          ? [
+              {
+                target: '[data-tour="sidebar-invite"]',
+                title: "Invitar",
+                body:
+                  "Desde Invitar generas enlaces de acceso rapido para invitados. Esos enlaces no piden contraseña y sirven para entrar directamente al panel compartido en modo de solo lectura.",
+              },
+              {
+                target: '[data-tour="sidebar-invite"]',
+                title: "Invitados frente a usuarios",
+                body:
+                  "Los invitados entran solo con el enlace y solo pueden ver. Los usuarios, en cambio, tienen cuenta propia, pueden iniciar sesion y reciben permisos como lector, editor o gestor segun lo que les asignes.",
+              },
+            ]
+          : []),
+        ...(canManageUsers
+          ? [
+              {
+                target: '[data-tour="sidebar-users"]',
+                title: "Usuarios",
+                body:
+                  "En Usuarios puedes crear otras cuentas de tu barco y asignarles nivel lector o editor. Desde ahi actualizas sus datos, accesos y contraseñas sin tocar tus propios permisos.",
+              },
+              {
+                target: '[data-tour="sidebar-user-settings"]',
+                title: "Tu cuenta",
+                body:
+                  "Desde Mi cuenta entras directamente a tu ficha dentro de Usuarios. Ahi puedes cambiar tus datos y, si tienes permiso, tambien actualizar tu contraseña con el formulario ya existente.",
+              },
+            ]
+          : []),
+        ...(canEditBoat
+          ? [
+              {
+                target: '[data-tour="sidebar-boat-settings"]',
+                title: "Detalles del barco",
+                body:
+                  "Desde esta opcion puedes actualizar los detalles visibles del barco, como imagen, modelo, puerto base y descripcion, sin salir del espacio de trabajo.",
+              },
+            ]
+          : []),
         {
           target: '[data-tour="boat-timeline"]',
           title: "Timeline",
@@ -146,7 +183,15 @@ export function GuestOnboardingTour({
           ]
         : []),
     ];
-  }, [canViewVisits, isVisitsView, variant]);
+  }, [canEditBoat, canManageUsers, canShare, canViewVisits, isVisitsView, variant]);
+
+  const visitsStepIndex = useMemo(
+    () =>
+      steps.findIndex(
+        (step) => step.target === '[data-tour="boat-visits-card"]',
+      ),
+    [steps],
+  );
 
   useEffect(() => {
     if (!isOpen || !canViewVisits || stepIndex !== visitsStepIndex) {
@@ -166,7 +211,16 @@ export function GuestOnboardingTour({
       return;
     }
 
-    const nextUrl = pathname.replace(/\/trip$/, "/visits");
+    if (!pathname.includes("/trip")) {
+      nextParams.set("view", "visits");
+      const nextUrl = `${pathname}?${nextParams.toString()}`;
+      router.replace(nextUrl, { scroll: false });
+      return;
+    }
+
+    const nextUrl = pathname.includes("/visits")
+      ? pathname
+      : pathname.replace(/\/trip$/, "/visits");
     router.replace(nextUrl, { scroll: false });
   }, [
     canViewVisits,
@@ -186,6 +240,25 @@ export function GuestOnboardingTour({
   }, [enabled, resetKey]);
 
   useEffect(() => {
+    if (variant !== "member") {
+      return;
+    }
+
+    const currentTarget = steps[stepIndex]?.target ?? "";
+    const shouldOpenSidebar = isOpen && currentTarget.includes('data-tour="sidebar-');
+
+    if (shouldOpenSidebar) {
+      document.body.setAttribute("data-tour-sidebar-open", "true");
+    } else {
+      document.body.removeAttribute("data-tour-sidebar-open");
+    }
+
+    return () => {
+      document.body.removeAttribute("data-tour-sidebar-open");
+    };
+  }, [isOpen, stepIndex, steps, variant]);
+
+  useEffect(() => {
     if (!isOpen) {
       return;
     }
@@ -203,37 +276,39 @@ export function GuestOnboardingTour({
     }
 
     element.setAttribute("data-tour-active", "true");
-    element.scrollIntoView({
-      block: "center",
-      behavior: variant === "guest" ? "auto" : "smooth",
-    });
-
     const updateRect = () => {
       const bounds = element.getBoundingClientRect();
       setRect({
         top: bounds.top,
         left: bounds.left,
+        right: bounds.right,
+        bottom: bounds.bottom,
         width: bounds.width,
         height: bounds.height,
+        inSidebar: Boolean(element.closest(".app-sidebar")),
       });
     };
 
-    const rafId = window.requestAnimationFrame(() => {
-      updateRect();
+    element.scrollIntoView({
+      block: "center",
+      inline: "nearest",
+      behavior: variant === "guest" ? "auto" : "smooth",
     });
+
+    let frameId = 0;
+    const syncRect = () => {
+      updateRect();
+      frameId = window.requestAnimationFrame(syncRect);
+    };
+
     updateRect();
-    const syncAfterScroll = window.setTimeout(updateRect, 160);
-    const syncAfterLayout = window.setTimeout(updateRect, 360);
+    frameId = window.requestAnimationFrame(syncRect);
     window.addEventListener("resize", updateRect);
-    window.addEventListener("scroll", updateRect, true);
 
     return () => {
       element.setAttribute("data-tour-active", "false");
-      window.cancelAnimationFrame(rafId);
-      window.clearTimeout(syncAfterScroll);
-      window.clearTimeout(syncAfterLayout);
+      window.cancelAnimationFrame(frameId);
       window.removeEventListener("resize", updateRect);
-      window.removeEventListener("scroll", updateRect, true);
     };
   }, [isOpen, stepIndex, steps, variant]);
 
@@ -242,6 +317,7 @@ export function GuestOnboardingTour({
       .querySelectorAll<HTMLElement>("[data-tour-active='true']")
       .forEach((node) => node.setAttribute("data-tour-active", "false"));
 
+    document.body.removeAttribute("data-tour-sidebar-open");
     setIsOpen(false);
 
     if (variant === "guest") {
@@ -268,10 +344,87 @@ export function GuestOnboardingTour({
     const popoverWidth = Math.min(360, window.innerWidth - 32);
     const estimatedHeight = 220;
     const margin = 16;
-    const fitsBelow = rect.top + rect.height + 18 + estimatedHeight < window.innerHeight - margin;
+
+    if (rect.inSidebar) {
+      const rootStyles = window.getComputedStyle(document.documentElement);
+      const rawSidebarWidth = rootStyles.getPropertyValue("--sidebar-w").trim();
+      const sidebarWidth = Number.parseInt(rawSidebarWidth, 10) || 220;
+      const preferredLeft = Math.max(sidebarWidth + 24, rect.right + 18);
+      const fitsRight = preferredLeft + popoverWidth <= window.innerWidth - margin;
+      const centeredTop = rect.top + rect.height / 2 - estimatedHeight / 2;
+      const top = fitsRight
+        ? Math.max(margin, Math.min(centeredTop, window.innerHeight - estimatedHeight - margin))
+        : Math.max(margin, rect.top - estimatedHeight - 18);
+      const left = fitsRight
+        ? preferredLeft
+        : Math.max(margin, Math.min(sidebarWidth + 12, window.innerWidth - popoverWidth - margin));
+
+      return {
+        top: `${top}px`,
+        left: `${left}px`,
+      };
+    }
+
+    const target = step?.target ?? "";
+
+    if (target === '[data-tour="boat-map"]') {
+      const preferredLeft = rect.left - popoverWidth - 18;
+      const fitsLeft = preferredLeft >= margin;
+      const top = Math.max(
+        margin,
+        Math.min(
+          rect.top + rect.height / 2 - estimatedHeight / 2,
+          window.innerHeight - estimatedHeight - margin,
+        ),
+      );
+      const left = fitsLeft
+        ? preferredLeft
+        : Math.max(
+            margin,
+            Math.min(rect.right + 18, window.innerWidth - popoverWidth - margin),
+          );
+
+      return {
+        top: `${top}px`,
+        left: `${left}px`,
+      };
+    }
+
+    if (
+      target === '[data-tour="boat-detail"]' ||
+      target === '[data-tour-detail="boat-detail"]' ||
+      target === '[data-tour="boat-visits-card"]'
+    ) {
+      const preferredLeft = rect.right + 18;
+      const fitsRight = preferredLeft + popoverWidth <= window.innerWidth - margin;
+      const fallbackLeft = rect.left - popoverWidth - 18;
+      const top = Math.max(
+        margin,
+        Math.min(
+          rect.top + rect.height / 2 - estimatedHeight / 2,
+          window.innerHeight - estimatedHeight - margin,
+        ),
+      );
+      const left = fitsRight
+        ? preferredLeft
+        : Math.max(
+            margin,
+            Math.min(fallbackLeft, window.innerWidth - popoverWidth - margin),
+          );
+
+      return {
+        top: `${top}px`,
+        left: `${left}px`,
+      };
+    }
+
+    const fitsBelow = rect.bottom + 18 + estimatedHeight < window.innerHeight - margin;
+    const fitsAbove = rect.top - estimatedHeight - 18 >= margin;
     const top = fitsBelow
-      ? rect.top + rect.height + 18
-      : Math.max(margin, rect.top - estimatedHeight - 18);
+      ? rect.bottom + 18
+      : fitsAbove
+        ? rect.top - estimatedHeight - 18
+        : Math.max(margin, window.innerHeight - estimatedHeight - margin);
     const left = Math.max(
       margin,
       Math.min(rect.left, window.innerWidth - popoverWidth - margin),
@@ -286,17 +439,6 @@ export function GuestOnboardingTour({
   return (
     <>
       <div className="tour-overlay" />
-      {rect ? (
-        <div
-          className="tour-highlight"
-          style={{
-            top: `${rect.top - 8}px`,
-            left: `${rect.left - 8}px`,
-            width: `${rect.width + 16}px`,
-            height: `${rect.height + 16}px`,
-          }}
-        />
-      ) : null}
       <div className="tour-popover" style={popoverStyle}>
         <p className="tour-popover__step">
           Paso {stepIndex + 1} de {steps.length}

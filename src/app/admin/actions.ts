@@ -97,8 +97,16 @@ const assertManageableUser = async (
   }
 };
 
-const buildBoatPermissionPayload = (formData: FormData, userId: string) => {
+const buildBoatPermissionPayload = (
+  formData: FormData,
+  userId: string,
+  allowManagerRole = true,
+) => {
   const boatId = formData.get("boat_id")?.toString() ?? "";
+  const requestedLevel =
+    (formData.get("permission_level")?.toString() as PermissionLevel) ?? "viewer";
+  const permissionLevel =
+    !allowManagerRole && requestedLevel === "manager" ? "editor" : requestedLevel;
 
   if (!boatId) {
     throw new Error("Boat is required for invitations.");
@@ -107,14 +115,14 @@ const buildBoatPermissionPayload = (formData: FormData, userId: string) => {
   return {
     user_id: userId,
     boat_id: boatId,
-    permission_level:
-      (formData.get("permission_level")?.toString() as PermissionLevel) ?? "viewer",
+    permission_level: permissionLevel,
     can_edit: toBoolean(formData.get("can_edit")),
     can_view_all_visits: toBoolean(formData.get("can_view_all_visits")),
     can_view_visit_names: toBoolean(formData.get("can_view_visit_names")),
     can_view_private_notes: toBoolean(formData.get("can_view_private_notes")),
     can_view_only_own_visit: toBoolean(formData.get("can_view_only_own_visit")),
-    can_manage_boat_users: toBoolean(formData.get("can_manage_boat_users")),
+    can_manage_boat_users:
+      allowManagerRole && toBoolean(formData.get("can_manage_boat_users")),
     can_view_availability:
       formData.get("can_view_availability") === null
         ? true
@@ -324,7 +332,7 @@ export async function saveUserProfile(formData: FormData) {
 }
 
 export async function saveUserBoatPermission(formData: FormData) {
-  const { supabase, manageableBoatIds } = await requireUserAdminAccess();
+  const { supabase, manageableBoatIds, viewer } = await requireUserAdminAccess();
   const adminDb = requireProfileAdminClient();
   const db = supabase as any;
   const userId = formData.get("user_id")?.toString() ?? "";
@@ -337,6 +345,10 @@ export async function saveUserBoatPermission(formData: FormData) {
     .single();
   throwIfError(profileError);
 
+  if (!viewer.isSuperuser && profile?.is_superuser) {
+    throw new Error("You cannot manage superuser accounts from this screen.");
+  }
+
   if (!profile?.is_superuser) {
     const { error: cleanupError } = await db
       .from("user_boat_permissions")
@@ -346,22 +358,11 @@ export async function saveUserBoatPermission(formData: FormData) {
     throwIfError(cleanupError);
   }
 
-  const { error } = await db.from("user_boat_permissions").upsert(
-    {
-      user_id: userId,
-      boat_id: boatId,
-      permission_level:
-        (formData.get("permission_level")?.toString() as PermissionLevel) ?? "viewer",
-      can_edit: toBoolean(formData.get("can_edit")),
-      can_view_all_visits: toBoolean(formData.get("can_view_all_visits")),
-      can_view_visit_names: toBoolean(formData.get("can_view_visit_names")),
-      can_view_private_notes: toBoolean(formData.get("can_view_private_notes")),
-      can_view_only_own_visit: toBoolean(formData.get("can_view_only_own_visit")),
-      can_manage_boat_users: toBoolean(formData.get("can_manage_boat_users")),
-      can_view_availability: toBoolean(formData.get("can_view_availability")),
-    },
-    { onConflict: "user_id,boat_id" },
-  );
+  const { error } = await db
+    .from("user_boat_permissions")
+    .upsert(buildBoatPermissionPayload(formData, userId, viewer.isSuperuser), {
+      onConflict: "user_id,boat_id",
+    });
   throwIfError(error);
 
   refreshAdminRoutes(boatId);
@@ -453,7 +454,11 @@ export async function createUserAccount(formData: FormData) {
         .from("user_boat_permissions")
         .upsert(
           {
-            ...buildBoatPermissionPayload(formData, data.user.id),
+            ...buildBoatPermissionPayload(
+              formData,
+              data.user.id,
+              viewer.isSuperuser,
+            ),
             can_manage_boat_users: false,
           },
           { onConflict: "user_id,boat_id" },
@@ -534,7 +539,11 @@ export async function inviteUserAccount(formData: FormData) {
           .from("user_boat_permissions")
           .upsert(
             {
-              ...buildBoatPermissionPayload(formData, data.user.id),
+              ...buildBoatPermissionPayload(
+                formData,
+                data.user.id,
+                viewer.isSuperuser,
+              ),
               can_manage_boat_users: false,
             },
             {

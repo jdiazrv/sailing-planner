@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { useI18n } from "@/components/i18n/provider";
 import { MapPanel } from "@/components/planning/map-panel";
@@ -49,6 +50,9 @@ export function BoatWorkspaceShell({
   onDeleteVisit,
 }: BoatWorkspaceShellProps) {
   const { t } = useI18n();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [currentView, setCurrentView] = useState<"trip" | "visits">(initialView);
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   const [timelineEditVisit, setTimelineEditVisit] = useState<VisitView | null>(null);
@@ -77,19 +81,36 @@ export function BoatWorkspaceShell({
     return matchesStatus && (!query || haystack.includes(query));
   });
 
+  useEffect(() => {
+    const requestedView = searchParams.get("view");
+    if (requestedView === "trip" || requestedView === "visits") {
+      setCurrentView(requestedView);
+      return;
+    }
+
+    setCurrentView(initialView);
+  }, [initialView, searchParams]);
+
+  const switchView = (nextView: "trip" | "visits") => {
+    setCurrentView(nextView);
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.set("view", nextView);
+    router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
+  };
+
   return (
     <>
       <div className="workspace-selector" data-tour="boat-nav">
         <button
           className={currentView === "trip" ? "is-active" : undefined}
-          onClick={() => setCurrentView("trip")}
+          onClick={() => switchView("trip")}
           type="button"
         >
           {t("boatNav.trip")}
         </button>
         <button
           className={currentView === "visits" ? "is-active" : undefined}
-          onClick={() => setCurrentView("visits")}
+          onClick={() => switchView("visits")}
           type="button"
         >
           {t("boatNav.visits")}
@@ -104,12 +125,12 @@ export function BoatWorkspaceShell({
           <Timeline
             onTripSegmentSelect={(segment) => {
               setSelectedEntityId(segment.id);
-              setCurrentView("trip");
+              switchView("trip");
             }}
             onVisitClick={
               canEdit
                 ? (visit) => {
-                    setCurrentView("visits");
+                    switchView("visits");
                     setTimelineEditVisit(visit);
                     setSelectedEntityId(visit.id);
                   }
@@ -117,7 +138,7 @@ export function BoatWorkspaceShell({
             }
             onVisitSelect={(visit) => {
               setSelectedEntityId(visit.id);
-              setCurrentView("visits");
+              switchView("visits");
             }}
             season={season}
             selectedEntityId={selectedEntityId}

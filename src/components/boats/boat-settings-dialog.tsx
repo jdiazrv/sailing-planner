@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useState, useTransition } from "react";
+import { type ReactNode, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -15,6 +15,9 @@ type BoatSettingsDialogProps = {
   onSave: (fd: FormData) => Promise<void>;
   onUploadImage: (fd: FormData) => Promise<void>;
   onRemoveImage: (fd: FormData) => Promise<void>;
+  triggerLabel?: string;
+  triggerClassName?: string;
+  triggerIcon?: ReactNode;
 };
 
 export function BoatSettingsDialog({
@@ -22,6 +25,9 @@ export function BoatSettingsDialog({
   onSave,
   onUploadImage,
   onRemoveImage,
+  triggerLabel,
+  triggerClassName,
+  triggerIcon,
 }: BoatSettingsDialogProps) {
   const router = useRouter();
   const { locale } = useI18n();
@@ -127,8 +133,20 @@ export function BoatSettingsDialog({
 
   return (
     <>
-      <button className="secondary-button" onClick={() => setOpen(true)} type="button">
-        {text.open}
+      <button
+        className={triggerClassName ?? "secondary-button"}
+        aria-label={triggerLabel ?? text.open}
+        onClick={() => setOpen(true)}
+        type="button"
+      >
+        {triggerIcon ? (
+          <>
+            <span className="app-sidebar__icon">{triggerIcon}</span>
+            <span className="app-sidebar__label">{triggerLabel ?? text.open}</span>
+          </>
+        ) : (
+          triggerLabel ?? text.open
+        )}
       </button>
 
       <Dialog onClose={() => setOpen(false)} open={open} title={text.title}>

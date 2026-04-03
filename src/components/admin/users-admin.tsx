@@ -21,6 +21,10 @@ type UsersAdminProps = {
   canInviteUsers: boolean;
   isSuperuser: boolean;
   viewerUserId: string;
+  initialSelectedUserId?: string;
+  initialSection?: UserEditorSection;
+  personalMode?: boolean;
+  singleBoatContext?: boolean;
 };
 
 type InvitePermissionsState = {
@@ -133,12 +137,16 @@ export function UsersAdmin({
   canInviteUsers,
   isSuperuser,
   viewerUserId,
+  initialSelectedUserId,
+  initialSection,
+  personalMode = false,
+  singleBoatContext = false,
 }: UsersAdminProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [accessSetupMode, setAccessSetupMode] = useState<AccessSetupMode>("create");
   const [showAccessSetupForm, setShowAccessSetupForm] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState(users[0]?.id ?? "");
+  const [selectedUserId, setSelectedUserId] = useState(initialSelectedUserId ?? users[0]?.id ?? "");
   const { locale, t } = useI18n();
   const sortedUsers = [...users].sort((a, b) =>
     `${a.display_name ?? ""}${a.email ?? ""}`.localeCompare(
@@ -151,6 +159,7 @@ export function UsersAdmin({
     users.find((user) => user.id === selectedUserId) ??
     sortedUsers[0] ??
     users[0];
+  const canAssignManagerRole = isSuperuser;
 
   const inviteUser = (formData: FormData) => {
     startTransition(async () => {
@@ -182,6 +191,7 @@ export function UsersAdmin({
 
   return (
     <section className="admin-stack">
+      {!personalMode ? (
       <article className="dashboard-card admin-card">
         <div className="card-header">
           <div>
@@ -232,6 +242,9 @@ export function UsersAdmin({
                 }}
               >
                 <div className="form-grid">
+                  {singleBoatContext && boats[0]?.id ? (
+                    <input name="boat_id" type="hidden" value={boats[0].id} />
+                  ) : null}
                   <label>
                     <span>{t("auth.email")}</span>
                     <input name="email" placeholder="crew@example.com" required type="email" />
@@ -266,9 +279,9 @@ export function UsersAdmin({
               </form>
             ) : (
               <InviteUserForm
+                allowManagerRole={canAssignManagerRole}
                 boats={boats}
                 isPending={isPending}
-                isSuperuser={isSuperuser}
                 locale={locale}
                 onSubmit={sendInvite}
               />
@@ -280,7 +293,9 @@ export function UsersAdmin({
           <p className="muted">{t("admin.users.formCollapsedHelp")}</p>
         )}
       </article>
+      ) : null}
 
+      {!personalMode ? (
       <article className="dashboard-card admin-card">
         <div className="card-header">
           <div>
@@ -298,18 +313,33 @@ export function UsersAdmin({
             primary: user.display_name ?? user.email ?? user.id,
             secondary: user.email ?? "—",
             tertiary:
-              user.permissions[0]
+              !singleBoatContext && user.permissions[0]
                 ? boats.find((boat) => boat.id === user.permissions[0]?.boat_id)?.name ?? "—"
-                : t("admin.users.noAssignedBoat"),
+                : undefined,
           }))}
           placeholder={t("admin.users.searchUser")}
           selectedId={selectedUser?.id ?? ""}
         />
       </article>
+      ) : null}
+
+      {!personalMode && !selectedUser ? (
+        <article className="dashboard-card admin-card">
+          <p className="eyebrow">{t("admin.users.selectTitle")}</p>
+          <p className="muted">
+            {singleBoatContext
+              ? locale === "es"
+                ? "No hay otros usuarios de tu barco que puedas gestionar ahora mismo."
+                : "There are no other users in your boat you can manage right now."
+              : t("admin.users.noUsersMatch")}
+          </p>
+        </article>
+      ) : null}
 
       {selectedUser ? (
         <UserEditorCard
           boats={boats}
+          initialSection={initialSection}
           isSuperuser={isSuperuser}
           key={selectedUser.id}
           onDeletePermission={onDeletePermission}
@@ -317,6 +347,9 @@ export function UsersAdmin({
           onSavePermission={onSavePermission}
           onSaveProfile={onSaveProfile}
           onUpdatePassword={onUpdatePassword}
+          allowManagerRole={canAssignManagerRole}
+          personalMode={personalMode}
+          singleBoatContext={singleBoatContext}
           user={selectedUser}
           viewerUserId={viewerUserId}
         />
@@ -326,14 +359,15 @@ export function UsersAdmin({
 }
 
 function InviteUserForm({
+  allowManagerRole,
   boats,
   isPending,
   locale,
   onSubmit,
 }: {
+  allowManagerRole: boolean;
   boats: BoatDetails[];
   isPending: boolean;
-  isSuperuser: boolean;
   locale: "es" | "en";
   onSubmit: (fd: FormData) => void;
 }) {
@@ -361,6 +395,10 @@ function InviteUserForm({
           send: "Enviar invitación",
           presetHint:
             "Al cambiar el nivel se aplican derechos recomendados, pero luego puedes retocarlos.",
+          viewerHelp: "Solo puede consultar el plan y la informacion permitida.",
+          editorHelp: "Puede editar el plan, pero no gestionar usuarios.",
+          managerHelp:
+            "Puede editar, gestionar usuarios y seguir siendo el unico gestor del barco.",
         }
       : {
           boat: "Boat",
@@ -378,6 +416,10 @@ function InviteUserForm({
           send: "Send invitation",
           presetHint:
             "Changing the level applies recommended rights, and you can still tweak them after.",
+          viewerHelp: "Can only review the plan and allowed information.",
+          editorHelp: "Can edit the plan, but cannot manage users.",
+          managerHelp:
+            "Can edit, manage users, and remain the only manager for the boat.",
         };
 
   return (
@@ -432,14 +474,23 @@ function InviteUserForm({
           <input name="permission_level" type="hidden" value={permissions.permissionLevel} />
           <div className="permission-presets">
             {([
-              ["viewer", text.viewer],
-              ["editor", text.editor],
-              ["manager", text.manager],
+              ["viewer", text.viewer, text.viewerHelp],
+              ["editor", text.editor, text.editorHelp],
+              ...(allowManagerRole
+                ? ([["manager", text.manager, text.managerHelp]] as const)
+                : []),
             ] as const).map(([value, label]) => (
               <button
                 className={`permission-preset${permissions.permissionLevel === value ? " is-active" : ""}`}
                 key={value}
                 onClick={() => setPermissions(getPermissionPreset(value))}
+                title={
+                  value === "viewer"
+                    ? text.viewerHelp
+                    : value === "editor"
+                      ? text.editorHelp
+                      : text.managerHelp
+                }
                 type="button"
               >
                 {label}
@@ -540,20 +591,22 @@ function InviteUserForm({
           />
           <span>{text.ownVisits}</span>
         </label>
-        <label className="checkbox-field">
-          <input
-            checked={permissions.canManageBoatUsers}
-            name="can_manage_boat_users"
-            onChange={(event) =>
-              setPermissions((current) => ({
-                ...current,
-                canManageBoatUsers: event.target.checked,
-              }))
-            }
-            type="checkbox"
-          />
-          <span>{text.manageUsers}</span>
-        </label>
+        {allowManagerRole ? (
+          <label className="checkbox-field">
+            <input
+              checked={permissions.canManageBoatUsers}
+              name="can_manage_boat_users"
+              onChange={(event) =>
+                setPermissions((current) => ({
+                  ...current,
+                  canManageBoatUsers: event.target.checked,
+                }))
+              }
+              type="checkbox"
+            />
+            <span>{text.manageUsers}</span>
+          </label>
+        ) : null}
       </div>
       <div className="modal__footer">
         <button className="secondary-button" disabled={isPending} type="submit">
@@ -574,6 +627,10 @@ function UserEditorCard({
   onUpdatePassword,
   onDeleteUser,
   viewerUserId,
+  initialSection,
+  allowManagerRole,
+  personalMode,
+  singleBoatContext,
 }: {
   user: UserAdminProfile;
   boats: BoatDetails[];
@@ -584,6 +641,10 @@ function UserEditorCard({
   onUpdatePassword: (fd: FormData) => Promise<void>;
   onDeleteUser: (fd: FormData) => Promise<void>;
   viewerUserId: string;
+  initialSection?: UserEditorSection;
+  allowManagerRole: boolean;
+  personalMode: boolean;
+  singleBoatContext: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -600,19 +661,22 @@ function UserEditorCard({
     sortedBoats[0] ??
     boats[0];
   const canManageSecurity = isSuperuser || user.id === viewerUserId;
+  const canEditPermissions = !personalMode;
   const accessSummary = canManageSecurity
     ? locale === "es"
       ? `${user.sign_in_count} accesos · último acceso ${formatLastAccess(user.last_sign_in_at, locale)}`
       : `${user.sign_in_count} sign-ins · last access ${formatLastAccess(user.last_sign_in_at, locale)}`
     : null;
-  const [activeSection, setActiveSection] = useState<UserEditorSection>("global");
+  const [activeSection, setActiveSection] = useState<UserEditorSection>(
+    initialSection ?? "global",
+  );
 
   const sectionOptions: Array<{
     id: UserEditorSection;
     label: string;
   }> = [
     { id: "global", label: t("admin.users.sectionGlobal") },
-    { id: "boat", label: t("admin.users.sectionBoat") },
+    ...(canEditPermissions ? [{ id: "boat" as const, label: t("admin.users.sectionBoat") }] : []),
     ...(canManageSecurity
       ? ([{ id: "security", label: t("admin.users.sectionSecurity") }] as const)
       : []),
@@ -721,10 +785,12 @@ function UserEditorCard({
           <p className="muted">{user.email ?? "—"}</p>
         </div>
         <div className="admin-user-header-actions">
-          <span className={`status-pill ${user.is_superuser ? "is-good" : "is-muted"}`}>
-            {user.is_superuser ? t("admin.users.superuser") : t("admin.users.standardUser")}
-          </span>
-          {isSuperuser ? (
+          {!personalMode ? (
+            <span className={`status-pill ${user.is_superuser ? "is-good" : "is-muted"}`}>
+              {user.is_superuser ? t("admin.users.superuser") : t("admin.users.standardUser")}
+            </span>
+          ) : null}
+          {isSuperuser && !personalMode ? (
             <button
               className="link-button link-button--danger"
               disabled={isPending}
@@ -737,14 +803,16 @@ function UserEditorCard({
         </div>
       </div>
 
-      <div className="admin-metrics-grid">
-        {metricCards.map((metric) => (
-          <div className="admin-metric-card" key={metric.label}>
-            <span>{metric.label}</span>
-            <strong>{metric.value}</strong>
-          </div>
-        ))}
-      </div>
+      {!personalMode ? (
+        <div className="admin-metrics-grid">
+          {metricCards.map((metric) => (
+            <div className="admin-metric-card" key={metric.label}>
+              <span>{metric.label}</span>
+              <strong>{metric.value}</strong>
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       <div className="editor-sections-nav" role="tablist" aria-label={t("admin.users.sectionNav")}>
         {sectionOptions.map((section) => (
@@ -796,15 +864,17 @@ function UserEditorCard({
                   <option value="en">English</option>
                 </select>
               </label>
-              <label className="checkbox-field">
-                <input
-                  defaultChecked={user.is_superuser}
-                  disabled={!isSuperuser}
-                  name="is_superuser"
-                  type="checkbox"
-                />
-                <span>{t("admin.users.globalSuperuser")}</span>
-              </label>
+              {!personalMode ? (
+                <label className="checkbox-field">
+                  <input
+                    defaultChecked={user.is_superuser}
+                    disabled={!isSuperuser}
+                    name="is_superuser"
+                    type="checkbox"
+                  />
+                  <span>{t("admin.users.globalSuperuser")}</span>
+                </label>
+              ) : null}
               <label className="checkbox-field">
                 <input
                   defaultChecked={user.is_timeline_public}
@@ -813,7 +883,7 @@ function UserEditorCard({
                 />
                 <span>{t("admin.users.timelineVisibility")}</span>
               </label>
-              {isSuperuser ? (
+              {isSuperuser && !personalMode ? (
                 <label className="checkbox-field">
                   <input
                     defaultChecked={user.onboarding_pending}
@@ -885,7 +955,7 @@ function UserEditorCard({
         </article>
       ) : null}
 
-      {activeSection === "boat" && (
+      {activeSection === "boat" && canEditPermissions && (
         <article className="admin-card admin-card--section">
           <div className="card-header">
             <div>
@@ -898,19 +968,28 @@ function UserEditorCard({
           </div>
 
           <div className="admin-card">
-            <SearchableSelect
-              emptyText={t("admin.users.noBoatMatches")}
-              label={t("admin.users.selectBoat")}
-              onSelect={setSelectedBoatId}
-              options={sortedBoats.map((boat) => ({
-                id: boat.id,
-                primary: boat.name,
-                secondary: boat.home_port ?? "—",
-                tertiary: boat.model ?? "",
-              }))}
-              placeholder={t("admin.users.searchBoat")}
-              selectedId={selectedBoat?.id ?? ""}
-            />
+            {singleBoatContext && sortedBoats.length === 1 ? (
+              <div className="assigned-boats">
+                <span className="muted">{t("admin.users.selectBoat")}</span>
+                <div className="assigned-boats__list">
+                  <span className="status-pill is-good">{sortedBoats[0]?.name}</span>
+                </div>
+              </div>
+            ) : (
+              <SearchableSelect
+                emptyText={t("admin.users.noBoatMatches")}
+                label={t("admin.users.selectBoat")}
+                onSelect={setSelectedBoatId}
+                options={sortedBoats.map((boat) => ({
+                  id: boat.id,
+                  primary: boat.name,
+                  secondary: boat.home_port ?? "—",
+                  tertiary: boat.model ?? "",
+                }))}
+                placeholder={t("admin.users.searchBoat")}
+                selectedId={selectedBoat?.id ?? ""}
+              />
+            )}
 
             {assignedBoatIds.length > 0 ? (
               <div className="assigned-boats">
@@ -930,6 +1009,7 @@ function UserEditorCard({
             {selectedBoat ? (
               <div className="permission-list">
                 <PermissionEditorRow
+                  allowManagerRole={allowManagerRole}
                   boat={selectedBoat}
                   disabled={isPending}
                   key={selectedBoat.id}
@@ -1012,6 +1092,7 @@ function SearchableSelect({
 }
 
 function PermissionEditorRow({
+  allowManagerRole,
   boat,
   permission,
   userId,
@@ -1020,6 +1101,7 @@ function PermissionEditorRow({
   onDelete,
   locale,
 }: {
+  allowManagerRole: boolean;
   boat: BoatDetails;
   permission:
     | UserAdminProfile["permissions"][number]
@@ -1050,6 +1132,10 @@ function PermissionEditorRow({
           remove: "Quitar acceso",
           presetHint:
             "Cambiar el perfil aplica permisos recomendados y luego puedes ajustarlos.",
+          viewerHelp: "Solo puede consultar el plan y la informacion permitida.",
+          editorHelp: "Puede editar el plan, pero no gestionar usuarios.",
+          managerHelp:
+            "Puede editar, gestionar usuarios y seguir siendo el unico gestor del barco.",
         }
       : {
           existing: "Existing access",
@@ -1069,17 +1155,23 @@ function PermissionEditorRow({
           remove: "Remove access",
           presetHint:
             "Changing the profile applies recommended permissions and you can then fine-tune them.",
+          viewerHelp: "Can only review the plan and allowed information.",
+          editorHelp: "Can edit the plan, but cannot manage users.",
+          managerHelp:
+            "Can edit, manage users, and remain the only manager for the boat.",
         };
 
   const [permissions, setPermissions] = useState<InvitePermissionsState>({
     permissionLevel:
-      (permission?.permission_level as PermissionLevel | undefined) ?? "viewer",
+      !allowManagerRole && permission?.permission_level === "manager"
+        ? "editor"
+        : ((permission?.permission_level as PermissionLevel | undefined) ?? "viewer"),
     canEdit: permission?.can_edit ?? false,
     canViewAllVisits: permission?.can_view_all_visits ?? false,
     canViewVisitNames: permission?.can_view_visit_names ?? false,
     canViewPrivateNotes: permission?.can_view_private_notes ?? false,
     canViewOnlyOwnVisit: permission?.can_view_only_own_visit ?? false,
-    canManageBoatUsers: permission?.can_manage_boat_users ?? false,
+    canManageBoatUsers: allowManagerRole && (permission?.can_manage_boat_users ?? false),
     canViewAvailability: permission?.can_view_availability ?? false,
   });
 
@@ -1104,14 +1196,23 @@ function PermissionEditorRow({
 
       <div className="permission-presets">
         {([
-          ["viewer", text.viewer],
-          ["editor", text.editor],
-          ["manager", text.manager],
+          ["viewer", text.viewer, text.viewerHelp],
+          ["editor", text.editor, text.editorHelp],
+          ...(allowManagerRole
+            ? ([["manager", text.manager, text.managerHelp]] as const)
+            : []),
         ] as const).map(([value, label]) => (
           <button
             className={`permission-preset${permissions.permissionLevel === value ? " is-active" : ""}`}
             key={value}
             onClick={() => setPermissions(getPermissionPreset(value))}
+            title={
+              value === "viewer"
+                ? text.viewerHelp
+                : value === "editor"
+                  ? text.editorHelp
+                  : text.managerHelp
+            }
             type="button"
           >
             {label}
@@ -1197,20 +1298,22 @@ function PermissionEditorRow({
           />
           <span>{text.ownVisits}</span>
         </label>
-        <label className="checkbox-field">
-          <input
-            checked={permissions.canManageBoatUsers}
-            name="can_manage_boat_users"
-            onChange={(event) =>
-              setPermissions((current) => ({
-                ...current,
-                canManageBoatUsers: event.target.checked,
-              }))
-            }
-            type="checkbox"
-          />
-          <span>{text.manageUsers}</span>
-        </label>
+        {allowManagerRole ? (
+          <label className="checkbox-field">
+            <input
+              checked={permissions.canManageBoatUsers}
+              name="can_manage_boat_users"
+              onChange={(event) =>
+                setPermissions((current) => ({
+                  ...current,
+                  canManageBoatUsers: event.target.checked,
+                }))
+              }
+              type="checkbox"
+            />
+            <span>{text.manageUsers}</span>
+          </label>
+        ) : null}
         <label className="checkbox-field">
           <input
             checked={permissions.canViewAvailability}

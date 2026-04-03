@@ -23,6 +23,7 @@ export default async function AdminLayout({
         canManageUsers={true}
         boatId={lastBoatId}
         canShare={true}
+        currentUserId={access.viewer.profile?.id ?? access.user.id}
         locale={locale}
         userName={access.viewer.profile?.display_name ?? access.viewer.profile?.email ?? null}
       />
