@@ -26,7 +26,7 @@ export const AuthForm = ({
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [mode, setMode] = useState<Mode>("password");
+  const [mode, setMode] = useState<Mode | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -70,6 +70,30 @@ export const AuthForm = ({
     setMessage(t("auth.magicSent"));
   };
 
+  const ensureEmail = () => {
+    if (!email) {
+      throw new Error(t("auth.emailRequired"));
+    }
+  };
+
+  const handleMagicChoice = async () => {
+    setIsLoading(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      ensureEmail();
+      await handleMagicLink();
+      setMode("magic-link");
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error ? submitError.message : t("auth.error"),
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsLoading(true);
@@ -77,9 +101,7 @@ export const AuthForm = ({
     setMessage(null);
 
     try {
-      if (!email) {
-        throw new Error(t("auth.emailRequired"));
-      }
+      ensureEmail();
 
       if (mode === "password") {
         if (!password) {
@@ -87,8 +109,10 @@ export const AuthForm = ({
         }
 
         await handlePasswordLogin();
-      } else {
+      } else if (mode === "magic-link") {
         await handleMagicLink();
+      } else {
+        throw new Error(t("auth.loginMode"));
       }
     } catch (submitError) {
       setError(
@@ -122,47 +146,70 @@ export const AuthForm = ({
         />
       </label>
 
-      <label className="field">
-        <span>{t("auth.password")}</span>
-        <PasswordInput
-          autoComplete="current-password"
-          disabled={mode === "magic-link"}
-          name="password"
-          onChange={(event) => setPassword(event.target.value)}
-          placeholder="••••••••"
-          value={password}
-        />
-      </label>
+      {mode === "password" ? (
+        <label className="field">
+          <span>{t("auth.password")}</span>
+          <PasswordInput
+            autoComplete="current-password"
+            name="password"
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="••••••••"
+            value={password}
+          />
+        </label>
+      ) : null}
 
-      <div className="segmented-control" role="tablist" aria-label={t("auth.loginMode")}>
-        <button
-          aria-pressed={mode === "password"}
-          className={mode === "password" ? "is-active" : undefined}
-          onClick={() => setMode("password")}
-          type="button"
-        >
-          {t("auth.passwordMode")}
-        </button>
-        <button
-          aria-pressed={mode === "magic-link"}
-          className={mode === "magic-link" ? "is-active" : undefined}
-          onClick={() => setMode("magic-link")}
-          type="button"
-        >
-          {t("auth.magicMode")}
-        </button>
-      </div>
+      {mode === null ? (
+        <div className="inline-actions">
+          <button
+            className="primary-button"
+            disabled={isLoading}
+            onClick={() => {
+              setError(null);
+              setMessage(null);
+              setMode("password");
+            }}
+            type="button"
+          >
+            {t("auth.passwordMode")}
+          </button>
+          <button
+            className="secondary-button"
+            disabled={isLoading}
+            onClick={() => void handleMagicChoice()}
+            type="button"
+          >
+            {t("auth.magicMode")}
+          </button>
+        </div>
+      ) : null}
+
+      {mode === "password" ? (
+        <div className="inline-actions">
+          <button
+            className="link-button"
+            disabled={isLoading}
+            onClick={() => {
+              setError(null);
+              setMessage(null);
+              setPassword("");
+              setMode(null);
+            }}
+            type="button"
+          >
+            {t("auth.magicMode")}
+          </button>
+        </div>
+      ) : null}
 
       {error ? <p className="feedback feedback--error">{error}</p> : null}
       {message ? <p className="feedback feedback--success">{message}</p> : null}
 
-      <button className="primary-button" disabled={isLoading} type="submit">
-        {isLoading
-          ? t("auth.working")
-          : mode === "password"
-            ? t("auth.signInPassword")
-            : t("auth.sendMagic")}
-      </button>
+      {mode === "password" ? (
+        <button className="primary-button" disabled={isLoading} type="submit">
+          {isLoading ? t("auth.working") : t("auth.signInPassword")}
+        </button>
+      ) : null}
     </form>
   );
 };
