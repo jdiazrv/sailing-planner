@@ -2133,7 +2133,12 @@ body:has(.auth-layout) .app-chrome__brand .sp-wordmark {
 
 @media (prefers-reduced-motion: reduce) {
   .dashboard-open-boat--ready,
-  .shimmer {
+  .shimmer,
+  .app-loader__brand-wrap,
+  .app-loader__brand-halo,
+  .app-loader__wave,
+  .app-loader__timeline span,
+  .app-loader__skeleton-line {
     animation: none;
   }
 }
@@ -3150,70 +3155,83 @@ body:has(.auth-layout) .app-chrome__brand .sp-wordmark {
 .app-loader {
   position: relative;
   width: min(560px, calc(100vw - 2.5rem));
-  padding: 2rem 1.75rem;
+  padding: 2.25rem 1.75rem 1.85rem;
   border: 1px solid var(--border);
   border-radius: 28px;
   background:
     radial-gradient(circle at top, var(--accent-glow), transparent 42%),
-    linear-gradient(180deg, rgba(20, 30, 46, 0.98), rgba(15, 23, 37, 0.98));
+    linear-gradient(180deg, rgba(20, 30, 46, 0.96), rgba(15, 23, 37, 0.98));
   box-shadow: var(--shadow-strong);
   overflow: hidden;
 }
 
-.app-loader__wake {
+.app-loader__waveband {
   position: absolute;
-  inset: auto -5% 1.35rem;
-  height: 76px;
-  background:
-    radial-gradient(circle at 20% 50%, rgba(56, 189, 248, 0.22), transparent 22%),
-    radial-gradient(circle at 50% 50%, rgba(96, 165, 250, 0.18), transparent 24%),
-    radial-gradient(circle at 80% 50%, rgba(34, 211, 238, 0.14), transparent 20%);
-  filter: blur(10px);
-  animation: loaderWake 3.6s linear infinite;
+  inset: auto -8% 0.9rem;
+  height: 92px;
+  pointer-events: none;
 }
 
-.app-loader__boat {
+.app-loader__wave {
   position: relative;
-  width: 138px;
-  height: 110px;
-  margin: 0 auto 1.25rem;
-  animation: loaderDrift 2.8s ease-in-out infinite;
-}
-
-.app-loader__mast {
+  display: block;
   position: absolute;
-  left: 64px;
-  bottom: 34px;
-  width: 4px;
-  height: 54px;
+  left: -5%;
+  width: 110%;
+  height: 30px;
   border-radius: 999px;
-  background: linear-gradient(180deg, #f8fafc, #94a3b8);
+  border: 1px solid rgba(72, 202, 228, 0.18);
+  background:
+    radial-gradient(circle at 20% 50%, rgba(72, 202, 228, 0.2), transparent 18%),
+    radial-gradient(circle at 50% 50%, rgba(0, 180, 216, 0.14), transparent 20%),
+    radial-gradient(circle at 80% 50%, rgba(72, 202, 228, 0.12), transparent 18%);
+  opacity: 0.9;
 }
 
-.app-loader__sail {
-  position: absolute;
-  left: 67px;
-  bottom: 42px;
-  width: 0;
-  height: 0;
-  border-top: 34px solid transparent;
-  border-right: 34px solid rgba(125, 211, 252, 0.95);
-  border-bottom: 8px solid transparent;
-  filter: drop-shadow(0 10px 16px rgba(56, 189, 248, 0.22));
+.app-loader__wave--back {
+  bottom: 10px;
+  transform: scaleX(1.02);
+  animation: loaderWaveBack 4.8s ease-in-out infinite;
 }
 
-.app-loader__hull {
+.app-loader__wave--mid {
+  bottom: 24px;
+  opacity: 0.72;
+  animation: loaderWaveMid 4s ease-in-out infinite;
+}
+
+.app-loader__wave--front {
+  bottom: 38px;
+  opacity: 0.48;
+  animation: loaderWaveFront 3.4s ease-in-out infinite;
+}
+
+.app-loader__brand-wrap {
+  position: relative;
+  width: fit-content;
+  margin: 0 auto 1.25rem;
+  animation: loaderBrandFloat 4.2s ease-in-out infinite;
+}
+
+.app-loader__brand-halo {
   position: absolute;
-  left: 32px;
-  bottom: 22px;
-  width: 72px;
-  height: 18px;
-  border-radius: 0 0 18px 18px;
-  background: linear-gradient(180deg, #f8fafc, #cbd5e1);
+  inset: -20px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(72, 202, 228, 0.18), transparent 62%);
+  filter: blur(16px);
+  animation: loaderHaloPulse 3.2s ease-in-out infinite;
+}
+
+.app-loader__brand {
+  position: absolute;
+  position: relative;
+  z-index: 1;
 }
 
 .app-loader__copy {
   text-align: center;
+  position: relative;
+  z-index: 1;
 }
 
 .app-loader__copy h2 {
@@ -3226,11 +3244,46 @@ body:has(.auth-layout) .app-chrome__brand .sp-wordmark {
   margin: 0.75rem auto 0;
 }
 
+.app-loader__skeleton {
+  display: grid;
+  gap: 0.65rem;
+  width: min(360px, 88%);
+  margin: 1.2rem auto 0;
+}
+
+.app-loader__skeleton-line {
+  display: block;
+  height: 0.8rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05),
+    rgba(72, 202, 228, 0.18),
+    rgba(255, 255, 255, 0.05)
+  );
+  background-size: 220% 100%;
+  animation: shimmerMove 1.5s linear infinite;
+}
+
+.app-loader__skeleton-line--long {
+  width: 100%;
+}
+
+.app-loader__skeleton-line--medium {
+  width: 78%;
+}
+
+.app-loader__skeleton-line--short {
+  width: 56%;
+}
+
 .app-loader__timeline {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.7rem;
-  margin-top: 1.5rem;
+  margin-top: 1.3rem;
+  position: relative;
+  z-index: 1;
 }
 
 .app-loader__timeline span {
@@ -3254,27 +3307,25 @@ body:has(.auth-layout) .app-chrome__brand .sp-wordmark {
   animation-delay: 0.36s;
 }
 
-@keyframes loaderDrift {
+@keyframes loaderBrandFloat {
   0%,
   100% {
-    transform: translate3d(-10px, 0, 0) rotate(-2deg);
+    transform: translate3d(0, 0, 0);
   }
   50% {
-    transform: translate3d(12px, -4px, 0) rotate(2deg);
+    transform: translate3d(0, -5px, 0);
   }
 }
 
-@keyframes loaderWake {
-  0% {
-    transform: translateX(-8%);
+@keyframes loaderHaloPulse {
+  0%,
+  100% {
     opacity: 0.55;
+    transform: scale(0.96);
   }
   50% {
-    opacity: 0.95;
-  }
-  100% {
-    transform: translateX(8%);
-    opacity: 0.55;
+    opacity: 0.9;
+    transform: scale(1.02);
   }
 }
 
@@ -3287,5 +3338,35 @@ body:has(.auth-layout) .app-chrome__brand .sp-wordmark {
   50% {
     background-position: 100% 50%;
     opacity: 1;
+  }
+}
+
+@keyframes loaderWaveBack {
+  0%,
+  100% {
+    transform: translate3d(-1.5%, 0, 0) scaleX(1.02);
+  }
+  50% {
+    transform: translate3d(1.5%, -2px, 0) scaleX(0.99);
+  }
+}
+
+@keyframes loaderWaveMid {
+  0%,
+  100% {
+    transform: translate3d(1.5%, 0, 0) scaleX(1);
+  }
+  50% {
+    transform: translate3d(-1.5%, -3px, 0) scaleX(1.02);
+  }
+}
+
+@keyframes loaderWaveFront {
+  0%,
+  100% {
+    transform: translate3d(-2%, 0, 0) scaleX(0.98);
+  }
+  50% {
+    transform: translate3d(2%, -4px, 0) scaleX(1.02);
   }
 }
