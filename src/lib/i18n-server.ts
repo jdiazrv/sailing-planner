@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { cookies } from "next/headers";
 
-import { createClient } from "@/lib/supabase/server";
+import { requireViewer } from "@/lib/boat-data";
 import { isLocale, LOCALE_COOKIE_NAME, type Locale } from "@/lib/i18n";
 
 export const getRequestLocale = async (): Promise<Locale> => {
@@ -13,21 +13,10 @@ export const getRequestLocale = async (): Promise<Locale> => {
   }
 
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { viewer } = await requireViewer();
 
-    if (user) {
-      const { data } = await (supabase as any)
-        .from("profiles")
-        .select("preferred_language")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (isLocale(data?.preferred_language)) {
-        return data.preferred_language;
-      }
+    if (isLocale(viewer.profile?.preferred_language)) {
+      return viewer.profile.preferred_language;
     }
   } catch {
     return "es";

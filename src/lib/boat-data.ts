@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { cache } from "react";
 import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -40,7 +41,7 @@ const getBoatImageUrl = (
     : data.publicUrl;
 };
 
-export const requireViewer = async () => {
+export const requireViewer = cache(async () => {
   const supabase = await createClient();
   const db = supabase as any;
   const {
@@ -65,9 +66,9 @@ export const requireViewer = async () => {
   };
 
   return { supabase, user, viewer };
-};
+});
 
-export const getAccessibleBoats = async () => {
+export const getAccessibleBoats = cache(async () => {
   const { supabase, viewer } = await requireViewer();
   const db = supabase as any;
 
@@ -223,7 +224,7 @@ export const getAccessibleBoats = async () => {
     user_last_access_at: userLastAccessByBoat.get(boat.id)?.lastAccessAt ?? null,
     user_display_name: userLastAccessByBoat.get(boat.id)?.displayName ?? null,
   })) as BoatSummary[];
-};
+});
 
 export const requireSuperuser = async () => {
   const context = await requireViewer();
