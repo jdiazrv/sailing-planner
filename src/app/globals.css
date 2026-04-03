@@ -991,6 +991,10 @@ body:has(.auth-layout) .app-chrome__brand .sp-wordmark {
   gap: 0.32rem;
 }
 
+.boat-card.is-disabled {
+  opacity: 0.72;
+}
+
 .boat-card__image,
 .boat-image {
   width: 100%;
@@ -1045,7 +1049,7 @@ body:has(.auth-layout) .app-chrome__brand .sp-wordmark {
 }
 
 .boat-card__stats {
-  display: inline-flex;
+  display: flex;
   gap: 0.38rem;
   flex-wrap: wrap;
   margin-top: 0.1rem;
@@ -1062,6 +1066,7 @@ body:has(.auth-layout) .app-chrome__brand .sp-wordmark {
   color: var(--accent);
   font-size: 0.72rem;
   font-weight: 700;
+  text-align: center;
 }
 
 .boat-card__header,
@@ -1851,6 +1856,10 @@ body:has(.auth-layout) .app-chrome__brand .sp-wordmark {
   margin-bottom: 1rem;
 }
 
+.shared-selection-card {
+  margin-bottom: 0.25rem;
+}
+
 .shared-compare-maps {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1890,6 +1899,40 @@ body:has(.auth-layout) .app-chrome__brand .sp-wordmark {
   border-radius: 14px;
   border: 1px solid var(--border);
   background: var(--surface-raised);
+}
+
+.admin-metrics-grid {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.admin-metric-card {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-raised);
+}
+
+.admin-metric-card span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.admin-metric-card strong {
+  color: var(--ink);
+  font-size: 0.98rem;
+  line-height: 1.25;
+}
+
+.admin-user-header-actions {
+  display: grid;
+  justify-items: end;
+  gap: 0.45rem;
 }
 
 .editor-sections-nav {

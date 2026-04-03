@@ -12,10 +12,34 @@ export function TimelineVisibilityPanel({
   isPublic,
   isSuperuser = false,
   compact = false,
+  titleKey,
+  actionLabelKey,
+  bodyKey,
+  statusOnKey,
+  statusOffKey,
+  toggleOnKey,
+  toggleOffKey,
 }: {
   isPublic: boolean;
   isSuperuser?: boolean;
   compact?: boolean;
+  titleKey?: "dashboard.sharedTimelines" | "dashboard.sharedTimelinesTitle";
+  actionLabelKey?: "dashboard.sharedTimelines" | "dashboard.sharedTimelinesAction";
+  bodyKey?:
+    | "dashboard.sharedTimelinesBody"
+    | "dashboard.crossBoatVisibilityBody";
+  statusOnKey?:
+    | "shared.visibilityOn"
+    | "dashboard.crossBoatVisibilityOn";
+  statusOffKey?:
+    | "shared.visibilityOff"
+    | "dashboard.crossBoatVisibilityOff";
+  toggleOnKey?:
+    | "shared.toggleOn"
+    | "dashboard.crossBoatVisibilityToggleOn";
+  toggleOffKey?:
+    | "shared.toggleOff"
+    | "dashboard.crossBoatVisibilityToggleOff";
 }) {
   const router = useRouter();
   const { t } = useI18n();
@@ -37,8 +61,8 @@ export function TimelineVisibilityPanel({
     <article className={`dashboard-card${compact ? "" : " admin-card"}`}>
       <div className="card-header">
         <div>
-          <p className="eyebrow">{t("dashboard.sharedTimelines")}</p>
-          <h2>{isPublic ? t("shared.publicOn") : t("shared.publicOff")}</h2>
+          <p className="eyebrow">{t(titleKey ?? "dashboard.sharedTimelines")}</p>
+          <h2>{isPublic ? t(statusOnKey ?? "shared.visibilityOn") : t(statusOffKey ?? "shared.visibilityOff")}</h2>
         </div>
         <span className={`status-pill ${isPublic ? "is-good" : "is-muted"}`}>
           {isPublic ? t("common.active") : t("common.inactive")}
@@ -46,7 +70,11 @@ export function TimelineVisibilityPanel({
       </div>
       {!compact ? (
         <p className="muted">
-          {isSuperuser ? t("shared.enableBodySuperuser") : t("shared.enableBody")}
+          {bodyKey
+            ? t(bodyKey)
+            : isSuperuser
+              ? t("shared.enableBodySuperuser")
+              : t("shared.enableBody")}
         </p>
       ) : null}
       <div className="workspace-header__actions">
@@ -56,10 +84,10 @@ export function TimelineVisibilityPanel({
           onClick={handleToggle}
           type="button"
         >
-          {isPublic ? t("shared.toggleOff") : t("shared.toggleOn")}
+          {isPublic ? t(toggleOffKey ?? "shared.toggleOff") : t(toggleOnKey ?? "shared.toggleOn")}
         </button>
         <Link className="secondary-button" href="/shared">
-          {t("dashboard.sharedTimelines")}
+          {t(actionLabelKey ?? "dashboard.sharedTimelines")}
         </Link>
       </div>
     </article>

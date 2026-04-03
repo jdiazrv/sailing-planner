@@ -96,7 +96,8 @@ export default async function SharedPage({
               />
             ) : (
               <article className="dashboard-card">
-                <p className="muted">{t(locale, "planning.noSeasonSelected")}</p>
+                <p className="eyebrow">{selected?.boat.name ?? t(locale, "shared.selectionTitle")}</p>
+                <p className="muted">{t(locale, "shared.noSeasonPublished")}</p>
               </article>
             )}
           </>

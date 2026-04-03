@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { useI18n } from "@/components/i18n/provider";
 import type { BoatDetails, UserAdminProfile } from "@/lib/planning";
-import type { PermissionLevel } from "@/types/database";
+import type { PermissionLevel, SignInMethod } from "@/types/database";
 
 type UsersAdminProps = {
   boats: BoatDetails[];
@@ -20,6 +20,7 @@ type UsersAdminProps = {
   onUpdatePassword: (fd: FormData) => Promise<void>;
   canInviteUsers: boolean;
   isSuperuser: boolean;
+  viewerUserId: string;
 };
 
 type InvitePermissionsState = {
@@ -34,6 +35,7 @@ type InvitePermissionsState = {
 };
 
 type UserEditorSection = "global" | "boat" | "security";
+type AccessSetupMode = "create" | "invite";
 
 const getPermissionPreset = (
   level: PermissionLevel,
@@ -104,6 +106,20 @@ const formatLastAccess = (
   }).format(new Date(value));
 };
 
+const formatAccessMethod = (
+  value: SignInMethod | null | undefined,
+  locale: "es" | "en",
+) => {
+  switch (value) {
+    case "password":
+      return locale === "es" ? "Contraseña" : "Password";
+    case "magic_link":
+      return "Magic link";
+    default:
+      return locale === "es" ? "Sin registrar" : "Not recorded";
+  }
+};
+
 export function UsersAdmin({
   boats,
   users,
@@ -116,11 +132,12 @@ export function UsersAdmin({
   onUpdatePassword,
   canInviteUsers,
   isSuperuser,
+  viewerUserId,
 }: UsersAdminProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [showCreateUserForm, setShowCreateUserForm] = useState(false);
-  const [showInviteForm, setShowInviteForm] = useState(false);
+  const [accessSetupMode, setAccessSetupMode] = useState<AccessSetupMode>("create");
+  const [showAccessSetupForm, setShowAccessSetupForm] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(users[0]?.id ?? "");
   const { locale, t } = useI18n();
   const sortedUsers = [...users].sort((a, b) =>
@@ -165,98 +182,98 @@ export function UsersAdmin({
 
   return (
     <section className="admin-stack">
-      {isSuperuser && (
-        <article className="dashboard-card admin-card">
-          <div className="card-header">
-            <div>
-              <p className="eyebrow">{t("admin.users.newEyebrow")}</p>
-              <h2>{t("admin.users.newTitle")}</h2>
-            </div>
-            <button
-              className="secondary-button"
-              onClick={() => setShowCreateUserForm((value) => !value)}
-              type="button"
-            >
-              {showCreateUserForm
-                ? t("admin.users.hideForm")
-                : t("admin.users.openForm")}
-            </button>
-          </div>
-          {showCreateUserForm ? canInviteUsers ? (
-            <form
-              className="editor-form"
-              onSubmit={(event) => {
-                event.preventDefault();
-                inviteUser(new FormData(event.currentTarget));
-                event.currentTarget.reset();
-                setShowCreateUserForm(false);
-              }}
-            >
-              <div className="form-grid">
-                <label>
-                  <span>{t("auth.email")}</span>
-                  <input name="email" placeholder="crew@example.com" required type="email" />
-                </label>
-                <label>
-                  <span>{t("admin.users.displayName")}</span>
-                  <input name="display_name" placeholder={t("admin.users.displayNamePlaceholder")} />
-                </label>
-                <label>
-                  <span>{t("auth.password")}</span>
-                  <input
-                    minLength={8}
-                    name="password"
-                    placeholder={t("admin.users.passwordPlaceholder")}
-                    required
-                    type="password"
-                  />
-                </label>
-                <label>
-                  <span>{t("admin.users.language")}</span>
-                  <select defaultValue="es" name="preferred_language">
-                    <option value="es">Español</option>
-                    <option value="en">English</option>
-                  </select>
-                </label>
-              </div>
-              <div className="modal__footer">
-                <button className="primary-button" disabled={isPending} type="submit">
-                  {isPending ? t("admin.users.creatingUser") : t("admin.users.createUser")}
-                </button>
-              </div>
-            </form>
-          ) : (
-            <p className="muted">{t("admin.users.serviceRoleMissing")}</p>
-          ) : (
-            <p className="muted">{t("admin.users.formCollapsedHelp")}</p>
-          )}
-        </article>
-      )}
-
       <article className="dashboard-card admin-card">
         <div className="card-header">
           <div>
-            <p className="eyebrow">{t("admin.users.invitationEyebrow")}</p>
-            <h2>{t("admin.users.invitationTitle")}</h2>
+            <p className="eyebrow">{t("admin.users.accessEyebrow")}</p>
+            <h2>{t("admin.users.accessTitle")}</h2>
+            <p className="muted">{t("admin.users.accessBody")}</p>
           </div>
           <button
             className="secondary-button"
-            onClick={() => setShowInviteForm((value) => !value)}
+            onClick={() => setShowAccessSetupForm((value) => !value)}
             type="button"
           >
-            {showInviteForm
+            {showAccessSetupForm
               ? t("admin.users.hideForm")
               : t("admin.users.openForm")}
           </button>
         </div>
-        {showInviteForm ? canInviteUsers ? (
-          <InviteUserForm
-            boats={boats}
-            isPending={isPending}
-            isSuperuser={isSuperuser}
-            locale={locale}
-            onSubmit={sendInvite}
-          />
+        {showAccessSetupForm ? canInviteUsers ? (
+          <>
+            <div className="editor-sections-nav" role="tablist" aria-label={t("admin.users.accessTitle")}>
+              <button
+                aria-selected={accessSetupMode === "create"}
+                className={`editor-sections-nav__item${accessSetupMode === "create" ? " is-active" : ""}`}
+                onClick={() => setAccessSetupMode("create")}
+                role="tab"
+                type="button"
+              >
+                {t("admin.users.createMode")}
+              </button>
+              <button
+                aria-selected={accessSetupMode === "invite"}
+                className={`editor-sections-nav__item${accessSetupMode === "invite" ? " is-active" : ""}`}
+                onClick={() => setAccessSetupMode("invite")}
+                role="tab"
+                type="button"
+              >
+                {t("admin.users.inviteMode")}
+              </button>
+            </div>
+            {accessSetupMode === "create" ? (
+              <form
+                className="editor-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  inviteUser(new FormData(event.currentTarget));
+                  event.currentTarget.reset();
+                  setShowAccessSetupForm(false);
+                }}
+              >
+                <div className="form-grid">
+                  <label>
+                    <span>{t("auth.email")}</span>
+                    <input name="email" placeholder="crew@example.com" required type="email" />
+                  </label>
+                  <label>
+                    <span>{t("admin.users.displayName")}</span>
+                    <input name="display_name" placeholder={t("admin.users.displayNamePlaceholder")} />
+                  </label>
+                  <label>
+                    <span>{t("auth.password")}</span>
+                    <input
+                      minLength={8}
+                      name="password"
+                      placeholder={t("admin.users.passwordPlaceholder")}
+                      required
+                      type="password"
+                    />
+                  </label>
+                  <label>
+                    <span>{t("admin.users.language")}</span>
+                    <select defaultValue="es" name="preferred_language">
+                      <option value="es">Español</option>
+                      <option value="en">English</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="modal__footer">
+                  <button className="primary-button" disabled={isPending} type="submit">
+                    {isPending ? t("admin.users.creatingUser") : t("admin.users.createUser")}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <InviteUserForm
+                boats={boats}
+                isPending={isPending}
+                isSuperuser={isSuperuser}
+                locale={locale}
+                onSubmit={sendInvite}
+              />
+            )}
+          </>
         ) : (
           <p className="muted">{t("admin.users.serviceRoleMissing")}</p>
         ) : (
@@ -301,6 +318,7 @@ export function UsersAdmin({
           onSaveProfile={onSaveProfile}
           onUpdatePassword={onUpdatePassword}
           user={selectedUser}
+          viewerUserId={viewerUserId}
         />
       ) : null}
     </section>
@@ -555,6 +573,7 @@ function UserEditorCard({
   onDeletePermission,
   onUpdatePassword,
   onDeleteUser,
+  viewerUserId,
 }: {
   user: UserAdminProfile;
   boats: BoatDetails[];
@@ -564,6 +583,7 @@ function UserEditorCard({
   onDeletePermission: (fd: FormData) => Promise<void>;
   onUpdatePassword: (fd: FormData) => Promise<void>;
   onDeleteUser: (fd: FormData) => Promise<void>;
+  viewerUserId: string;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -579,7 +599,8 @@ function UserEditorCard({
     boats.find((boat) => boat.id === selectedBoatId) ??
     sortedBoats[0] ??
     boats[0];
-  const accessSummary = isSuperuser
+  const canManageSecurity = isSuperuser || user.id === viewerUserId;
+  const accessSummary = canManageSecurity
     ? locale === "es"
       ? `${user.sign_in_count} accesos · último acceso ${formatLastAccess(user.last_sign_in_at, locale)}`
       : `${user.sign_in_count} sign-ins · last access ${formatLastAccess(user.last_sign_in_at, locale)}`
@@ -592,9 +613,25 @@ function UserEditorCard({
   }> = [
     { id: "global", label: t("admin.users.sectionGlobal") },
     { id: "boat", label: t("admin.users.sectionBoat") },
-    ...(isSuperuser
+    ...(canManageSecurity
       ? ([{ id: "security", label: t("admin.users.sectionSecurity") }] as const)
       : []),
+  ];
+  const metricCards = [
+    { label: t("admin.users.accessCount"), value: String(user.sign_in_count ?? 0) },
+    { label: t("admin.users.lastAccess"), value: formatLastAccess(user.last_sign_in_at, locale) },
+    {
+      label: t("admin.users.lastAccessMethod"),
+      value: formatAccessMethod(user.last_sign_in_method, locale),
+    },
+    { label: t("admin.users.boatsCount"), value: String(user.boats_count ?? 0) },
+    { label: t("admin.users.seasonsCount"), value: String(user.seasons_count ?? 0) },
+    {
+      label: t("admin.users.invitesGeneratedCount"),
+      value: String(user.invites_generated_count ?? 0),
+    },
+    { label: t("admin.users.tripsCount"), value: String(user.trip_segments_count ?? 0) },
+    { label: t("admin.users.visitsCount"), value: String(user.visits_count ?? 0) },
   ];
 
   const saveProfile = (formData: FormData) => {
@@ -683,9 +720,30 @@ function UserEditorCard({
           <h2>{user.display_name ?? user.email ?? t("admin.users.unnamedUser")}</h2>
           <p className="muted">{user.email ?? "—"}</p>
         </div>
-        <span className={`status-pill ${user.is_superuser ? "is-good" : "is-muted"}`}>
-          {user.is_superuser ? t("admin.users.superuser") : t("admin.users.standardUser")}
-        </span>
+        <div className="admin-user-header-actions">
+          <span className={`status-pill ${user.is_superuser ? "is-good" : "is-muted"}`}>
+            {user.is_superuser ? t("admin.users.superuser") : t("admin.users.standardUser")}
+          </span>
+          {isSuperuser ? (
+            <button
+              className="link-button link-button--danger"
+              disabled={isPending}
+              onClick={deleteUser}
+              type="button"
+            >
+              {isPending ? t("admin.users.deleting") : t("admin.users.deleteUser")}
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="admin-metrics-grid">
+        {metricCards.map((metric) => (
+          <div className="admin-metric-card" key={metric.label}>
+            <span>{metric.label}</span>
+            <strong>{metric.value}</strong>
+          </div>
+        ))}
       </div>
 
       <div className="editor-sections-nav" role="tablist" aria-label={t("admin.users.sectionNav")}>
@@ -753,7 +811,7 @@ function UserEditorCard({
                   name="is_timeline_public"
                   type="checkbox"
                 />
-                <span>{t("admin.users.timelinePublic")}</span>
+                <span>{t("admin.users.timelineVisibility")}</span>
               </label>
               {isSuperuser ? (
                 <label className="checkbox-field">
@@ -762,11 +820,7 @@ function UserEditorCard({
                     name="onboarding_pending"
                     type="checkbox"
                   />
-                  <span>
-                    {locale === "es"
-                      ? "Tour inicial pendiente"
-                      : "Initial tour pending"}
-                  </span>
+                  <span>{t("admin.users.onboardingGuide")}</span>
                 </label>
               ) : null}
             </div>
@@ -780,7 +834,7 @@ function UserEditorCard({
         </article>
       )}
 
-      {activeSection === "security" && isSuperuser ? (
+      {activeSection === "security" && canManageSecurity ? (
         <article className="admin-card admin-card--section">
           <form
             className="editor-form"
@@ -798,14 +852,6 @@ function UserEditorCard({
                 <p className="muted">{t("admin.users.passwordHelp")}</p>
                 {accessSummary ? <p className="muted">{accessSummary}</p> : null}
               </div>
-              <button
-                className="link-button link-button--danger"
-                disabled={isPending}
-                onClick={deleteUser}
-                type="button"
-              >
-                {isPending ? t("admin.users.deleting") : t("admin.users.deleteUser")}
-              </button>
             </div>
             <div className="form-grid">
               <label>

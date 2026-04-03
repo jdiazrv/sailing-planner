@@ -25,6 +25,7 @@ export function SharedBoatPicker({
   const { locale, t } = useI18n();
   const [query, setQuery] = useState("");
   const [isMobile, setIsMobile] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(!selectedBoatId);
   const useSearchPicker = entries.length > (isMobile ? 6 : 12);
   const hasQuery = query.trim().length > 0;
 
@@ -35,6 +36,11 @@ export function SharedBoatPicker({
     mediaQuery.addEventListener("change", update);
     return () => mediaQuery.removeEventListener("change", update);
   }, []);
+
+  useEffect(() => {
+    setIsExpanded(!selectedBoatId);
+    setQuery("");
+  }, [selectedBoatId]);
 
   const filteredEntries = useMemo(
     () =>
@@ -47,79 +53,134 @@ export function SharedBoatPicker({
       ),
     [entries, query],
   );
+  const selectedEntry = entries.find((entry) => entry.boatId === selectedBoatId) ?? null;
+
+  const selectionSummary = selectedEntry ? (
+    <article className="dashboard-card shared-selection-card">
+      <div className="card-header">
+        <div>
+          <p className="eyebrow">{t("shared.currentSelection")}</p>
+          <h2>{selectedEntry.boatName}</h2>
+          <p className="muted">
+            {selectedEntry.seasonName ?? t("shared.noSeasonPublished")}
+          </p>
+        </div>
+        <button
+          className="secondary-button"
+          onClick={() => setIsExpanded((value) => !value)}
+          type="button"
+        >
+          {t("shared.changeBoat")}
+        </button>
+      </div>
+    </article>
+  ) : null;
 
   if (!useSearchPicker) {
     return (
-      <div className="shared-boat-grid">
-        {entries.map((entry) => (
-          <Link
-            className={`boat-card ${entry.boatId === selectedBoatId ? "is-active" : ""}`}
-            href={
-              entry.seasonId
-                ? `/shared?boat=${entry.boatId}&season=${entry.seasonId}`
-                : `/shared?boat=${entry.boatId}`
-            }
-            key={entry.boatId}
-          >
-            <div className="boat-card__header">
-              <p className="eyebrow">{t("shared.boat")}</p>
-              <span className="status-pill is-good">{t("shared.open")}</span>
+      <section className="admin-stack">
+        {selectionSummary}
+        {(isExpanded || !selectedEntry) ? (
+          <>
+            <article className="dashboard-card">
+              <p className="eyebrow">{t("shared.selectionTitle")}</p>
+              <p className="muted">{t("shared.selectionBody")}</p>
+            </article>
+            <div className="shared-boat-grid">
+              {entries.map((entry) => (
+                <Link
+                  aria-disabled={!entry.seasonId}
+                  className={`boat-card ${entry.boatId === selectedBoatId ? "is-active" : ""}${!entry.seasonId ? " is-disabled" : ""}`}
+                  href={
+                    entry.seasonId
+                      ? `/shared?boat=${entry.boatId}&season=${entry.seasonId}`
+                      : "/shared"
+                  }
+                  key={entry.boatId}
+                  onClick={(event) => {
+                    if (!entry.seasonId) event.preventDefault();
+                  }}
+                >
+                  <div className="boat-card__header">
+                    <p className="eyebrow">{t("shared.boat")}</p>
+                    <span className={`status-pill ${entry.seasonId ? "is-good" : "is-muted"}`}>
+                      {entry.seasonId ? t("shared.select") : t("shared.noSeasonPublished")}
+                    </span>
+                  </div>
+                  <h3>{entry.boatName}</h3>
+                  <p className="muted">{entry.seasonName ?? t("shared.noSeasonPublished")}</p>
+                  <p className="meta">
+                    {t("shared.owner")}: {entry.ownerDisplayName ?? t("shared.ownerUnknown")}
+                  </p>
+                </Link>
+              ))}
             </div>
-            <h3>{entry.boatName}</h3>
-            <p className="muted">{entry.seasonName ?? t("planning.noSeasonSelected")}</p>
-            <p className="meta">
-              {t("shared.owner")}: {entry.ownerDisplayName ?? "—"}
-            </p>
-          </Link>
-        ))}
-      </div>
+          </>
+        ) : null}
+      </section>
     );
   }
 
   return (
     <section className="boat-selector-list">
-      <div className="form-grid">
-        <label className="form-grid__wide">
-          <span>{t("admin.users.searchBoat")}</span>
-          <input
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={
-              locale === "es"
-                ? "Nombre del barco o del usuario"
-                : "Boat name or user name"
-            }
-            value={query}
-          />
-        </label>
-      </div>
+      {selectionSummary}
+      {(isExpanded || !selectedEntry) ? (
+        <>
+          <article className="dashboard-card">
+            <p className="eyebrow">{t("shared.selectionTitle")}</p>
+            <p className="muted">{t("shared.selectionBody")}</p>
+          </article>
+          <div className="form-grid">
+            <label className="form-grid__wide">
+              <span>{t("admin.users.searchBoat")}</span>
+              <input
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={
+                  locale === "es"
+                    ? "Nombre del barco o del usuario"
+                    : "Boat name or user name"
+                }
+                value={query}
+              />
+            </label>
+          </div>
 
-      {hasQuery
-        ? filteredEntries.length ? (
-            <div className="boat-combobox__menu" role="listbox">
-              {filteredEntries.map((entry) => (
-                <Link
-                  className={`data-row boat-list-row ${entry.boatId === selectedBoatId ? "is-active" : ""}`}
-                  href={
-                    entry.seasonId
-                      ? `/shared?boat=${entry.boatId}&season=${entry.seasonId}`
-                      : `/shared?boat=${entry.boatId}`
-                  }
-                  key={entry.boatId}
-                >
-                  <div className="table-stack">
-                    <strong>{entry.boatName}</strong>
-                    <span className="muted">
-                      {entry.ownerDisplayName ?? "—"} ·{" "}
-                      {entry.homePort ?? t("boatSelector.homePortMissing")}
-                    </span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <p className="muted">{t("admin.users.noBoatMatches")}</p>
-          )
-        : null}
+          {hasQuery
+            ? filteredEntries.length ? (
+                <div className="boat-combobox__menu" role="listbox">
+                  {filteredEntries.map((entry) => (
+                    <Link
+                      aria-disabled={!entry.seasonId}
+                      className={`data-row boat-list-row ${entry.boatId === selectedBoatId ? "is-active" : ""}${!entry.seasonId ? " is-disabled" : ""}`}
+                      href={
+                        entry.seasonId
+                          ? `/shared?boat=${entry.boatId}&season=${entry.seasonId}`
+                          : "/shared"
+                      }
+                      key={entry.boatId}
+                      onClick={(event) => {
+                        if (!entry.seasonId) event.preventDefault();
+                      }}
+                    >
+                      <div className="table-stack">
+                        <strong>{entry.boatName}</strong>
+                        <span className="muted">
+                          {entry.ownerDisplayName ?? t("shared.ownerUnknown")} ·{" "}
+                          {entry.homePort ?? t("boatSelector.homePortMissing")}
+                        </span>
+                      </div>
+                      <span className={`status-pill ${entry.seasonId ? "is-good" : "is-muted"}`}>
+                        {entry.seasonId ? t("shared.select") : t("shared.noSeasonPublished")}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className="muted">{t("admin.users.noBoatMatches")}</p>
+              )
+            : null}
+        </>
+      ) : null}
     </section>
   );
 }

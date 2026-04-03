@@ -54,12 +54,14 @@ export function BoatsAdmin({
   onDelete,
 }: BoatsAdminProps) {
   const { locale } = useI18n();
+  const useCompactSelector = boats.length > 12;
   const [search, setSearch] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [selectedBoatId, setSelectedBoatId] = useState("");
   const filteredBoats = useMemo(
     () =>
       boats.filter((boat) =>
-        [boat.name, boat.home_port, boat.description]
+        [boat.name, boat.home_port, boat.description, boat.user_display_name, boat.user_email]
           .filter(Boolean)
           .join(" ")
           .toLowerCase()
@@ -67,20 +69,38 @@ export function BoatsAdmin({
       ),
     [boats, search],
   );
+  const sortedBoats = useMemo(
+    () => [...boats].sort((a, b) => a.name.localeCompare(b.name, locale)),
+    [boats, locale],
+  );
+  const selectedBoat =
+    sortedBoats.find((boat) => boat.id === selectedBoatId) ??
+    boats.find((boat) => boat.id === selectedBoatId) ??
+    null;
 
   const text =
     locale === "es"
       ? {
           eyebrow: "Administración de barcos",
+          manage: "Gestionar barcos",
           addBoat: "Añadir barco",
           search: "Buscar barco",
+          searchHelp:
+            "Busca por nombre del barco, propietario o correo del propietario para abrir una sola ficha.",
           noMatches: "Ningún barco coincide con la búsqueda.",
+          noBoatSelected:
+            "Escribe para buscar un barco por nombre, propietario o correo y abre una sola ficha para gestionarlo.",
         }
       : {
           eyebrow: "Boat administration",
+          manage: "Manage boats",
           addBoat: "Add boat",
           search: "Search boat",
+          searchHelp:
+            "Search by boat name, owner or owner email to open a single card.",
           noMatches: "No boats match the current search.",
+          noBoatSelected:
+            "Type to search a boat by name, owner or owner email and open a single card to manage it.",
         };
 
   return (
@@ -89,7 +109,8 @@ export function BoatsAdmin({
         <div className="card-header">
           <div>
             <p className="eyebrow">{text.eyebrow}</p>
-            <h2>{text.search}</h2>
+            <h2>{useCompactSelector ? text.manage : text.search}</h2>
+            {useCompactSelector ? <p className="muted">{text.searchHelp}</p> : null}
           </div>
           <button
             className="primary-button"
@@ -109,6 +130,35 @@ export function BoatsAdmin({
             />
           </label>
         </div>
+        {useCompactSelector ? (
+          <div className="search-select">
+            <div className="search-select__list">
+              {search.trim().length ? (
+                filteredBoats.length ? (
+                  filteredBoats.map((boat) => (
+                    <button
+                      className={`search-select__option${boat.id === selectedBoatId ? " is-active" : ""}`}
+                      key={boat.id}
+                      onClick={() => {
+                        setSelectedBoatId(boat.id);
+                        setSearch("");
+                      }}
+                      type="button"
+                    >
+                      <strong>{boat.name}</strong>
+                      <span>{boat.user_display_name ?? (locale === "es" ? "Sin propietario visible" : "No visible owner")}</span>
+                      <span>{boat.user_email ?? boat.home_port ?? "—"}</span>
+                    </button>
+                  ))
+                ) : (
+                  <p className="muted">{text.noMatches}</p>
+                )
+              ) : (
+                <p className="muted">{text.noBoatSelected}</p>
+              )}
+            </div>
+          </div>
+        ) : null}
       </article>
 
       {isCreating ? (
@@ -124,7 +174,23 @@ export function BoatsAdmin({
         />
       ) : null}
 
-      {filteredBoats.length ? (
+      {useCompactSelector ? (
+        selectedBoat ? (
+          <BoatEditorCard
+            boat={selectedBoat}
+            key={selectedBoat.id}
+            onDelete={onDelete}
+            onRemoveImage={onRemoveImage}
+            onSave={onSave}
+            onUploadImage={onUploadImage}
+            title={selectedBoat.name}
+          />
+        ) : (
+          <article className="dashboard-card">
+            <p className="muted">{text.noBoatSelected}</p>
+          </article>
+        )
+      ) : filteredBoats.length ? (
         filteredBoats.map((boat) => (
           <BoatEditorCard
             boat={boat}

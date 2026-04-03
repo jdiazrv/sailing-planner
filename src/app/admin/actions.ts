@@ -556,7 +556,7 @@ export async function inviteUserAccount(formData: FormData) {
 }
 
 export async function updateUserPassword(formData: FormData) {
-  await requireSuperuser();
+  const { supabase, user, viewer, manageableBoatIds } = await requireUserAdminAccess();
   const admin = createAdminClient();
 
   if (!admin) {
@@ -568,8 +568,17 @@ export async function updateUserPassword(formData: FormData) {
   const userId = formData.get("user_id")?.toString() ?? "";
   const password = formData.get("password")?.toString() ?? "";
 
+  if (!userId) {
+    throw new Error("User id is required.");
+  }
+
   if (!password || password.length < 8) {
     throw new Error("Password must be at least 8 characters.");
+  }
+
+  if (!viewer.isSuperuser && user.id !== userId) {
+    const db = supabase as any;
+    await assertManageableUser(db, user.id, manageableBoatIds, userId);
   }
 
   const { error } = await admin.auth.admin.updateUserById(userId, { password });

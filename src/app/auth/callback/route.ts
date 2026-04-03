@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   if (code) {
     const supabase = await createClient();
     await supabase.auth.exchangeCodeForSession(code);
-    await recordCurrentUserAccess();
+    await recordCurrentUserAccess("magic_link");
   }
 
   return NextResponse.redirect(new URL(next, requestUrl.origin));

@@ -82,7 +82,7 @@ export function SetPasswordForm() {
     }
 
     setMessage(text.success);
-    void recordCurrentUserAccess().catch(() => {});
+    void recordCurrentUserAccess("magic_link").catch(() => {});
     window.location.assign("/dashboard");
   };
 

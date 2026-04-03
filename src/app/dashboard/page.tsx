@@ -1,11 +1,11 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { BoatSelector } from "@/components/boats/boat-selector";
+import { LastBoatTracker } from "@/components/boats/last-boat-tracker";
 import { TimelineVisibilityPanel } from "@/components/shared/timeline-visibility-panel";
-import { getAccessibleBoatsLite, requireViewer } from "@/lib/boat-data";
+import { getAccessibleBoats, getBoatWorkspace, requireViewer } from "@/lib/boat-data";
 import { t } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n-server";
 import { getReleaseLabel } from "@/lib/release";
@@ -13,34 +13,39 @@ import { getReleaseLabel } from "@/lib/release";
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ change?: string }>;
+  searchParams: Promise<{ change?: string; boat?: string }>;
 }) {
-  const [locale, { viewer }, boats, { change }] = await Promise.all([
+  const [locale, { viewer }, boats, { change, boat }] = await Promise.all([
     getRequestLocale(),
     requireViewer(),
-    getAccessibleBoatsLite(),
+    getAccessibleBoats(),
     searchParams,
   ]);
   const releaseLabel = getReleaseLabel();
 
-  // Single-boat users go directly to their boat
-  if (boats.length === 1) {
-    redirect(`/boats/${boats[0].boat_id}/trip`);
-  }
-
-  // Superuser with a remembered last boat → redirect unless they explicitly want to change
-  if (viewer.isSuperuser && !change) {
-    const cookieStore = await cookies();
-    const lastBoatId = cookieStore.get("lastBoatId")?.value;
-    if (lastBoatId && boats.some((b) => b.boat_id === lastBoatId)) {
-      redirect(`/boats/${lastBoatId}/trip`);
-    }
-  }
-
+  const cookieStore = await cookies();
+  const lastBoatId = cookieStore.get("lastBoatId")?.value;
+  const requestedBoatId = boat && boats.some((b) => b.boat_id === boat) ? boat : undefined;
   const activeBoats = boats.filter((b) => b.is_active !== false);
+  const selectedBoatId = viewer.isSuperuser
+    ? (
+        requestedBoatId ??
+        (lastBoatId && boats.some((b) => b.boat_id === lastBoatId)
+          ? lastBoatId
+          : boats[0]?.boat_id)
+      )
+    : boats[0]?.boat_id;
+  const visibleBoats = viewer.isSuperuser
+    ? boats
+    : boats.filter((boat) => boat.boat_id === selectedBoatId);
+  const selectedWorkspace = selectedBoatId ? await getBoatWorkspace(selectedBoatId) : null;
+  const selectedSeasonLabel = selectedWorkspace?.selectedSeason
+    ? selectedWorkspace.selectedSeason.name
+    : null;
 
   return (
     <main className="shell">
+      {selectedBoatId ? <LastBoatTracker boatId={selectedBoatId} /> : null}
       <header className="dashboard-header">
         <div>
           <h1>{viewer.isSuperuser ? t(locale, "dashboard.titleAll") : t(locale, "dashboard.titleOwn")}</h1>
@@ -68,8 +73,21 @@ export default async function DashboardPage({
       </header>
 
       {boats.length ? (
-        <section>
-          <BoatSelector boats={boats} />
+        <section className="admin-stack" style={{ marginTop: "1rem" }}>
+          {viewer.isSuperuser && !selectedBoatId ? (
+            <article className="dashboard-card">
+              <p className="eyebrow">{t(locale, "dashboard.pickBoatTitle")}</p>
+              <p className="muted">{t(locale, "dashboard.pickBoatBody")}</p>
+            </article>
+          ) : null}
+          <BoatSelector
+            activeBoatId={selectedBoatId}
+            boats={visibleBoats}
+            collapsible={viewer.isSuperuser && Boolean(selectedBoatId)}
+            initiallyExpanded={viewer.isSuperuser && Boolean(change)}
+            selectionOnly={viewer.isSuperuser}
+            selectionSubtitle={selectedSeasonLabel}
+          />
         </section>
       ) : (
         <section className="dashboard-card" style={{ marginTop: "1.5rem" }}>
@@ -80,32 +98,17 @@ export default async function DashboardPage({
 
       <section style={{ marginTop: "1rem" }}>
         <TimelineVisibilityPanel
+          actionLabelKey="dashboard.sharedTimelinesAction"
+          bodyKey="dashboard.crossBoatVisibilityBody"
           isPublic={Boolean(viewer.profile?.is_timeline_public)}
           isSuperuser={viewer.isSuperuser}
+          statusOffKey="dashboard.crossBoatVisibilityOff"
+          statusOnKey="dashboard.crossBoatVisibilityOn"
+          toggleOffKey="dashboard.crossBoatVisibilityToggleOff"
+          toggleOnKey="dashboard.crossBoatVisibilityToggleOn"
+          titleKey="dashboard.sharedTimelinesTitle"
         />
       </section>
-
-      {viewer.isSuperuser && boats.length > 0 && (
-        <section className="dashboard-grid" style={{ marginTop: "1rem" }}>
-          {boats.map((boat) => (
-            <Link
-              className="dashboard-card"
-              href={`/boats/${boat.boat_id}/trip`}
-              key={boat.boat_id}
-              style={{ display: "block" }}
-            >
-              <p className="eyebrow">
-                {boat.is_active ? t(locale, "common.active") : t(locale, "common.inactive")}
-              </p>
-              <h2>{boat.boat_name}</h2>
-              <p className="muted">{t(locale, "boatSelector.selectBoat")}</p>
-              {boat.home_port && (
-                <p className="meta">{t(locale, "dashboard.homePort")}: {boat.home_port}</p>
-              )}
-            </Link>
-          ))}
-        </section>
-      )}
     </main>
   );
 }

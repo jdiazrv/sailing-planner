@@ -32,6 +32,7 @@ export type PlaceSource =
   | "openstreetmap"
   | "other";
 export type PreferredLanguage = "es" | "en";
+export type SignInMethod = "password" | "magic_link" | "unknown";
 export type SeasonAccessWindow =
   | "one_use"
   | "one_day"
@@ -83,6 +84,7 @@ export interface Database {
           created_by_user_id: string | null;
           sign_in_count: number;
           last_sign_in_at: string | null;
+          last_sign_in_method: SignInMethod | null;
           preferred_language: PreferredLanguage;
           created_at: string;
           updated_at: string;
@@ -98,6 +100,7 @@ export interface Database {
           created_by_user_id?: string | null;
           sign_in_count?: number;
           last_sign_in_at?: string | null;
+          last_sign_in_method?: SignInMethod | null;
           preferred_language?: PreferredLanguage;
           created_at?: string;
           updated_at?: string;

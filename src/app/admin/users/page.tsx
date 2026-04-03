@@ -46,6 +46,7 @@ export default async function AdminUsersPage() {
         boats={boats}
         canInviteUsers={canInviteUsers}
         isSuperuser={access.viewer.isSuperuser}
+        viewerUserId={access.user.id}
         onDeletePermission={deleteUserBoatPermission}
         onDeleteUser={deleteUserAccount}
         onInviteUser={createUserAccount}

@@ -43,7 +43,7 @@ export const AuthForm = ({
       throw signInError;
     }
 
-    void recordCurrentUserAccess().catch(() => {});
+    void recordCurrentUserAccess("password").catch(() => {});
     window.location.assign(next);
   };
 

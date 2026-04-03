@@ -25,6 +25,7 @@ export type BoatSummary = Database["public"]["Views"]["boat_access_overview"]["R
   active_invites_count?: number;
   user_last_access_at?: string | null;
   user_display_name?: string | null;
+  user_email?: string | null;
 };
 
 export type BoatDetails = BoatRow & {
@@ -34,11 +35,17 @@ export type BoatDetails = BoatRow & {
   active_invites_count?: number;
   user_last_access_at?: string | null;
   user_display_name?: string | null;
+  user_email?: string | null;
   users_count?: number;
 };
 
 export type UserAdminProfile = ProfileRow & {
   permissions: PermissionRow[];
+  boats_count?: number;
+  seasons_count?: number;
+  trip_segments_count?: number;
+  visits_count?: number;
+  invites_generated_count?: number;
 };
 
 export type SharedTimelineBoat = {

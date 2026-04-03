@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
+import type { SignInMethod } from "@/types/database";
 
-export async function recordCurrentUserAccess() {
+export async function recordCurrentUserAccess(method: SignInMethod = "unknown") {
   const supabase = await createClient();
   const {
     data: { user },
@@ -20,11 +21,21 @@ export async function recordCurrentUserAccess() {
     .eq("id", user.id)
     .maybeSingle();
 
-  await db
-    .from("profiles")
-    .update({
-      sign_in_count: (profile?.sign_in_count ?? 0) + 1,
-      last_sign_in_at: new Date().toISOString(),
-    })
-    .eq("id", user.id);
+  const payload = {
+    sign_in_count: (profile?.sign_in_count ?? 0) + 1,
+    last_sign_in_at: new Date().toISOString(),
+    last_sign_in_method: method,
+  };
+
+  const { error } = await db.from("profiles").update(payload).eq("id", user.id);
+
+  if (error && error.message?.toLowerCase().includes("last_sign_in_method")) {
+    await db
+      .from("profiles")
+      .update({
+        sign_in_count: payload.sign_in_count,
+        last_sign_in_at: payload.last_sign_in_at,
+      })
+      .eq("id", user.id);
+  }
 }
