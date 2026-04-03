@@ -3100,8 +3100,8 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
   border: 1px solid var(--border);
   background: var(--tour-popover);
   box-shadow: var(--shadow-strong);
-  max-height: min(70vh, 420px);
-  overflow: auto;
+  max-height: none;
+  overflow: visible;
 }
 
 .tour-popover__step {

@@ -151,7 +151,11 @@ export function BoatWorkspaceShell({
       </section>
 
       <section className="workspace-grid workspace-grid--trip">
-        <article className="dashboard-card workspace-main" data-tour="boat-detail">
+        <article
+          className="dashboard-card workspace-main"
+          data-tour={currentView === "visits" ? "boat-visits-card" : "boat-detail"}
+          data-tour-detail={currentView === "visits" ? "boat-detail" : undefined}
+        >
           {currentView === "trip" ? (
             <>
               <div className="card-header">
@@ -231,8 +235,9 @@ export function BoatWorkspaceShell({
           )}
         </article>
 
-        <aside className="stack" data-tour="boat-map">
+        <aside className="stack">
           <MapPanel
+            dataTour="boat-map"
             selectedEntityId={selectedEntityId}
             tall
             title={t("planning.tripAndVisitPlaces")}

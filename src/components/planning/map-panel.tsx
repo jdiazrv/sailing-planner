@@ -33,6 +33,7 @@ type MapPanelProps = {
   title?: string;
   tall?: boolean;
   selectedEntityId?: string | null;
+  dataTour?: string;
 };
 
 type GoogleBaseMap = "roadmap" | "satellite" | "hybrid";
@@ -206,6 +207,7 @@ export const MapPanel = ({
   title = "Map snapshot",
   tall = false,
   selectedEntityId = null,
+  dataTour,
 }: MapPanelProps) => {
   const { t } = useI18n();
   const mapRef = useRef<HTMLDivElement | null>(null);
@@ -446,7 +448,10 @@ export const MapPanel = ({
   ]);
 
   return (
-    <article className={`dashboard-card map-panel${tall ? " map-panel--tall" : ""}`}>
+    <article
+      className={`dashboard-card map-panel${tall ? " map-panel--tall" : ""}`}
+      data-tour={dataTour}
+    >
       <div className="card-header">
         <div>
           <p className="eyebrow">{t("planning.map")}</p>

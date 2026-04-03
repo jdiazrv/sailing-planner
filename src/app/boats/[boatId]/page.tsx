@@ -43,13 +43,13 @@ export default async function BoatWorkspacePage({
 
   return (
     <>
-      {!workspace.viewer.isSuperuser && workspace.viewer.onboardingPending ? (
+      {workspace.viewer.onboardingPending ? (
         <MemberFirstAccess
           canEditBoat={canEdit}
           canManageUsers={canManageUsers}
           canShare={canShare}
           canViewVisits
-          viewerId={workspace.viewer.profile?.id ?? boatId}
+          viewerId={`${workspace.viewer.profile?.id ?? boatId}:${workspace.selectedSeason?.id ?? "no-season"}:${currentView}`}
         />
       ) : null}
 

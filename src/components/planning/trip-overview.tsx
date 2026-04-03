@@ -77,9 +77,9 @@ export function TripOverview({
         </div>
         <aside
           className={`stack workspace-panel${mobilePanel === "map" ? " is-active" : ""}`}
-          data-tour="boat-map"
         >
           <MapPanel
+            dataTour="boat-map"
             selectedEntityId={selectedEntityId}
             tall
             title={t("planning.tripAndVisitPlaces")}

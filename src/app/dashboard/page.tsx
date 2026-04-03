@@ -58,6 +58,19 @@ export default async function DashboardPage({
       )
     : boats[0]?.boat_id;
 
+  if (viewer.onboardingPending && selectedBoatId) {
+    const nextParams = new URLSearchParams();
+    if (season) {
+      nextParams.set("season", season);
+    }
+    const nextQuery = nextParams.toString();
+    redirect(
+      nextQuery
+        ? `/boats/${selectedBoatId}?${nextQuery}`
+        : `/boats/${selectedBoatId}`,
+    );
+  }
+
   if (!viewer.isSuperuser && selectedBoatId) {
     redirect(`/boats/${selectedBoatId}`);
   }

@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type TourStep = {
   target: string;
   title: string;
   body: string;
+  requiredView?: "trip" | "visits";
 };
 
 type RectState = {
@@ -44,6 +45,8 @@ export function GuestOnboardingTour({
   const [isOpen, setIsOpen] = useState(enabled);
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<RectState>(null);
+  const [popoverHeight, setPopoverHeight] = useState(220);
+  const popoverRef = useRef<HTMLDivElement | null>(null);
   const isVisitsView = pathname.includes("/visits") || searchParams.get("view") === "visits";
 
   const steps = useMemo<TourStep[]>(() => {
@@ -104,19 +107,18 @@ export function GuestOnboardingTour({
             "El timeline te da una vision general de la temporada y te ayuda a entender rapidamente como encajan tramos y visitas.",
         },
         {
-          target: isVisitsView
-            ? '[data-tour-detail="boat-detail"]'
-            : '[data-tour="boat-detail"]',
-          title: isVisitsView ? "Detalle de visitas" : "Detalle de tramos",
-          body: isVisitsView
-            ? "En esta zona gestionas el detalle de las visitas. Aqui puedes revisar la informacion de cada invitado y crear, modificar o ajustar fechas, lugares y estado."
-            : "Aqui gestionas el detalle de los tramos. Es la zona para crear nuevos, editar el plan existente y ajustar fechas, estados y ubicaciones.",
+          target: '[data-tour="boat-detail"]',
+          title: "Detalle de tramos",
+          body:
+            "Aqui gestionas el detalle de los tramos. Es la zona para crear nuevos, editar el plan existente y ajustar fechas, estados y ubicaciones.",
+          requiredView: "trip" as const,
         },
         {
           target: '[data-tour="boat-map"]',
           title: "Mapa",
           body:
             "El mapa te ayuda a situar visualmente el recorrido y los puntos clave de la temporada mientras gestionas el plan.",
+          requiredView: "trip" as const,
         },
         ...(canViewVisits
           ? [
@@ -125,6 +127,7 @@ export function GuestOnboardingTour({
                 title: "Card de visitas",
                 body:
                   "Esta card es el equivalente de gestion para las visitas: aqui puedes crear nuevas, modificar las existentes y mantener claro quien viene, cuando y desde donde.",
+                requiredView: "visits" as const,
               },
             ]
           : []),
@@ -158,80 +161,72 @@ export function GuestOnboardingTour({
           "El timeline te permite ver de un vistazo el plan de la temporada. Si pausas el raton sobre una barra, apareceran detalles adicionales, siempre en modo consulta.",
       },
       {
-        target: isVisitsView
-          ? '[data-tour-detail="boat-detail"]'
-          : '[data-tour="boat-detail"]',
-        title: isVisitsView ? "Detalle de visitas" : "Detalle de tramos",
-        body: isVisitsView
-          ? "En esta zona puedes ver el detalle de las visitas: invitado, fechas, lugares y estado. Es una vista informativa, sin opciones de edicion."
-          : "Aqui puedes ver el detalle estructurado de los tramos del viaje. Es una vista de consulta para entender mejor el plan, sin modificarlo.",
+        target: '[data-tour="boat-detail"]',
+        title: "Detalle de tramos",
+        body:
+          "Aqui puedes ver el detalle estructurado de los tramos del viaje. Es una vista de consulta para entender mejor el plan, sin modificarlo.",
+        requiredView: "trip" as const,
       },
       {
         target: '[data-tour="boat-map"]',
         title: "Mapa",
         body:
           "El mapa te ayuda a ubicar visualmente el recorrido y los puntos importantes de la temporada, siempre en modo de solo lectura.",
+        requiredView: "trip" as const,
       },
       ...(canViewVisits
         ? [
-            {
-              target: '[data-tour="boat-visits-card"]',
-              title: "Card de visitas",
-              body:
-                "Aqui puedes consultar de un vistazo las visitas previstas, con sus fechas, lugares y estado, sin posibilidad de editar.",
-            },
-          ]
+          {
+            target: '[data-tour="boat-visits-card"]',
+            title: "Card de visitas",
+            body:
+              "Aqui puedes consultar de un vistazo las visitas previstas, con sus fechas, lugares y estado, sin posibilidad de editar.",
+            requiredView: "visits" as const,
+          },
+        ]
         : []),
     ];
-  }, [canEditBoat, canManageUsers, canShare, canViewVisits, isVisitsView, variant]);
-
-  const visitsStepIndex = useMemo(
-    () =>
-      steps.findIndex(
-        (step) => step.target === '[data-tour="boat-visits-card"]',
-      ),
-    [steps],
-  );
+  }, [canEditBoat, canManageUsers, canShare, canViewVisits, variant]);
 
   useEffect(() => {
-    if (!isOpen || !canViewVisits || stepIndex !== visitsStepIndex) {
+    const requiredView = steps[stepIndex]?.requiredView;
+
+    if (!isOpen || !requiredView) {
       return;
     }
 
-    if (isVisitsView) {
+    const isRequiredViewActive =
+      requiredView === "visits" ? isVisitsView : !isVisitsView;
+
+    if (isRequiredViewActive) {
       return;
     }
 
     const nextParams = new URLSearchParams(searchParams.toString());
 
-    if (variant === "guest") {
-      nextParams.set("view", "visits");
+    if (variant === "guest" || !pathname.includes("/trip")) {
+      nextParams.set("view", requiredView);
       const nextUrl = `${pathname}?${nextParams.toString()}`;
       router.replace(nextUrl, { scroll: false });
       return;
     }
 
-    if (!pathname.includes("/trip")) {
-      nextParams.set("view", "visits");
-      const nextUrl = `${pathname}?${nextParams.toString()}`;
-      router.replace(nextUrl, { scroll: false });
-      return;
-    }
-
-    const nextUrl = pathname.includes("/visits")
-      ? pathname
-      : pathname.replace(/\/trip$/, "/visits");
+    const nextUrl =
+      requiredView === "visits"
+        ? pathname.includes("/visits")
+          ? pathname
+          : pathname.replace(/\/trip$/, "/visits")
+        : pathname.replace(/\/visits$/, "/trip");
     router.replace(nextUrl, { scroll: false });
   }, [
-    canViewVisits,
     isOpen,
     isVisitsView,
     pathname,
     router,
     searchParams,
     stepIndex,
+    steps,
     variant,
-    visitsStepIndex,
   ]);
 
   useEffect(() => {
@@ -336,13 +331,31 @@ export function GuestOnboardingTour({
 
   const step = steps[stepIndex];
   const isLastStep = stepIndex === steps.length - 1;
+
+  useEffect(() => {
+    if (!isOpen || !popoverRef.current) {
+      return;
+    }
+
+    const node = popoverRef.current;
+    const updateHeight = () => setPopoverHeight(node.offsetHeight || 220);
+
+    updateHeight();
+
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(node);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [isOpen, stepIndex, step.title, step.body]);
+
   const popoverStyle = (() => {
     if (!rect || typeof window === "undefined") {
       return undefined;
     }
 
     const popoverWidth = Math.min(360, window.innerWidth - 32);
-    const estimatedHeight = 220;
     const margin = 16;
 
     if (rect.inSidebar) {
@@ -351,10 +364,10 @@ export function GuestOnboardingTour({
       const sidebarWidth = Number.parseInt(rawSidebarWidth, 10) || 220;
       const preferredLeft = Math.max(sidebarWidth + 24, rect.right + 18);
       const fitsRight = preferredLeft + popoverWidth <= window.innerWidth - margin;
-      const centeredTop = rect.top + rect.height / 2 - estimatedHeight / 2;
+      const centeredTop = rect.top + rect.height / 2 - popoverHeight / 2;
       const top = fitsRight
-        ? Math.max(margin, Math.min(centeredTop, window.innerHeight - estimatedHeight - margin))
-        : Math.max(margin, rect.top - estimatedHeight - 18);
+        ? Math.max(margin, Math.min(centeredTop, window.innerHeight - popoverHeight - margin))
+        : Math.max(margin, rect.top + rect.height / 2 - popoverHeight / 2);
       const left = fitsRight
         ? preferredLeft
         : Math.max(margin, Math.min(sidebarWidth + 12, window.innerWidth - popoverWidth - margin));
@@ -373,8 +386,8 @@ export function GuestOnboardingTour({
       const top = Math.max(
         margin,
         Math.min(
-          rect.top + rect.height / 2 - estimatedHeight / 2,
-          window.innerHeight - estimatedHeight - margin,
+          rect.top + rect.height / 2 - popoverHeight / 2,
+          window.innerHeight - popoverHeight - margin,
         ),
       );
       const left = fitsLeft
@@ -398,12 +411,10 @@ export function GuestOnboardingTour({
       const preferredLeft = rect.right + 18;
       const fitsRight = preferredLeft + popoverWidth <= window.innerWidth - margin;
       const fallbackLeft = rect.left - popoverWidth - 18;
+      const centeredTop = rect.top + rect.height / 2 - popoverHeight / 2;
       const top = Math.max(
         margin,
-        Math.min(
-          rect.top + rect.height / 2 - estimatedHeight / 2,
-          window.innerHeight - estimatedHeight - margin,
-        ),
+        Math.min(centeredTop, window.innerHeight - popoverHeight - margin),
       );
       const left = fitsRight
         ? preferredLeft
@@ -418,13 +429,13 @@ export function GuestOnboardingTour({
       };
     }
 
-    const fitsBelow = rect.bottom + 18 + estimatedHeight < window.innerHeight - margin;
-    const fitsAbove = rect.top - estimatedHeight - 18 >= margin;
+    const fitsBelow = rect.bottom + 18 + popoverHeight < window.innerHeight - margin;
+    const fitsAbove = rect.top - popoverHeight - 18 >= margin;
     const top = fitsBelow
       ? rect.bottom + 18
       : fitsAbove
-        ? rect.top - estimatedHeight - 18
-        : Math.max(margin, window.innerHeight - estimatedHeight - margin);
+        ? rect.top - popoverHeight - 18
+        : Math.max(margin, window.innerHeight - popoverHeight - margin);
     const left = Math.max(
       margin,
       Math.min(rect.left, window.innerWidth - popoverWidth - margin),
@@ -439,7 +450,7 @@ export function GuestOnboardingTour({
   return (
     <>
       <div className="tour-overlay" />
-      <div className="tour-popover" style={popoverStyle}>
+      <div className="tour-popover" ref={popoverRef} style={popoverStyle}>
         <p className="tour-popover__step">
           Paso {stepIndex + 1} de {steps.length}
         </p>
