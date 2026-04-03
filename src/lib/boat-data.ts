@@ -94,42 +94,10 @@ const getAccessibleBoatBase = async (
   })) as BoatSummary[];
 };
 
-export const requireViewer = cache(async () => {
-  const supabase = await createClient();
-  const db = supabase as any;
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  const { data: profile } = await db
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const viewer: ViewerContext = {
-    profile,
-    isSuperuser: Boolean(profile?.is_superuser),
-    onboardingPending: Boolean(profile?.onboarding_pending),
-    isSeasonGuest: false,
-  };
-
-  return { supabase, user, viewer };
-});
-
-export const getAccessibleBoatsLite = cache(async () => {
-  const { supabase, viewer } = await requireViewer();
-  return getAccessibleBoatBase(supabase, viewer);
-});
-
-export const getAccessibleBoats = cache(async () => {
-  const { supabase, viewer } = await requireViewer();
-  const db = supabase as any;
-  const baseBoats = await getAccessibleBoatBase(supabase, viewer);
+const enrichBoatSummaries = async (
+  db: any,
+  baseBoats: BoatSummary[],
+) => {
   const boatIds = baseBoats.map((boat) => boat.boat_id);
 
   const tripSegmentsCountByBoat = new Map<string, number>();
@@ -217,20 +185,20 @@ export const getAccessibleBoats = cache(async () => {
     );
 
     permissionRows.forEach((permission) => {
-        if (userLastAccessByBoat.has(permission.boat_id)) {
-          return;
-        }
+      if (userLastAccessByBoat.has(permission.boat_id)) {
+        return;
+      }
 
-        const profile = profileById.get(permission.user_id);
-        if (!profile || profile.is_superuser) {
-          return;
-        }
+      const profile = profileById.get(permission.user_id);
+      if (!profile || profile.is_superuser) {
+        return;
+      }
 
-        userLastAccessByBoat.set(permission.boat_id, {
-          lastAccessAt: profile.last_sign_in_at ?? null,
-          displayName: profile.display_name ?? null,
-        });
+      userLastAccessByBoat.set(permission.boat_id, {
+        lastAccessAt: profile.last_sign_in_at ?? null,
+        displayName: profile.display_name ?? null,
       });
+    });
   }
 
   return baseBoats.map((boat) => ({
@@ -241,6 +209,141 @@ export const getAccessibleBoats = cache(async () => {
     user_last_access_at: userLastAccessByBoat.get(boat.boat_id)?.lastAccessAt ?? null,
     user_display_name: userLastAccessByBoat.get(boat.boat_id)?.displayName ?? null,
   })) as BoatSummary[];
+};
+
+const mapBoatRowToSummary = (
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  viewer: ViewerContext,
+  boat: BoatRow & {
+    model?: string | null;
+    year_built?: number | null;
+    home_port?: string | null;
+  },
+) => ({
+  boat_id: boat.id,
+  boat_name: boat.name,
+  permission_level: viewer.isSuperuser ? null : "viewer",
+  can_edit: Boolean(viewer.isSuperuser),
+  can_manage_boat_users: Boolean(viewer.isSuperuser),
+  description: boat.description,
+  home_port: boat.home_port ?? null,
+  image_path: boat.image_path ?? null,
+  image_url: getBoatImageUrl(supabase, boat.image_path, boat.updated_at),
+  model: boat.model ?? null,
+  year_built: boat.year_built ?? null,
+  is_active: boat.is_active,
+}) as BoatSummary;
+
+export const requireViewer = cache(async () => {
+  const supabase = await createClient();
+  const db = supabase as any;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: profile } = await db
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const viewer: ViewerContext = {
+    profile,
+    isSuperuser: Boolean(profile?.is_superuser),
+    onboardingPending: Boolean(profile?.onboarding_pending),
+    isSeasonGuest: false,
+  };
+
+  return { supabase, user, viewer };
+});
+
+export const getAccessibleBoatsLite = cache(async () => {
+  const { supabase, viewer } = await requireViewer();
+  return getAccessibleBoatBase(supabase, viewer);
+});
+
+export const getAccessibleBoats = cache(async () => {
+  const { supabase, viewer } = await requireViewer();
+  const db = supabase as any;
+  const baseBoats = await getAccessibleBoatBase(supabase, viewer);
+  return enrichBoatSummaries(db, baseBoats);
+});
+
+export const getSuperuserDashboardSnapshot = cache(async (
+  options?: { requestedBoatId?: string; lastBoatId?: string },
+) => {
+  const { supabase, viewer } = await requireViewer();
+  if (!viewer.isSuperuser) {
+    return null;
+  }
+
+  const db = supabase as any;
+  const [totalBoatsResult, activeBoatsResult] = await Promise.all([
+    db.from("boats").select("id", { count: "exact", head: true }),
+    db.from("boats").select("id", { count: "exact", head: true }).neq("is_active", false),
+  ]);
+
+  const loadBoatById = async (boatId: string | undefined | null) => {
+    if (!boatId) {
+      return null;
+    }
+
+    const { data } = await db
+      .from("boats")
+      .select("id, name, description, is_active, model, year_built, home_port, image_path, updated_at")
+      .eq("id", boatId)
+      .maybeSingle();
+
+    return data
+      ? mapBoatRowToSummary(
+          supabase,
+          viewer,
+          data as BoatRow & {
+            model?: string | null;
+            year_built?: number | null;
+            home_port?: string | null;
+          },
+        )
+      : null;
+  };
+
+  let selectedBoat =
+    await loadBoatById(options?.requestedBoatId) ??
+    await loadBoatById(options?.lastBoatId);
+
+  if (!selectedBoat) {
+    const { data } = await db
+      .from("boats")
+      .select("id, name, description, is_active, model, year_built, home_port, image_path, updated_at")
+      .order("name")
+      .limit(1)
+      .maybeSingle();
+
+    if (data) {
+      selectedBoat = mapBoatRowToSummary(
+        supabase,
+        viewer,
+        data as BoatRow & {
+          model?: string | null;
+          year_built?: number | null;
+          home_port?: string | null;
+        },
+      );
+    }
+  }
+
+  const boats = selectedBoat ? await enrichBoatSummaries(db, [selectedBoat]) : [];
+
+  return {
+    viewer,
+    boats,
+    totalBoats: totalBoatsResult.count ?? 0,
+    activeBoats: activeBoatsResult.count ?? 0,
+  };
 });
 
 export const requireSuperuser = async () => {

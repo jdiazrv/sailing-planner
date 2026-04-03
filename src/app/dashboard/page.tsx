@@ -5,7 +5,12 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { BoatSelector } from "@/components/boats/boat-selector";
 import { LastBoatTracker } from "@/components/boats/last-boat-tracker";
 import { TimelineVisibilityPanel } from "@/components/shared/timeline-visibility-panel";
-import { getAccessibleBoats, getBoatSelectedSeason, requireViewer } from "@/lib/boat-data";
+import {
+  getAccessibleBoats,
+  getBoatSelectedSeason,
+  getSuperuserDashboardSnapshot,
+  requireViewer,
+} from "@/lib/boat-data";
 import { t } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n-server";
 import { getReleaseLabel } from "@/lib/release";
@@ -15,29 +20,41 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ change?: string; boat?: string }>;
 }) {
-  const [locale, { viewer }, boats, { change, boat }] = await Promise.all([
+  const [{ change, boat }, locale, viewerContext] = await Promise.all([
+    searchParams,
     getRequestLocale(),
     requireViewer(),
-    getAccessibleBoats(),
-    searchParams,
   ]);
   const releaseLabel = getReleaseLabel();
+  const { viewer } = viewerContext;
 
   const cookieStore = await cookies();
   const lastBoatId = cookieStore.get("lastBoatId")?.value;
+  const shouldLoadAllBoats = !viewer.isSuperuser || Boolean(change);
+  const fullBoats = shouldLoadAllBoats ? await getAccessibleBoats() : null;
+  const superuserSnapshot =
+    viewer.isSuperuser && !shouldLoadAllBoats
+      ? await getSuperuserDashboardSnapshot({
+          requestedBoatId: boat,
+          lastBoatId,
+        })
+      : null;
+
+  const boats = fullBoats ?? superuserSnapshot?.boats ?? [];
   const requestedBoatId = boat && boats.some((b) => b.boat_id === boat) ? boat : undefined;
-  const activeBoats = boats.filter((b) => b.is_active !== false);
+  const activeBoatsCount = fullBoats
+    ? fullBoats.filter((b) => b.is_active !== false).length
+    : (superuserSnapshot?.activeBoats ?? 0);
+  const totalBoatsCount = fullBoats?.length ?? superuserSnapshot?.totalBoats ?? boats.length;
   const selectedBoatId = viewer.isSuperuser
     ? (
         requestedBoatId ??
-        (lastBoatId && boats.some((b) => b.boat_id === lastBoatId)
-          ? lastBoatId
-          : boats[0]?.boat_id)
+        boats[0]?.boat_id
       )
     : boats[0]?.boat_id;
-  const visibleBoats = viewer.isSuperuser
+  const visibleBoats = viewer.isSuperuser && shouldLoadAllBoats
     ? boats
-    : boats.filter((boat) => boat.boat_id === selectedBoatId);
+    : boats.filter((entry) => entry.boat_id === selectedBoatId);
   const selectedSeasonData = selectedBoatId ? await getBoatSelectedSeason(selectedBoatId) : null;
   const selectedSeasonLabel = selectedSeasonData?.selectedSeason
     ? selectedSeasonData.selectedSeason.name
@@ -52,8 +69,8 @@ export default async function DashboardPage({
           <p className="meta">{releaseLabel}</p>
           {viewer.isSuperuser && (
             <p className="muted">
-              {boats.length} {t(locale, "dashboard.boatsCount")} ·{" "}
-              {activeBoats.length} {t(locale, "dashboard.activeCount")}
+              {totalBoatsCount} {t(locale, "dashboard.boatsCount")} ·{" "}
+              {activeBoatsCount} {t(locale, "dashboard.activeCount")}
             </p>
           )}
         </div>
