@@ -45,7 +45,7 @@ export default async function GuestSeasonPage({
   );
 
   return (
-    <main>
+    <main className="shell shell--guest">
       {shouldShowWelcome ? (
         <GuestFirstAccess
           canViewVisits={canViewVisits}

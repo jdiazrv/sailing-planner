@@ -1,7 +1,3 @@
-import Link from "next/link";
-
-import { LogoutButton } from "@/components/auth/logout-button";
-import { AdminNav } from "@/components/admin/admin-nav";
 import { UsersAdmin } from "@/components/admin/users-admin";
 import { getAdminBoats, getAdminUsers, requireUserAdminAccess } from "@/lib/boat-data";
 import { getEnv } from "@/lib/env";
@@ -20,27 +16,22 @@ import {
 
 export default async function AdminUsersPage() {
   const locale = await getRequestLocale();
-  const access = await requireUserAdminAccess();
-  const [boats, users] = await Promise.all([getAdminBoats(), getAdminUsers()]);
+  const [access, boats, users] = await Promise.all([
+    requireUserAdminAccess(),
+    getAdminBoats(),
+    getAdminUsers(),
+  ]);
   const canInviteUsers = Boolean(getEnv().SUPABASE_SERVICE_ROLE_KEY);
 
   return (
-    <main className="shell">
+    <>
       <header className="workspace-header">
         <div>
           <p className="eyebrow">{t(locale, "admin.users.eyebrow")}</p>
           <h1>{t(locale, "admin.users.title")}</h1>
           <p className="muted">{t(locale, "admin.users.subtitle")}</p>
         </div>
-        <div className="workspace-header__actions">
-          <Link className="secondary-button" href="/dashboard?change=1">
-            {t(locale, "common.dashboard")}
-          </Link>
-          <LogoutButton />
-        </div>
       </header>
-
-      <AdminNav active="users" />
 
       <UsersAdmin
         boats={boats}
@@ -56,6 +47,6 @@ export default async function AdminUsersPage() {
         onUpdatePassword={updateUserPassword}
         users={users}
       />
-    </main>
+    </>
   );
 }

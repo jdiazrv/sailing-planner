@@ -17,25 +17,26 @@ export const BoatNav = async ({
   basePath = "/boats",
 }: BoatNavProps) => {
   const locale = await getRequestLocale();
+  const workspaceBasePath = `${basePath}/${boatId}`;
 
   return (
     <nav className="section-nav" data-tour="boat-nav">
       <Link
         className={active === "trip" ? "is-active" : undefined}
-        href={`${basePath}/${boatId}/trip`}
+        href={`${workspaceBasePath}?view=trip`}
       >
         {t(locale, "boatNav.trip")}
       </Link>
       <Link
         className={active === "visits" ? "is-active" : undefined}
-        href={`${basePath}/${boatId}/visits`}
+        href={`${workspaceBasePath}?view=visits`}
       >
         {t(locale, "boatNav.visits")}
       </Link>
       {canShare ? (
         <Link
           className={active === "share" ? "is-active" : undefined}
-          href={`${basePath}/${boatId}/share`}
+          href={`${workspaceBasePath}/share`}
         >
           {t(locale, "boatNav.share")}
         </Link>

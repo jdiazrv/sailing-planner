@@ -496,7 +496,17 @@ textarea {
 .shell {
   width: min(1480px, calc(100% - 2rem));
   margin: 0 auto;
-  padding: 1.2rem 0 2.5rem;
+  padding: 1.2rem 1.25rem 2.5rem;
+  animation: shell-enter 0.18s ease both;
+}
+
+.shell--guest {
+  width: min(1320px, calc(100% - 2.5rem));
+}
+
+@keyframes shell-enter {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .hero {
@@ -742,6 +752,320 @@ body:has(.auth-layout) .app-chrome {
 
 body:has(.auth-layout) .app-chrome__brand .sp-wordmark {
   color: #e2e8f0;
+}
+
+/* =========================================================================
+   APP SIDEBAR
+   Fixed left-side navigation that replaces the top chrome on app pages.
+   - Expanded: 224px wide (icon + label)
+   - Collapsed: 52px wide (icon only, tooltip on hover)
+   - Hidden on mobile (<768px) — existing section-nav handles mobile
+   ========================================================================= */
+
+:root {
+  --sidebar-w: 220px;
+  --sidebar-w-collapsed: 52px;
+  --sidebar-transition: 200ms ease;
+}
+
+/* ---- Sidebar shell — always fixed, starts narrow, expands on hover ---- */
+
+.app-sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 200;
+  width: var(--sidebar-w-collapsed);
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-right: 1px solid var(--border-subtle);
+  transition: width var(--sidebar-transition);
+  overflow: hidden;
+}
+
+.app-sidebar:hover {
+  width: var(--sidebar-w);
+}
+
+/* Hide app-chrome — sidebar owns the logo */
+body:has(.app-sidebar) .app-chrome {
+  display: none;
+}
+
+/* Desktop: shell is offset by collapsed width only — sidebar overlays content on expand */
+@media (min-width: 768px) {
+  body:has(.app-sidebar) .shell {
+    margin-left: var(--sidebar-w-collapsed);
+    /* Prevent horizontal overflow when sidebar overlays */
+    max-width: calc(100vw - var(--sidebar-w-collapsed));
+    box-sizing: border-box;
+  }
+
+  /* Hide top-bar actions that moved to sidebar */
+  body:has(.app-sidebar) .workspace-header__actions .sidebar-hidden {
+    display: none;
+  }
+
+  /* Hide section-navs — sidebar handles navigation on desktop */
+  body:has(.app-sidebar) .section-nav {
+    display: none;
+  }
+}
+
+/* Mobile: sidebar hidden, existing section-nav takes over */
+@media (max-width: 767px) {
+  .app-sidebar {
+    display: none;
+  }
+
+  body:has(.app-sidebar) .shell {
+    margin-left: 0;
+    max-width: 100vw;
+  }
+}
+
+/* ---- Brand area ---- */
+
+.app-sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.9rem 0.85rem 0.7rem;
+  text-decoration: none;
+  color: var(--ink);
+  flex-shrink: 0;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border-subtle);
+  min-height: 56px;
+}
+
+.app-sidebar__brand-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity var(--sidebar-transition);
+  pointer-events: none;
+}
+
+.app-sidebar:hover .app-sidebar__brand-label {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ---- Nav area ---- */
+
+.app-sidebar__nav {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.5rem 0.45rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.app-sidebar__nav::-webkit-scrollbar {
+  width: 4px;
+}
+
+.app-sidebar__nav::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
+/* ---- Section label ---- */
+
+.app-sidebar__section-label {
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  padding: 0.7rem 0.5rem 0.2rem;
+  white-space: nowrap;
+  overflow: hidden;
+  opacity: 0;
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  transition: opacity var(--sidebar-transition), max-height var(--sidebar-transition), padding var(--sidebar-transition);
+  pointer-events: none;
+}
+
+.app-sidebar:hover .app-sidebar__section-label {
+  opacity: 1;
+  max-height: 2rem;
+  padding-top: 0.7rem;
+  padding-bottom: 0.2rem;
+  pointer-events: auto;
+}
+
+/* ---- Nav item ---- */
+
+.app-sidebar__item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--ink-soft);
+  font-size: 0.83rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: background 0.12s, color 0.12s;
+  position: relative;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+}
+
+.app-sidebar__item:hover {
+  background: var(--surface-raised);
+  color: var(--ink);
+}
+
+.app-sidebar__item.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* ---- Icon + label ---- */
+
+.app-sidebar__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.app-sidebar__label {
+  flex: 1;
+  opacity: 0;
+  transition: opacity var(--sidebar-transition);
+  white-space: nowrap;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.app-sidebar:hover .app-sidebar__label {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Tooltip when sidebar is NOT hovered but user hovers an item */
+.app-sidebar:not(:hover) .app-sidebar__item:hover::after {
+  content: attr(data-label);
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--surface-overlay, var(--surface-raised));
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.3rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 300;
+  box-shadow: var(--shadow);
+}
+
+/* ---- Footer ---- */
+
+.app-sidebar__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.45rem 0.45rem 0.5rem;
+  border-top: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+/* Settings slot — BoatSettingsDialog button inside sidebar */
+.app-sidebar__settings-slot > * {
+  width: 100%;
+}
+
+.app-sidebar__settings-slot button {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 8px;
+  color: var(--ink-soft);
+  font-size: 0.83rem;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.app-sidebar__settings-slot button:hover {
+  background: var(--surface-raised);
+  color: var(--ink);
+}
+
+/* Utils row: ThemeSwitcher + LanguageSwitcher — hidden until hovered */
+.app-sidebar__utils {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: opacity var(--sidebar-transition), max-height var(--sidebar-transition);
+  pointer-events: none;
+}
+
+.app-sidebar:hover .app-sidebar__utils {
+  max-height: 6rem;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Logout button inside the sidebar */
+.app-sidebar__item--button {
+  padding: 0.45rem 0.5rem;
+}
+
+.app-sidebar__item--button .app-sidebar__label button {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* ThemeSwitcher and LanguageSwitcher in sidebar — override pill layout */
+.app-sidebar .theme-switcher {
+  flex-direction: row;
+  flex-wrap: wrap;
+  padding: 0.3rem 0.5rem;
+  gap: 0.35rem;
+}
+
+.app-sidebar .language-switcher {
+  padding: 0.1rem 0.4rem;
 }
 
 .auth-card {

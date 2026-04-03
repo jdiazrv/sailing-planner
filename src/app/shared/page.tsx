@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
-import Link from "next/link";
 
-import { LogoutButton } from "@/components/auth/logout-button";
+import { AppSidebarNav } from "@/components/layout/app-sidebar-nav";
 import { SharedBoatPicker } from "@/components/shared/shared-boat-picker";
 import { SharedTimelineCompare } from "@/components/shared/shared-timeline-compare";
 import { TimelineVisibilityPanel } from "@/components/shared/timeline-visibility-panel";
@@ -9,6 +8,8 @@ import {
   getAccessibleBoatsLite,
   getBoatTimelineSnapshot,
   getSharedTimelineWorkspace,
+  SharedTimelineError,
+  SharedTimelineErrorCode,
 } from "@/lib/boat-data";
 import { t } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n-server";
@@ -36,19 +37,24 @@ export default async function SharedPage({
     const isSameBoatAsOwn = Boolean(
       ownWorkspace?.boat.id && selected?.boat.id && ownWorkspace.boat.id === selected.boat.id,
     );
+    const ownBoatCanShare =
+      workspace.viewer.isSuperuser ||
+      Boolean(availableBoats.find((b) => b.boat_id === ownBoatId)?.can_edit);
     return (
+      <>
+      <AppSidebarNav
+        isSuperuser={workspace.viewer.isSuperuser}
+        canManageUsers={workspace.viewer.isSuperuser}
+        boatId={ownBoatId ?? undefined}
+        canShare={ownBoatCanShare}
+        locale={locale}
+      />
       <main className="shell">
         <header className="workspace-header">
           <div>
             <p className="eyebrow">{t(locale, "shared.eyebrow")}</p>
             <h1>{t(locale, "shared.title")}</h1>
             <p className="muted">{t(locale, "shared.subtitle")}</p>
-          </div>
-          <div className="workspace-header__actions">
-            <Link className="secondary-button" href="/dashboard?change=1">
-              {t(locale, "common.dashboard")}
-            </Link>
-            <LogoutButton />
           </div>
         </header>
 
@@ -103,35 +109,38 @@ export default async function SharedPage({
           </>
         )}
       </main>
+    </>
     );
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Shared timelines unavailable.";
+      error instanceof SharedTimelineError &&
+      error.code === SharedTimelineErrorCode.PublicTimelineMigrationRequired
+        ? error.message
+        : error instanceof Error
+          ? error.message
+          : "Shared timelines unavailable.";
 
     return (
-      <main className="shell">
-        <header className="workspace-header">
-          <div>
-            <p className="eyebrow">{t(locale, "shared.eyebrow")}</p>
-            <h1>{t(locale, "shared.title")}</h1>
-          </div>
-          <div className="workspace-header__actions">
-            <Link className="secondary-button" href="/dashboard?change=1">
-              {t(locale, "common.dashboard")}
-            </Link>
-            <LogoutButton />
-          </div>
-        </header>
+      <>
+        <AppSidebarNav
+          isSuperuser={false}
+          canManageUsers={false}
+          locale={locale}
+        />
+        <main className="shell">
+          <header className="workspace-header">
+            <div>
+              <p className="eyebrow">{t(locale, "shared.eyebrow")}</p>
+              <h1>{t(locale, "shared.title")}</h1>
+            </div>
+          </header>
 
-        <article className="dashboard-card">
-          <p className="eyebrow">{t(locale, "shared.enableTitle")}</p>
-          <p className="muted">
-            {message.includes("is_timeline_public")
-              ? "Falta aplicar la migracion de timelines publicos en Supabase remoto."
-              : message}
-          </p>
-        </article>
-      </main>
+          <article className="dashboard-card">
+            <p className="eyebrow">{t(locale, "shared.enableTitle")}</p>
+            <p className="muted">{message}</p>
+          </article>
+        </main>
+      </>
     );
   }
 }

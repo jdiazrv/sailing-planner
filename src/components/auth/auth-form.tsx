@@ -16,13 +16,21 @@ type AuthFormProps = {
   className?: string;
 };
 
+const getSafeNextPath = (next: string | null) => {
+  if (!next || !next.startsWith("/") || next.startsWith("//")) {
+    return "/dashboard";
+  }
+
+  return next;
+};
+
 export const AuthForm = ({
   showHeader = true,
   className,
 }: AuthFormProps = {}) => {
   const { t } = useI18n();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") ?? "/dashboard";
+  const next = getSafeNextPath(searchParams.get("next"));
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -68,6 +76,28 @@ export const AuthForm = ({
     }
 
     setMessage(t("auth.magicSent"));
+  };
+
+  const handlePasswordReset = async () => {
+    const supabase = createClient();
+    const requestOrigin =
+      typeof window !== "undefined" ? window.location.origin : undefined;
+    const redirectUrl = buildAuthRedirectUrl("/auth/set-password", {
+      requestOrigin,
+    });
+
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+      email,
+      {
+        redirectTo: redirectUrl,
+      },
+    );
+
+    if (resetError) {
+      throw resetError;
+    }
+
+    setMessage(t("auth.resetSent"));
   };
 
   const ensureEmail = () => {
@@ -119,6 +149,23 @@ export const AuthForm = ({
         submitError instanceof Error
           ? submitError.message
           : t("auth.error"),
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    setIsLoading(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      ensureEmail();
+      await handlePasswordReset();
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error ? submitError.message : t("auth.error"),
       );
     } finally {
       setIsLoading(false);
@@ -198,6 +245,14 @@ export const AuthForm = ({
             type="button"
           >
             {t("auth.magicMode")}
+          </button>
+          <button
+            className="link-button"
+            disabled={isLoading}
+            onClick={() => void handleForgotPassword()}
+            type="button"
+          >
+            {t("auth.forgotPassword")}
           </button>
         </div>
       ) : null}
