@@ -274,7 +274,7 @@ export const getAccessibleBoats = cache(async () => {
 });
 
 export const getSuperuserDashboardSnapshot = cache(async (
-  options?: { requestedBoatId?: string; lastBoatId?: string },
+  options?: { requestedBoatId?: string; requestedSeasonId?: string; lastBoatId?: string },
 ) => {
   const { supabase, viewer } = await requireViewer();
   if (!viewer.isSuperuser) {
@@ -338,13 +338,18 @@ export const getSuperuserDashboardSnapshot = cache(async (
 
   let selectedSeasonName: string | null = null;
   if (selectedBoat) {
-    const { data: seasonData } = await db
+    let seasonQuery = db
       .from("seasons")
       .select("name, year")
-      .eq("boat_id", selectedBoat.boat_id)
-      .order("year", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .eq("boat_id", selectedBoat.boat_id);
+
+    if (options?.requestedSeasonId) {
+      seasonQuery = seasonQuery.eq("id", options.requestedSeasonId);
+    } else {
+      seasonQuery = seasonQuery.order("year", { ascending: false }).limit(1);
+    }
+
+    const { data: seasonData } = await seasonQuery.maybeSingle();
 
     selectedSeasonName =
       seasonData?.name ?? (seasonData?.year ? String(seasonData.year) : null);

@@ -1,18 +1,39 @@
 import Link from "next/link";
 
+import {
+  deleteSeason,
+  deleteTripSegment,
+  deleteVisit,
+  saveSeason,
+  saveTripSegment,
+  saveVisit,
+} from "@/app/boats/[boatId]/actions";
+import { DashboardOpenBoatSwitcher } from "@/components/dashboard/dashboard-open-boat-switcher";
 import { NextStepCard } from "@/components/planning/next-step-card";
+import { SeasonBar } from "@/components/planning/season-bar";
 import { TripOverview } from "@/components/planning/trip-overview";
 import { getDashboardBoatWorkspace } from "@/lib/boat-data";
+import { computeVisitConflicts } from "@/lib/planning";
 import { t, type Locale } from "@/lib/i18n";
 
 export async function DashboardOpenBoatPanel({
   boatId,
   locale,
+  requestedSeasonId,
 }: {
   boatId: string;
   locale: Locale;
+  requestedSeasonId?: string;
 }) {
-  const workspace = await getDashboardBoatWorkspace(boatId);
+  const workspace = await getDashboardBoatWorkspace(boatId, requestedSeasonId);
+  const canEdit =
+    workspace.viewer.isSuperuser || Boolean(workspace.permission?.can_edit);
+  const canShare = canEdit;
+  const conflicts = computeVisitConflicts(
+    workspace.selectedSeason,
+    workspace.tripSegments,
+    workspace.visits,
+  );
 
   if (!workspace.selectedSeason) {
     return (
@@ -31,12 +52,18 @@ export async function DashboardOpenBoatPanel({
 
   return (
     <div className="dashboard-open-boat dashboard-open-boat--ready">
-      <TripOverview
-        season={workspace.selectedSeason}
-        tripSegments={workspace.tripSegments}
-        visits={workspace.visits}
-      >
-        <article className="dashboard-card workspace-main">
+      <div className="stack">
+        <SeasonBar
+          basePath={`/dashboard?boat=${boatId}`}
+          boatId={boatId}
+          canEdit={canEdit}
+          onDelete={deleteSeason}
+          onSave={saveSeason}
+          seasons={workspace.seasons}
+          selected={workspace.selectedSeason}
+        />
+
+        <article className="dashboard-card">
           <div className="card-header">
             <div>
               <p className="eyebrow">{workspace.boat.name}</p>
@@ -54,7 +81,27 @@ export async function DashboardOpenBoatPanel({
             <span>{workspace.boat.home_port || t(locale, "boatSelector.homePortMissing")}</span>
           </div>
         </article>
-      </TripOverview>
+
+        <TripOverview
+          season={workspace.selectedSeason}
+          tripSegments={workspace.tripSegments}
+          visits={workspace.visits}
+        >
+          <DashboardOpenBoatSwitcher
+            boatId={boatId}
+            canEdit={canEdit}
+            canShare={canShare}
+            conflicts={conflicts}
+            onDeleteTripSegment={deleteTripSegment}
+            onDeleteVisit={deleteVisit}
+            onSaveTripSegment={saveTripSegment}
+            onSaveVisit={saveVisit}
+            season={workspace.selectedSeason}
+            tripSegments={workspace.tripSegments}
+            visits={workspace.visits}
+          />
+        </TripOverview>
+      </div>
     </div>
   );
 }

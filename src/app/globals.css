@@ -1170,14 +1170,23 @@ body:has(.auth-layout) .app-chrome__brand .sp-wordmark {
   display: none;
 }
 
-.section-nav a {
+.section-nav a,
+.section-nav button {
   padding: 0.45rem 0.85rem;
   border-radius: 999px;
   font-size: 0.85rem;
   font-weight: 600;
 }
 
-.section-nav a.is-active {
+.section-nav button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.section-nav a.is-active,
+.section-nav button.is-active {
   background: var(--accent-soft);
   color: var(--accent);
 }
@@ -2989,7 +2998,8 @@ body:has(.auth-layout) .app-chrome__brand .sp-wordmark {
     width: auto;
   }
 
-  .section-nav a {
+  .section-nav a,
+  .section-nav button {
     text-align: center;
   }
 

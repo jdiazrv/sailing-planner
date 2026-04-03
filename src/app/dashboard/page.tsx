@@ -20,9 +20,9 @@ import { getReleaseLabel } from "@/lib/release";
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ change?: string; boat?: string }>;
+  searchParams: Promise<{ change?: string; boat?: string; season?: string }>;
 }) {
-  const [{ change, boat }, locale, viewerContext] = await Promise.all([
+  const [{ change, boat, season }, locale, viewerContext] = await Promise.all([
     searchParams,
     getRequestLocale(),
     requireViewer(),
@@ -38,6 +38,7 @@ export default async function DashboardPage({
     viewer.isSuperuser && !shouldLoadAllBoats
       ? await getSuperuserDashboardSnapshot({
           requestedBoatId: boat,
+          requestedSeasonId: season,
           lastBoatId,
         })
       : null;
@@ -118,7 +119,11 @@ export default async function DashboardPage({
       {selectedBoatId ? (
         <section style={{ marginTop: "1rem" }}>
           <Suspense fallback={<DashboardOpenBoatSkeleton />}>
-            <DashboardOpenBoatPanel boatId={selectedBoatId} locale={locale} />
+            <DashboardOpenBoatPanel
+              boatId={selectedBoatId}
+              locale={locale}
+              requestedSeasonId={season}
+            />
           </Suspense>
         </section>
       ) : null}
