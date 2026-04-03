@@ -7,7 +7,7 @@ import { SharedTimelineCompare } from "@/components/shared/shared-timeline-compa
 import { TimelineVisibilityPanel } from "@/components/shared/timeline-visibility-panel";
 import {
   getAccessibleBoatsLite,
-  getBoatWorkspace,
+  getBoatTimelineSnapshot,
   getSharedTimelineWorkspace,
 } from "@/lib/boat-data";
 import { t } from "@/lib/i18n";
@@ -32,7 +32,7 @@ export default async function SharedPage({
       (lastBoatId && availableBoats.some((entry) => entry.boat_id === lastBoatId)
         ? lastBoatId
         : availableBoats[0]?.boat_id) ?? null;
-    const ownWorkspace = ownBoatId ? await getBoatWorkspace(ownBoatId) : null;
+    const ownWorkspace = ownBoatId ? await getBoatTimelineSnapshot(ownBoatId) : null;
     const isSameBoatAsOwn = Boolean(
       ownWorkspace?.boat.id && selected?.boat.id && ownWorkspace.boat.id === selected.boat.id,
     );

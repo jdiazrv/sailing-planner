@@ -5,7 +5,7 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { BoatSelector } from "@/components/boats/boat-selector";
 import { LastBoatTracker } from "@/components/boats/last-boat-tracker";
 import { TimelineVisibilityPanel } from "@/components/shared/timeline-visibility-panel";
-import { getAccessibleBoats, getBoatWorkspace, requireViewer } from "@/lib/boat-data";
+import { getAccessibleBoats, getBoatSelectedSeason, requireViewer } from "@/lib/boat-data";
 import { t } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n-server";
 import { getReleaseLabel } from "@/lib/release";
@@ -38,9 +38,9 @@ export default async function DashboardPage({
   const visibleBoats = viewer.isSuperuser
     ? boats
     : boats.filter((boat) => boat.boat_id === selectedBoatId);
-  const selectedWorkspace = selectedBoatId ? await getBoatWorkspace(selectedBoatId) : null;
-  const selectedSeasonLabel = selectedWorkspace?.selectedSeason
-    ? selectedWorkspace.selectedSeason.name
+  const selectedSeasonData = selectedBoatId ? await getBoatSelectedSeason(selectedBoatId) : null;
+  const selectedSeasonLabel = selectedSeasonData?.selectedSeason
+    ? selectedSeasonData.selectedSeason.name
     : null;
 
   return (

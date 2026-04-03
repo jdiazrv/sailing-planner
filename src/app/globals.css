@@ -561,10 +561,16 @@ textarea {
 }
 
 .hero__actions,
-.inline-actions,
 .auth-card__header {
   display: grid;
   gap: 0.4rem;
+}
+
+.inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .auth-card__header h1 {
@@ -2660,9 +2666,17 @@ body:has(.auth-layout) .app-chrome__brand .sp-wordmark {
 .modal__footer {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 0.5rem;
   padding: 0.65rem 1rem;
   border-top: 1px solid var(--border);
+}
+
+.modal__footer .primary-button,
+.modal__footer .secondary-button,
+.modal__footer .link-button {
+  width: auto;
+  align-self: center;
 }
 
 @media (max-width: 1100px) {

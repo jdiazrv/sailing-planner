@@ -130,7 +130,7 @@ const dictionary = {
     "boatNav.trip": "Tramos",
     "boatNav.visits": "Visitas",
     "boatNav.shared": "Compartidos",
-    "boatNav.share": "Compartir",
+    "boatNav.share": "Enlaces de invitado",
     "boatLayout.eyebrow": "Espacio del barco",
     "boatLayout.defaultDescription":
       "Planificación de temporada, rutas, visitas y disponibilidad.",
@@ -225,10 +225,10 @@ const dictionary = {
     "planning.nextStepCreateSeasonBody":
       "La temporada desbloquea tramos, visitas y enlaces guest. Empieza por definir sus fechas para activar el espacio de trabajo.",
     "planning.nextStepCreateSeasonAction": "Nueva temporada",
-    "planning.shareTitle": "Compartir temporada",
+    "planning.shareTitle": "Enlaces de invitado",
     "planning.shareSubtitle":
       "Genera enlaces guest de solo lectura para esta temporada y compártelos sin crear usuarios nuevos.",
-    "planning.shareEmptyTitle": "Todavía no hay temporada para compartir",
+    "planning.shareEmptyTitle": "Todavía no hay temporada para generar enlaces",
     "planning.shareEmptyBody":
       "Crea la primera temporada para poder generar enlaces guest y compartir el plan con invitados.",
     "planning.changeSeason": "Seleccionar temporada",
@@ -519,7 +519,7 @@ const dictionary = {
     "boatNav.trip": "Segments",
     "boatNav.visits": "Visits",
     "boatNav.shared": "Shared",
-    "boatNav.share": "Share",
+    "boatNav.share": "Guest links",
     "boatLayout.eyebrow": "Boat workspace",
     "boatLayout.defaultDescription":
       "Season planning, trip routing, visits and availability.",
@@ -614,10 +614,10 @@ const dictionary = {
     "planning.nextStepCreateSeasonBody":
       "A season unlocks segments, visits and guest links. Start by defining its dates to activate the workspace.",
     "planning.nextStepCreateSeasonAction": "New season",
-    "planning.shareTitle": "Share season",
+    "planning.shareTitle": "Guest links",
     "planning.shareSubtitle":
       "Generate read-only guest links for this season and share them without creating new users.",
-    "planning.shareEmptyTitle": "There is no season to share yet",
+    "planning.shareEmptyTitle": "There is no season to generate links yet",
     "planning.shareEmptyBody":
       "Create the first season before generating guest links or sharing the plan with guests.",
     "planning.changeSeason": "Select season",

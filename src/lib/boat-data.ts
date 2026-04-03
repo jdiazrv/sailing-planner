@@ -252,7 +252,7 @@ export const requireSuperuser = async () => {
   return context;
 };
 
-export const requireUserAdminAccess = async () => {
+export const requireUserAdminAccess = cache(async () => {
   const context = await requireViewer();
   const db = context.supabase as any;
 
@@ -285,7 +285,84 @@ export const requireUserAdminAccess = async () => {
     ...context,
     manageableBoatIds,
   };
-};
+});
+
+export const getBoatSelectedSeason = cache(async (
+  boatId: string,
+  requestedSeasonId?: string,
+) => {
+  const { supabase } = await requireViewer();
+  const db = supabase as any;
+
+  const { data: seasonsData } = await db
+    .from("seasons")
+    .select("*")
+    .eq("boat_id", boatId)
+    .order("year", {
+      ascending: false,
+    });
+
+  const seasons = (seasonsData ?? []) as SeasonRow[];
+  const selectedSeason =
+    seasons.find((season) => season.id === requestedSeasonId) ?? seasons[0] ?? null;
+
+  return {
+    seasons,
+    selectedSeason,
+  };
+});
+
+export const getBoatTimelineSnapshot = cache(async (
+  boatId: string,
+  requestedSeasonId?: string,
+) => {
+  const { supabase, user, viewer } = await requireViewer();
+  const db = supabase as any;
+  const boats = await getAccessibleBoatsLite();
+
+  const boat = boats.find((entry) => entry.boat_id === boatId);
+  if (!boat) {
+    redirect("/dashboard");
+  }
+
+  const [{ data: boatRowData }, { data: permissionData }, seasonData] = await Promise.all([
+    db.from("boats").select("*").eq("id", boatId).maybeSingle(),
+    db
+      .from("user_boat_permissions")
+      .select("*")
+      .eq("boat_id", boatId)
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    getBoatSelectedSeason(boatId, requestedSeasonId),
+  ]);
+
+  const selectedSeason = seasonData.selectedSeason;
+  let tripSegments: TripSegmentView[] = [];
+
+  if (selectedSeason) {
+    const { data: tripData } = await db.rpc("get_season_trip_segments", {
+      p_season_id: selectedSeason.id,
+    });
+
+    tripSegments = (tripData ?? []) as TripSegmentView[];
+  }
+
+  return {
+    viewer,
+    boat: {
+      ...(boatRowData as BoatRow),
+      image_url: getBoatImageUrl(
+        supabase,
+        (boatRowData as BoatRow | null)?.image_path,
+        (boatRowData as BoatRow | null)?.updated_at,
+      ),
+    } as BoatDetails,
+    permission: permissionData as PermissionRow | null,
+    seasons: seasonData.seasons,
+    selectedSeason,
+    tripSegments,
+  };
+});
 
 export const requireBoatShareAccess = async (boatId: string) => {
   const context = await requireViewer();
