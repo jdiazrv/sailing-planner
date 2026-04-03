@@ -45,9 +45,8 @@ export const AuthForm = ({
       throw signInError;
     }
 
-    await recordCurrentUserAccess();
-    router.replace(next);
-    router.refresh();
+    void recordCurrentUserAccess().catch(() => {});
+    window.location.assign(next);
   };
 
   const handleMagicLink = async () => {

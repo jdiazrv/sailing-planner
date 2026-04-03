@@ -82,9 +82,8 @@ export function SetPasswordForm() {
     }
 
     setMessage(text.success);
-    await recordCurrentUserAccess();
-    router.replace("/dashboard");
-    router.refresh();
+    void recordCurrentUserAccess().catch(() => {});
+    window.location.assign("/dashboard");
   };
 
   return (
