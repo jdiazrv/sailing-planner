@@ -466,84 +466,93 @@ export async function createUserAccount(formData: FormData) {
 }
 
 export async function inviteUserAccount(formData: FormData) {
-  const { supabase, user, viewer, manageableBoatIds } = await requireUserAdminAccess();
-  const admin = createAdminClient();
+  try {
+    const { supabase, user, viewer, manageableBoatIds } =
+      await requireUserAdminAccess();
+    const admin = createAdminClient();
 
-  if (!admin) {
-    throw new Error(
-      "SUPABASE_SERVICE_ROLE_KEY is not configured, so user invitations are unavailable.",
-    );
-  }
-  const adminDb = admin as any;
+    if (!admin) {
+      throw new Error(
+        "SUPABASE_SERVICE_ROLE_KEY is not configured, so user invitations are unavailable.",
+      );
+    }
+    const adminDb = admin as any;
 
-  const email = formData.get("email")?.toString().trim() ?? "";
-  const displayName = asOptionalString(formData.get("display_name"));
-  const boatId = asOptionalString(formData.get("boat_id"));
-  const preferredLanguage =
-    (formData.get("preferred_language")?.toString() as PreferredLanguage) ?? "es";
-  const isGuestUser = viewer.isSuperuser
-    ? toBoolean(formData.get("is_guest_user"))
-    : true;
+    const email = formData.get("email")?.toString().trim() ?? "";
+    const displayName = asOptionalString(formData.get("display_name"));
+    const boatId = asOptionalString(formData.get("boat_id"));
+    const preferredLanguage =
+      (formData.get("preferred_language")?.toString() as PreferredLanguage) ?? "es";
+    const isGuestUser = viewer.isSuperuser
+      ? toBoolean(formData.get("is_guest_user"))
+      : true;
 
-  if (!email) {
-    throw new Error("Email is required.");
-  }
+    if (!email) {
+      throw new Error("Email is required.");
+    }
 
-  if (isGuestUser && !boatId) {
-    throw new Error("Boat is required for guest users.");
-  }
-
-  if (boatId) {
-    assertManageableBoat(manageableBoatIds, boatId);
-  }
-
-  const requestOrigin = await getRequestOriginFromHeaders();
-  const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-    data: {
-      ...(displayName ? { display_name: displayName } : {}),
-      preferred_language: preferredLanguage,
-      inviter_email: user.email ?? "",
-    },
-    redirectTo: buildAuthRedirectUrl("/auth/set-password", {
-      requestOrigin: resolveAppOrigin({ requestOrigin }),
-    }),
-  });
-
-  if (error) {
-    throw error;
-  }
-
-  if (data.user?.id) {
-    const db = supabase as any;
-    const { error: profileError } = await adminDb
-      .from("profiles")
-      .update({
-        display_name: displayName,
-        preferred_language: preferredLanguage,
-        onboarding_pending: true,
-        is_guest_user: isGuestUser,
-        created_by_user_id: user.id,
-      })
-      .eq("id", data.user.id);
-    throwIfError(profileError);
+    if (isGuestUser && !boatId) {
+      throw new Error("Boat is required for guest users.");
+    }
 
     if (boatId) {
-      const { error: permissionError } = await db
-        .from("user_boat_permissions")
-        .upsert(
-          {
-            ...buildBoatPermissionPayload(formData, data.user.id),
-            can_manage_boat_users: false,
-          },
-          {
-            onConflict: "user_id,boat_id",
-          },
-        );
-      throwIfError(permissionError);
+      assertManageableBoat(manageableBoatIds, boatId);
     }
-  }
 
-  refreshAdminRoutes(boatId);
+    const requestOrigin = await getRequestOriginFromHeaders();
+    const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
+      data: {
+        ...(displayName ? { display_name: displayName } : {}),
+        preferred_language: preferredLanguage,
+        inviter_email: user.email ?? "",
+      },
+      redirectTo: buildAuthRedirectUrl("/auth/set-password", {
+        requestOrigin: resolveAppOrigin({ requestOrigin }),
+      }),
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    if (data.user?.id) {
+      const db = supabase as any;
+      const { error: profileError } = await adminDb
+        .from("profiles")
+        .update({
+          display_name: displayName,
+          preferred_language: preferredLanguage,
+          onboarding_pending: true,
+          is_guest_user: isGuestUser,
+          created_by_user_id: user.id,
+        })
+        .eq("id", data.user.id);
+      throwIfError(profileError);
+
+      if (boatId) {
+        const { error: permissionError } = await db
+          .from("user_boat_permissions")
+          .upsert(
+            {
+              ...buildBoatPermissionPayload(formData, data.user.id),
+              can_manage_boat_users: false,
+            },
+            {
+              onConflict: "user_id,boat_id",
+            },
+          );
+        throwIfError(permissionError);
+      }
+    }
+
+    refreshAdminRoutes(boatId);
+    return { error: null };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unexpected invitation error.";
+    console.error("inviteUserAccount failed", message, error);
+    return { error: message };
+  }
 }
 
 export async function updateUserPassword(formData: FormData) {

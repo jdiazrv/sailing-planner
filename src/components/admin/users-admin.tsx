@@ -15,7 +15,7 @@ type UsersAdminProps = {
   onSavePermission: (fd: FormData) => Promise<void>;
   onDeletePermission: (fd: FormData) => Promise<void>;
   onInviteUser: (fd: FormData) => Promise<void>;
-  onSendInvite: (fd: FormData) => Promise<void>;
+  onSendInvite: (fd: FormData) => Promise<{ error: string | null }>;
   onDeleteUser: (fd: FormData) => Promise<void>;
   onUpdatePassword: (fd: FormData) => Promise<void>;
   canInviteUsers: boolean;
@@ -150,7 +150,11 @@ export function UsersAdmin({
   const sendInvite = (formData: FormData) => {
     startTransition(async () => {
       try {
-        await onSendInvite(formData);
+        const result = await onSendInvite(formData);
+        if (result.error) {
+          toast.error(result.error);
+          return;
+        }
         toast.success(t("admin.users.invitationSent"));
         router.refresh();
       } catch (error) {
