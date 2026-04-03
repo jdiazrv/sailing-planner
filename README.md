@@ -79,10 +79,13 @@ cp .env.example .env.local
   Public base URL used as a fallback for auth redirects. In local development use `http://localhost:3000`. In production this must be the real public URL of the deployed app.
 - `NEXT_PUBLIC_SUPABASE_URL`
   Hosted Supabase project URL.
+  Get it from `Supabase Dashboard -> Project Settings -> API -> Project URL`.
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
   Public browser key from Supabase.
+  Get it from `Supabase Dashboard -> Project Settings -> API -> Project API keys -> anon / publishable`.
 - `SUPABASE_SERVICE_ROLE_KEY`
   Required for admin flows such as user invitations, guest season links and cross-user updates.
+  Get it from `Supabase Dashboard -> Project Settings -> API -> Project API keys -> service_role`.
 
 ### Optional but recommended
 
@@ -90,10 +93,16 @@ cp .env.example .env.local
   Required if you want both:
   - Google Maps rendering in the planning screens
   - Google Places autocomplete/search in trip and visit location fields
+  Get it from `Google Cloud Console -> APIs & Services -> Credentials -> API keys`.
 - `SUPABASE_PROJECT_REF`
   Needed for Supabase CLI workflows against the hosted project.
+  Get it from the project ref shown in the Supabase dashboard URL or `Project Settings -> General`.
 - `SUPABASE_DB_PASSWORD`
   Only needed for some linked CLI/database flows.
+  This is the database password configured for the hosted Supabase project.
+- `SUPABASE_MANAGEMENT_API_KEY`
+  Needed if you want `/admin/metrics` to show Supabase platform usage from the Management API.
+  Get it from `Supabase Dashboard -> Account -> Access Tokens`.
 
 See the template in [`.env.example`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/.env.example).
 
@@ -204,6 +213,22 @@ If invitations or magic links fail with `email rate exceeded`, check:
 - email sending limits
 - whether you are still using the default SMTP
 
+#### 6. Account > Access Tokens
+
+If you want the admin metrics page to show Supabase platform usage, create a personal access token in:
+
+- `Supabase Dashboard -> Account -> Access Tokens`
+
+Store it as:
+
+- `SUPABASE_MANAGEMENT_API_KEY`
+
+Important:
+
+- this is not the anon key
+- this is not the service role key
+- it is an account-level token for the Supabase Management API
+
 ### Hosted database and migrations
 
 When you change schema locally, push it to the hosted project with:
@@ -229,13 +254,20 @@ Set these in Netlify or your chosen platform:
   Your public anon key
 - `SUPABASE_SERVICE_ROLE_KEY`
   Needed for invitations and admin server actions
+  Source: `Supabase Dashboard -> Project Settings -> API`
 
 Optional:
 
 - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
   Shared key for both the live Google map and the Google place search/autocomplete UI
+  Source: `Google Cloud Console -> APIs & Services -> Credentials`
 - `SUPABASE_PROJECT_REF`
+  Source: `Supabase Dashboard -> Project Settings -> General`
 - `SUPABASE_DB_PASSWORD`
+  Source: your hosted database password
+- `SUPABASE_MANAGEMENT_API_KEY`
+  Needed if `/admin/metrics` should show Supabase platform usage from the Management API
+  Source: `Supabase Dashboard -> Account -> Access Tokens`
 
 There is currently no separate environment variable for "Google search". The place search/autocomplete feature uses the same `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`.
 

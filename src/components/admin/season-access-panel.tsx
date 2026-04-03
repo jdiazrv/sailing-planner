@@ -17,6 +17,7 @@ type Props = {
     { id: string; expiresAt: string; inviteeName?: string | null; url: string } | { error: string }
   >;
   onRevoke: (fd: FormData) => Promise<void>;
+  onPurgeRevoked: (fd: FormData) => Promise<void>;
 };
 
 type GeneratedLinkState = {
@@ -32,6 +33,7 @@ export function SeasonAccessPanel({
   links,
   onGenerate,
   onRevoke,
+  onPurgeRevoked,
 }: Props) {
   const router = useRouter();
   const { locale } = useI18n();
@@ -41,6 +43,7 @@ export function SeasonAccessPanel({
   const [canViewVisits, setCanViewVisits] = useState(true);
   const [inviteeName, setInviteeName] = useState("");
   const [revokingLinkId, setRevokingLinkId] = useState<string | null>(null);
+  const [isPurgingRevoked, setIsPurgingRevoked] = useState(false);
   const [accessWindow, setAccessWindow] = useState<
     "one_use" | "one_day" | "one_week" | "season_end" | "season_plus_7"
   >("season_end");
@@ -58,8 +61,11 @@ export function SeasonAccessPanel({
           generating: "Generando...",
           revoke: "Revocar",
           revoking: "Revocando...",
+          purgeRevoked: "Purgar revocados",
+          purgingRevoked: "Purgando...",
           generated: "Enlace temporal generado.",
           revoked: "Enlace temporal revocado.",
+          revokedPurged: "Enlaces revocados eliminados.",
           copy: "Copiar enlace",
           copied: "Enlace copiado",
           urlLabel: "URL del enlace",
@@ -104,8 +110,11 @@ export function SeasonAccessPanel({
           generating: "Generating...",
           revoke: "Revoke",
           revoking: "Revoking...",
+          purgeRevoked: "Purge revoked",
+          purgingRevoked: "Purging...",
           generated: "Temporary link generated.",
           revoked: "Temporary link revoked.",
+          revokedPurged: "Revoked links removed.",
           copy: "Copy link",
           copied: "Link copied",
           urlLabel: "Link URL",
@@ -141,6 +150,10 @@ export function SeasonAccessPanel({
         };
 
   const activeLinks = useMemo(() => links.filter((link) => link.is_active), [links]);
+  const revokedLinks = useMemo(
+    () => links.filter((link) => Boolean(link.revoked_at)),
+    [links],
+  );
 
   const handleGenerate = () => {
     const formData = new FormData();
@@ -204,6 +217,25 @@ export function SeasonAccessPanel({
     toast.success(text.copied);
   };
 
+  const handlePurgeRevoked = () => {
+    const formData = new FormData();
+    formData.set("boat_id", boatId);
+    formData.set("season_id", seasonId);
+
+    setIsPurgingRevoked(true);
+    startTransition(async () => {
+      try {
+        await onPurgeRevoked(formData);
+        toast.success(text.revokedPurged);
+        router.refresh();
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Unexpected error");
+      } finally {
+        setIsPurgingRevoked(false);
+      }
+    });
+  };
+
   const renderDate = (value: string | null) =>
     value
       ? new Intl.DateTimeFormat(locale, {
@@ -239,6 +271,16 @@ export function SeasonAccessPanel({
           >
             {showActions ? text.hideActions : text.openActions}
           </button>
+          {revokedLinks.length ? (
+            <button
+              className="secondary-button secondary-button--small"
+              disabled={isPurgingRevoked || isPending}
+              onClick={handlePurgeRevoked}
+              type="button"
+            >
+              {isPurgingRevoked ? text.purgingRevoked : text.purgeRevoked}
+            </button>
+          ) : null}
         </div>
       </div>
 

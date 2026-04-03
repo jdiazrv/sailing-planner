@@ -1150,6 +1150,22 @@ body:has(.auth-layout) .app-chrome__brand .sp-wordmark {
   box-shadow: var(--shadow);
 }
 
+.section-nav--grouped {
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.section-nav__group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.section-nav__group--system {
+  padding-left: 0.5rem;
+  border-left: 1px solid var(--border-strong);
+}
+
 .workspace-mobile-switch {
   display: none;
 }
@@ -1920,6 +1936,145 @@ body:has(.auth-layout) .app-chrome__brand .sp-wordmark {
   border: 1px solid var(--border);
   border-radius: 14px;
   background: var(--surface-raised);
+}
+
+/* ---- Metrics dashboard ---- */
+
+.metrics-summary-grid {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+}
+
+.metrics-stat-card {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.9rem 1rem;
+}
+
+.metrics-stat-card__value {
+  font-size: 1.7rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.metrics-health-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.metrics-health-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.metrics-health-list__icon {
+  font-size: 0.85rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.metrics-health-list .is-ok .metrics-health-list__icon {
+  color: var(--status-ok, #22c55e);
+}
+
+.metrics-health-list .is-warn .metrics-health-list__icon {
+  color: var(--status-warning, #f59e0b);
+}
+
+.is-ok > .metrics-health-list__icon { color: var(--status-ok, #22c55e); }
+.is-warn > .metrics-health-list__icon { color: var(--status-warning, #f59e0b); }
+
+.metrics-table-wrap {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+}
+
+.metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.825rem;
+}
+
+.metrics-table th {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-size: 0.73rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+  background: var(--surface-raised);
+}
+
+.metrics-table td {
+  padding: 0.45rem 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+}
+
+.metrics-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.metrics-table tbody tr:hover td {
+  background: var(--row-hover-bg, rgba(255,255,255,0.03));
+}
+
+.metrics-cleanup-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.badge--danger {
+  background: var(--status-danger-soft, rgba(239,68,68,0.15));
+  color: var(--status-danger, #ef4444);
+}
+
+.badge--warning {
+  background: var(--status-warning-soft, rgba(245,158,11,0.15));
+  color: var(--status-warning, #f59e0b);
+}
+
+.badge--muted {
+  background: var(--surface-raised);
+  color: var(--ink-soft);
+}
+
+.danger-button {
+  padding: 0.45rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--status-danger, #ef4444);
+  background: var(--status-danger-soft, rgba(239,68,68,0.12));
+  color: var(--status-danger, #ef4444);
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.danger-button:hover {
+  background: var(--status-danger, #ef4444);
+  color: #fff;
+}
+
+.danger-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .admin-metric-card span {
@@ -2712,8 +2867,21 @@ body:has(.auth-layout) .app-chrome__brand .sp-wordmark {
 
   .section-nav {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: 1fr;
     justify-content: stretch;
+  }
+
+  .section-nav__group {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .section-nav__group--system {
+    padding-left: 0;
+    border-left: 0;
+    padding-top: 0.35rem;
+    border-top: 1px solid var(--border-strong);
+    grid-template-columns: 1fr;
   }
 
   .season-access-item {

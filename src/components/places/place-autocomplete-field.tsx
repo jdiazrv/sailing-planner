@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { hasGoogleMapsKey, loadGoogleMaps } from "@/lib/google-maps";
+import { recordApiUsage } from "@/lib/api-usage";
 
 type PlaceAutocompleteFieldProps = {
   defaultLabel?: string | null;
@@ -162,6 +163,9 @@ export const PlaceAutocompleteField = ({
     await place.fetchFields({
       fields: ["id", "displayName", "formattedAddress", "location"],
     });
+    // One autocomplete session (all keystrokes collapsed by session token) + one place details call.
+    void recordApiUsage("google_places", "autocomplete_session");
+    void recordApiUsage("google_places", "place_details_essentials");
 
     setInputValue(
       trimPlaceLabel(

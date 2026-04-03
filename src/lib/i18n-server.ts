@@ -12,6 +12,14 @@ export const getRequestLocale = async (): Promise<Locale> => {
     return cookieLocale;
   }
 
+  const hasSupabaseSessionCookie = cookieStore
+    .getAll()
+    .some((cookie) => cookie.name.startsWith("sb-") && cookie.name.includes("auth-token"));
+
+  if (!hasSupabaseSessionCookie) {
+    return "es";
+  }
+
   try {
     const { viewer } = await requireViewer();
 

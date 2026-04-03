@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useI18n } from "@/components/i18n/provider";
 import { hasGoogleMapsKey, loadGoogleMaps } from "@/lib/google-maps";
+import { recordApiUsage } from "@/lib/api-usage";
 import type { TripSegmentView, VisitView } from "@/lib/planning";
 
 declare global {
@@ -424,6 +425,9 @@ export const MapPanel = ({
 
       setGoogleAvailable(true);
       setMapReady(true);
+      setMapMessage(t("planning.mapReady"));
+      // Record one Dynamic Maps load event for billing tracking.
+      void recordApiUsage("google_maps", "dynamic_maps");
     })();
 
     return () => {

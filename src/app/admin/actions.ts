@@ -731,9 +731,30 @@ export async function revokeSeasonAccessLink(formData: FormData) {
 
   const { error } = await db
     .from("season_access_links")
-    .delete()
+    .update({ revoked_at: new Date().toISOString() })
     .eq("id", linkId)
     .eq("boat_id", boatId);
+  throwIfError(error);
+
+  refreshAdminRoutes(boatId);
+}
+
+export async function purgeRevokedSeasonAccessLinks(formData: FormData) {
+  const boatId = formData.get("boat_id")?.toString() ?? "";
+  const seasonId = formData.get("season_id")?.toString() ?? "";
+  const { supabase } = await requireBoatShareAccess(boatId);
+  const db = supabase as any;
+
+  if (!boatId || !seasonId) {
+    throw new Error("Boat and season are required.");
+  }
+
+  const { error } = await db
+    .from("season_access_links")
+    .delete()
+    .eq("boat_id", boatId)
+    .eq("season_id", seasonId)
+    .not("revoked_at", "is", null);
   throwIfError(error);
 
   refreshAdminRoutes(boatId);

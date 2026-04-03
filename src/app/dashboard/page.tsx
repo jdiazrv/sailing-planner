@@ -66,6 +66,9 @@ export default async function DashboardPage({
               <Link className="secondary-button" href="/admin/users">
                 {t(locale, "dashboard.manageUsers")}
               </Link>
+              <Link className="secondary-button" href="/admin/metrics">
+                {t(locale, "dashboard.systemMetrics")}
+              </Link>
             </>
           )}
           <LogoutButton />

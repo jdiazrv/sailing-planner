@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 
 import {
   generateSeasonAccessLink as generateSeasonAccessLinkInternal,
+  purgeRevokedSeasonAccessLinks as purgeRevokedSeasonAccessLinksInternal,
   revokeSeasonAccessLink as revokeSeasonAccessLinkInternal,
 } from "@/app/admin/actions";
 import { createClient } from "@/lib/supabase/server";
@@ -378,6 +379,10 @@ export async function generateSeasonAccessLink(formData: FormData) {
 
 export async function revokeSeasonAccessLink(formData: FormData) {
   return revokeSeasonAccessLinkInternal(formData);
+}
+
+export async function purgeRevokedSeasonAccessLinks(formData: FormData) {
+  return purgeRevokedSeasonAccessLinksInternal(formData);
 }
 
 export async function saveBoatProfile(formData: FormData) {
