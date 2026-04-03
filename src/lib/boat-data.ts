@@ -294,10 +294,11 @@ export const getSuperuserDashboardSnapshot = cache(async (
   }
 
   const db = supabase as any;
-  const [totalBoatsResult, activeBoatsResult] = await Promise.all([
-    db.from("boats").select("id", { count: "exact", head: true }),
-    db.from("boats").select("id", { count: "exact", head: true }).neq("is_active", false),
-  ]);
+  const { data: boatCountRows } = await db.from("boats").select("id, is_active");
+  const totalBoats = ((boatCountRows ?? []) as Pick<BoatRow, "id" | "is_active">[]).length;
+  const activeBoats = ((boatCountRows ?? []) as Pick<BoatRow, "id" | "is_active">[]).filter(
+    (boat) => boat.is_active !== false,
+  ).length;
 
   const loadBoatById = async (boatId: string | undefined | null) => {
     if (!boatId) {
@@ -367,13 +368,13 @@ export const getSuperuserDashboardSnapshot = cache(async (
       seasonData?.name ?? (seasonData?.year ? String(seasonData.year) : null);
   }
 
-  const boats = selectedBoat ? await enrichBoatSummaries(db, [selectedBoat]) : [];
+  const boats = selectedBoat ? [selectedBoat] : [];
 
   const result = {
     viewer,
     boats,
-    totalBoats: totalBoatsResult.count ?? 0,
-    activeBoats: activeBoatsResult.count ?? 0,
+    totalBoats,
+    activeBoats,
     selectedSeasonName,
   };
   timing.end({
@@ -528,6 +529,67 @@ export const getDashboardBoatWorkspace = cache(async (
     visits: visits.length,
     hasPermission: Boolean(permissionData),
   });
+  return result;
+});
+
+export const getBoatShareWorkspace = cache(async (
+  boatId: string,
+  requestedSeasonId?: string,
+) => {
+  const timing = startServerTiming("boatData.getBoatShareWorkspace", {
+    boatId,
+    requestedSeasonId: requestedSeasonId ?? null,
+  });
+  const { supabase, user, viewer } = await requireViewer();
+  const db = supabase as any;
+
+  const [{ data: boatRowData }, { data: permissionData }, { data: seasonsData }] =
+    await Promise.all([
+      db.from("boats").select("*").eq("id", boatId).maybeSingle(),
+      db
+        .from("user_boat_permissions")
+        .select("*")
+        .eq("boat_id", boatId)
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      db.from("seasons").select("*").eq("boat_id", boatId).order("year", {
+        ascending: false,
+      }),
+    ]);
+
+  if (!boatRowData) {
+    redirect("/dashboard");
+  }
+
+  if (!viewer.isSuperuser && !permissionData) {
+    redirect("/dashboard");
+  }
+
+  const seasons = (seasonsData ?? []) as SeasonRow[];
+  const selectedSeason =
+    seasons.find((season) => season.id === requestedSeasonId) ?? seasons[0] ?? null;
+
+  const result = {
+    viewer,
+    boat: {
+      ...(boatRowData as BoatRow),
+      image_url: getBoatImageUrl(
+        supabase,
+        (boatRowData as BoatRow | null)?.image_path,
+        (boatRowData as BoatRow | null)?.updated_at,
+      ),
+    } as BoatDetails,
+    permission: permissionData as PermissionRow | null,
+    seasons,
+    selectedSeason,
+  };
+
+  timing.end({
+    seasonId: selectedSeason?.id ?? null,
+    seasons: seasons.length,
+    hasPermission: Boolean(permissionData),
+  });
+
   return result;
 });
 
@@ -1203,7 +1265,7 @@ export const getSharedTimelineWorkspace = async (
   };
 };
 
-export const getBoatWorkspace = async (
+export const getBoatWorkspace = cache(async (
   boatId: string,
   requestedSeasonId?: string,
 ) => {
@@ -1280,7 +1342,7 @@ export const getBoatWorkspace = async (
     visits: visits.length,
   });
   return result;
-};
+});
 
 export const getSeasonGuestWorkspace = async (
   boatId: string,
