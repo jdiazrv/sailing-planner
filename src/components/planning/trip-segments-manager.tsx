@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { useI18n } from "@/components/i18n/provider";
@@ -16,6 +16,10 @@ type Props = {
   seasonId: string;
   seasonStart: string;
   canEdit: boolean;
+  selectedSegmentId?: string | null;
+  onSelectSegment?: (segment: TripSegmentView) => void;
+  externalEditSegment?: TripSegmentView | null;
+  onExternalEditHandled?: () => void;
   onSave: (fd: FormData) => Promise<void>;
   onDelete: (fd: FormData) => Promise<void>;
 };
@@ -26,6 +30,10 @@ export function TripSegmentsManager({
   seasonId,
   seasonStart,
   canEdit,
+  selectedSegmentId = null,
+  onSelectSegment,
+  externalEditSegment,
+  onExternalEditHandled,
   onSave,
   onDelete,
 }: Props) {
@@ -35,6 +43,15 @@ export function TripSegmentsManager({
   const [segmentToDelete, setSegmentToDelete] = useState<TripSegmentView | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  // Open edit dialog when triggered from outside (e.g. selection panel)
+  useEffect(() => {
+    if (externalEditSegment) {
+      setEditingSegment(externalEditSegment);
+      onExternalEditHandled?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalEditSegment?.id]);
 
   const handleSave = (formData: FormData) => {
     const isEdit = Boolean(formData.get("segment_id"));
@@ -120,7 +137,19 @@ export function TripSegmentsManager({
               : null;
 
             return (
-              <div className="data-row data-row--trip" key={segment.id}>
+              <div
+                className={`data-row data-row--trip${selectedSegmentId === segment.id ? " is-selected" : ""}`}
+                key={segment.id}
+                onClick={() => onSelectSegment?.(segment)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onSelectSegment?.(segment);
+                  }
+                }}
+              >
                 <div>
                   <span className="status-pill is-good">{index + 1}</span>
                 </div>
@@ -147,7 +176,10 @@ export function TripSegmentsManager({
                       aria-label={t("common.edit")}
                       className="icon-button"
                       disabled={isPending}
-                      onClick={() => setEditingSegment(segment)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setEditingSegment(segment);
+                      }}
                       title={t("common.edit")}
                       type="button"
                     >
@@ -157,7 +189,10 @@ export function TripSegmentsManager({
                       aria-label={t("common.delete")}
                       className="icon-button icon-button--danger"
                       disabled={isPending}
-                      onClick={() => setSegmentToDelete(segment)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSegmentToDelete(segment);
+                      }}
                       title={t("common.delete")}
                       type="button"
                     >

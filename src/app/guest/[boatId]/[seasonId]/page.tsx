@@ -92,14 +92,15 @@ export default async function GuestSeasonPage({
 
       {!canViewVisits ? (
         <p className="muted">
-          Este enlace solo permite ver tramos de viaje. El timeline sigue mostrando la temporada de
-          forma completa para facilitar el seguimiento.
+          Este enlace solo permite ver tramos de viaje. Las visitas quedan ocultas tambien en el
+          timeline y en el mapa.
         </p>
       ) : null}
 
       {currentView === "trip" ? (
         <TripOverview
           season={workspace.selectedSeason}
+          showVisits={canViewVisits}
           tripSegments={workspace.tripSegments}
           visits={workspace.visits}
         >

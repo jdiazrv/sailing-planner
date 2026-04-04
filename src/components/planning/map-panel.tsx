@@ -27,6 +27,11 @@ type Marker = {
   sortValue: number | null;
 };
 
+type MapSelection = {
+  entityId: string;
+  tone: "trip" | "visit";
+};
+
 type MapPanelProps = {
   tripSegments: TripSegmentView[];
   visits: VisitView[];
@@ -34,6 +39,8 @@ type MapPanelProps = {
   tall?: boolean;
   selectedEntityId?: string | null;
   dataTour?: string;
+  deemphasized?: boolean;
+  onSelectEntity?: (selection: MapSelection) => void;
 };
 
 type GoogleBaseMap = "roadmap" | "satellite" | "hybrid";
@@ -208,9 +215,12 @@ export const MapPanel = ({
   tall = false,
   selectedEntityId = null,
   dataTour,
+  deemphasized = false,
+  onSelectEntity,
 }: MapPanelProps) => {
   const { t } = useI18n();
   const mapRef = useRef<HTMLDivElement | null>(null);
+  const onSelectEntityRef = useRef(onSelectEntity);
   const [mapReady, setMapReady] = useState(false);
   const [googleAvailable, setGoogleAvailable] = useState(hasGoogleMapsKey);
   const [mapMessage, setMapMessage] = useState(t("planning.loadingMap"));
@@ -249,6 +259,11 @@ export const MapPanel = ({
     [sequenceBySegment, tripSegments],
   );
   const routePoints = useMemo(() => buildRoutePoints(tripSegments), [tripSegments]);
+  const hasSelection = Boolean(selectedEntityId);
+
+  useEffect(() => {
+    onSelectEntityRef.current = onSelectEntity;
+  }, [onSelectEntity]);
 
   useEffect(() => {
     if (!hasGoogleMapsKey || !mapRef.current) {
@@ -323,8 +338,8 @@ export const MapPanel = ({
           path: routePoints,
           geodesic: true,
           strokeColor: "#f4c542",
-          strokeOpacity: 0.85,
-          strokeWeight: 2,
+          strokeOpacity: hasSelection ? 0.32 : 0.85,
+          strokeWeight: hasSelection ? 1.5 : 2,
         });
       }
 
@@ -333,18 +348,20 @@ export const MapPanel = ({
       }
 
       zones.forEach((zone) => {
+        const selected = zone.entityId === selectedEntityId;
         new maps.maps.Circle({
           map,
           center: { lat: zone.latitude, lng: zone.longitude },
           radius: ZONE_RADIUS_METERS,
           strokeColor: "#005f73",
-          strokeOpacity: 0.85,
-          strokeWeight: 2,
+          strokeOpacity: selected ? 0.95 : hasSelection ? 0.28 : 0.85,
+          strokeWeight: selected ? 3 : 2,
           fillColor: "#0a9396",
-          fillOpacity: 0.12,
+          fillOpacity: selected ? 0.2 : hasSelection ? 0.05 : 0.12,
         });
 
-        new maps.maps.Marker({
+        const zoneMarker = new maps.maps.Marker({
+          clickable: Boolean(onSelectEntityRef.current),
           map,
           position: { lat: zone.latitude, lng: zone.longitude },
           title: `${zone.label} ${t("planning.zone").toLowerCase()}`,
@@ -356,13 +373,19 @@ export const MapPanel = ({
           },
           icon: {
             path: TRIP_SQUARE_PATH,
-            scale: 1,
+            scale: selected ? 1.15 : 1,
             fillColor: "#005f73",
-            fillOpacity: 1,
-            strokeColor: "#ffffff",
-            strokeWeight: 2,
+            fillOpacity: selected ? 1 : hasSelection ? 0.42 : 1,
+            strokeColor: selected ? "#17211f" : "#ffffff",
+            strokeWeight: selected ? 3 : 2,
           },
         });
+
+        if (onSelectEntityRef.current) {
+          zoneMarker.addListener("click", () => {
+            onSelectEntityRef.current?.({ entityId: zone.entityId, tone: "trip" });
+          });
+        }
       });
 
       const selectedMarkers = markers.filter(
@@ -371,7 +394,8 @@ export const MapPanel = ({
 
       markers.forEach((marker) => {
         const selected = marker.entityId === selectedEntityId;
-        new maps.maps.Marker({
+        const markerView = new maps.maps.Marker({
+          clickable: Boolean(onSelectEntityRef.current),
           map,
           position: { lat: marker.latitude, lng: marker.longitude },
           title: marker.label,
@@ -402,13 +426,22 @@ export const MapPanel = ({
               marker.shape === "square"
                 ? TRIP_SQUARE_PATH
                 : maps.maps.SymbolPath.CIRCLE,
-            scale: selected ? 9 : 7,
+            scale: selected ? 9 : hasSelection ? 5.8 : 7,
             fillColor: marker.color,
-            fillOpacity: 1,
+            fillOpacity: selected ? 1 : hasSelection ? 0.38 : 1,
             strokeColor: selected ? "#17211f" : "#ffffff",
             strokeWeight: selected ? 3 : 2,
           },
         });
+
+        if (onSelectEntityRef.current) {
+          markerView.addListener("click", () => {
+            onSelectEntityRef.current?.({
+              entityId: marker.entityId,
+              tone: marker.tone,
+            });
+          });
+        }
       });
 
       if (selectedMarkers.length === 1) {
@@ -438,6 +471,7 @@ export const MapPanel = ({
     };
   }, [
     baseMap,
+    hasSelection,
     markers,
     routePoints,
     selectedEntityId,
@@ -451,6 +485,7 @@ export const MapPanel = ({
     <article
       className={`dashboard-card map-panel${tall ? " map-panel--tall" : ""}`}
       data-tour={dataTour}
+      data-map-emphasis={deemphasized ? "muted" : "active"}
     >
       <div className="card-header">
         <div>
@@ -507,7 +542,7 @@ export const MapPanel = ({
           {!mapReady ? <div className="map-empty">{mapMessage}</div> : null}
         </div>
       ) : (
-        <div className="map-canvas">
+        <div className={`map-canvas${hasSelection ? " has-selection" : ""}`}>
           <div className="map-canvas__grid" />
           {showRoute && routePoints.length > 1 ? (
             <svg
@@ -561,6 +596,12 @@ export const MapPanel = ({
                 <button
                   className={`map-marker is-${marker.tone} is-${marker.shape}${selectedEntityId === marker.entityId ? " is-selected" : ""}${marker.glyph === "I" ? " is-island" : ""}`}
                   key={marker.id}
+                  onClick={() =>
+                    onSelectEntityRef.current?.({
+                      entityId: marker.entityId,
+                      tone: marker.tone,
+                    })
+                  }
                   style={{ left: `${point.x}%`, top: `${point.y}%`, background: marker.color }}
                   title={marker.label}
                   type="button"

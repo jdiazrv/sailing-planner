@@ -16,6 +16,8 @@ type Props = {
   seasonId: string;
   seasonStart: string;
   canEdit: boolean;
+  selectedVisitId?: string | null;
+  onSelectVisit?: (visit: VisitView) => void;
   onSave: (fd: FormData) => Promise<void>;
   onDelete: (fd: FormData) => Promise<void>;
   externalEditVisit?: VisitView | null;
@@ -29,6 +31,8 @@ export function VisitsManager({
   seasonId,
   seasonStart,
   canEdit,
+  selectedVisitId = null,
+  onSelectVisit,
   onSave,
   onDelete,
   externalEditVisit,
@@ -116,7 +120,19 @@ export function VisitsManager({
             {canEdit && <span></span>}
           </div>
           {visits.map((visit) => (
-            <div className="data-row data-row--visits" key={visit.id}>
+            <div
+              className={`data-row data-row--visits${selectedVisitId === visit.id ? " is-selected" : ""}`}
+              key={visit.id}
+              onClick={() => onSelectVisit?.(visit)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onSelectVisit?.(visit);
+                }
+              }}
+            >
               <div>{visit.visitor_name ?? <span className="muted">{t("planning.private")}</span>}</div>
               <div className="table-stack">
                 {hasVisitDateRange(visit) ? (
@@ -139,20 +155,26 @@ export function VisitsManager({
               {canEdit && (
                 <div className="table-actions">
                   <button
-                    aria-label={t("common.edit")}
-                    className="icon-button"
-                    disabled={isPending}
-                    onClick={() => setEditingVisit(visit)}
-                    title={t("common.edit")}
-                    type="button"
-                  >
+                  aria-label={t("common.edit")}
+                  className="icon-button"
+                  disabled={isPending}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setEditingVisit(visit);
+                  }}
+                  title={t("common.edit")}
+                  type="button"
+                >
                     <span aria-hidden="true">✎</span>
                   </button>
                     <button
                       aria-label={t("common.delete")}
                       className="icon-button icon-button--danger"
                       disabled={isPending}
-                      onClick={() => setVisitToDelete(visit)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setVisitToDelete(visit);
+                      }}
                       title={t("common.delete")}
                       type="button"
                     >

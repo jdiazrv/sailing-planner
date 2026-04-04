@@ -32,6 +32,10 @@ type TimelineProps = {
   showAvailability?: boolean;
   zoom?: number;
   onZoomChange?: (zoom: number) => void;
+  visitsCollapsed?: boolean;
+  availabilityCollapsed?: boolean;
+  onToggleVisitsCollapsed?: () => void;
+  onToggleAvailabilityCollapsed?: () => void;
 };
 
 type TimelineTooltipState = {
@@ -39,6 +43,15 @@ type TimelineTooltipState = {
   x: number;
   y: number;
 } | null;
+
+const getTooltipPosition = (target: HTMLButtonElement) => {
+  const rect = target.getBoundingClientRect();
+
+  return {
+    x: rect.right + 14,
+    y: rect.top + rect.height / 2,
+  };
+};
 
 const buildMonthMarkers = (season: SeasonRow) => {
   const markers: { label: string; offset: number }[] = [];
@@ -102,6 +115,22 @@ const getShortName = (name: string | null) => {
   return name.split(" ")[0] ?? name;
 };
 
+const getStatusGlyph = (status: string) => {
+  switch (status) {
+    case "confirmed":
+    case "available":
+      return "✓";
+    case "tentative":
+    case "planned":
+      return "?";
+    case "cancelled":
+    case "undefined":
+      return "!";
+    default:
+      return "•";
+  }
+};
+
 export const Timeline = ({
   season,
   tripSegments,
@@ -115,8 +144,27 @@ export const Timeline = ({
   showAvailability = true,
   zoom: controlledZoom,
   onZoomChange,
+  visitsCollapsed = false,
+  availabilityCollapsed = false,
+  onToggleVisitsCollapsed,
+  onToggleAvailabilityCollapsed,
 }: TimelineProps) => {
   const { t } = useI18n();
+  const locale = getDocumentLocale();
+  const groupLabels =
+    locale === "es"
+      ? {
+          people: "Personas",
+          availability: "Disponibilidad",
+          show: "Mostrar",
+          hide: "Ocultar",
+        }
+      : {
+          people: "People",
+          availability: "Availability",
+          show: "Show",
+          hide: "Hide",
+        };
   const [expandedVisitId, setExpandedVisitId] = useState<string | null>(null);
   const [selectedAvailabilityIndex, setSelectedAvailabilityIndex] = useState<number | null>(
     null,
@@ -171,8 +219,7 @@ export const Timeline = ({
       window.clearTimeout(tooltipTimeoutRef.current);
     }
 
-    const x = event.clientX + 14;
-    const y = event.clientY - 12;
+    const { x, y } = getTooltipPosition(event.currentTarget);
 
     tooltipTimeoutRef.current = window.setTimeout(() => {
       setTooltip({
@@ -185,12 +232,14 @@ export const Timeline = ({
   };
 
   const moveTooltip = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const { x, y } = getTooltipPosition(event.currentTarget);
+
     setTooltip((current) =>
       current
         ? {
             ...current,
-            x: event.clientX + 14,
-            y: event.clientY - 12,
+            x,
+            y,
           }
         : current,
     );
@@ -204,8 +253,10 @@ export const Timeline = ({
     setTooltip(null);
   };
 
+  const hasActiveSelection = selectedEntityId !== null || selectedAvailabilityIndex !== null;
+
   return (
-    <article className="timeline-card">
+    <article className="timeline-card" data-has-selection={hasActiveSelection ? "true" : "false"}>
       <div className="timeline-card__header">
         <div>
           <p className="eyebrow">{title}</p>
@@ -284,70 +335,98 @@ export const Timeline = ({
                     style={toBarStyle(season, segment.start_date, segment.end_date)}
                     type="button"
                   >
+                    <span aria-hidden="true" className="timeline-bar__glyph">
+                      {getStatusGlyph(segment.status)}
+                    </span>
                     <span>{segment.location_label}</span>
                   </button>
                 ))}
               </TimelineLane>
 
-              {showVisits && visits.length === 0 && (
-                <TimelineLane label={t("planning.visit")}>
-                  <span />
-                </TimelineLane>
-              )}
-              {showVisits &&
-                visits.map((visit) => (
-                  <TimelineLane key={visit.id} label={getShortName(visit.visitor_name)}>
-                    {hasVisitDateRange(visit) ? (
+              <TimelineGroup
+                count={visits.length}
+                description={t("planning.visit")}
+                onToggle={onToggleVisitsCollapsed}
+                open={!visitsCollapsed}
+                toggleLabels={groupLabels}
+                title={groupLabels.people}
+              >
+                {showVisits && !visitsCollapsed && visits.length === 0 ? (
+                  <TimelineLane label={t("planning.visit")}>
+                    <span />
+                  </TimelineLane>
+                ) : null}
+                {showVisits && !visitsCollapsed
+                  ? visits.map((visit) => (
+                      <TimelineLane key={visit.id} label={getShortName(visit.visitor_name)}>
+                        {hasVisitDateRange(visit) ? (
+                          <button
+                            aria-expanded={expandedVisitId === visit.id}
+                            aria-label={`${t("planning.visit")}: ${visit.visitor_name ?? t("planning.private")}`}
+                            className={`timeline-bar timeline-bar--btn is-${visit.status}${expandedVisitId === visit.id || selectedEntityId === visit.id ? " is-selected" : ""}`}
+                            onPointerEnter={(event) =>
+                              showTooltip(
+                                event,
+                                `${visit.visitor_name ?? t("planning.visit")} · ${t(`status.${visit.status}` as never)} · ${formatShortDate(visit.embark_date)} – ${formatShortDate(visit.disembark_date)}`,
+                              )
+                            }
+                            onPointerLeave={hideTooltip}
+                            onPointerMove={moveTooltip}
+                            onClick={() => {
+                              toggleVisit(visit.id);
+                              onVisitSelect?.(visit);
+                            }}
+                            style={toBarStyle(season, visit.embark_date, visit.disembark_date)}
+                            type="button"
+                          >
+                            <span aria-hidden="true" className="timeline-bar__glyph">
+                              {getStatusGlyph(visit.status)}
+                            </span>
+                            <span>{visit.visitor_name ?? t("planning.visit")}</span>
+                          </button>
+                        ) : (
+                          <span className="muted">{t("planning.restrictedVisitDates")}</span>
+                        )}
+                      </TimelineLane>
+                    ))
+                  : null}
+              </TimelineGroup>
+
+              <TimelineGroup
+                count={sortedAvailability.length}
+                description={t("planning.availability")}
+                onToggle={onToggleAvailabilityCollapsed}
+                open={!availabilityCollapsed}
+                toggleLabels={groupLabels}
+                title={groupLabels.availability}
+              >
+                {showAvailability && !availabilityCollapsed ? (
+                  <TimelineLane availability label={t("planning.availability")}>
+                    {sortedAvailability.map((block, index) => (
                       <button
-                        aria-expanded={expandedVisitId === visit.id}
-                        aria-label={`${t("planning.visit")}: ${visit.visitor_name ?? t("planning.private")}`}
-                        className={`timeline-bar timeline-bar--btn is-${visit.status}${expandedVisitId === visit.id || selectedEntityId === visit.id ? " is-selected" : ""}`}
+                        className={`timeline-bar timeline-bar--btn is-${block.status}${selectedAvailabilityIndex === index ? " is-selected" : ""}`}
+                        key={`${block.status}-${index}-${block.start}`}
                         onPointerEnter={(event) =>
                           showTooltip(
                             event,
-                            `${visit.visitor_name ?? t("planning.visit")} · ${t(`status.${visit.status}` as never)} · ${formatShortDate(visit.embark_date)} – ${formatShortDate(visit.disembark_date)}`,
+                            `${t(`status.${block.status}` as never)} · ${formatShortDate(block.start)} – ${formatShortDate(block.end)}`,
                           )
                         }
                         onPointerLeave={hideTooltip}
                         onPointerMove={moveTooltip}
-                        onClick={() => {
-                          toggleVisit(visit.id);
-                          onVisitSelect?.(visit);
-                        }}
-                        style={toBarStyle(season, visit.embark_date, visit.disembark_date)}
+                        onClick={() => setSelectedAvailabilityIndex(index)}
+                        style={toBarStyle(season, block.start, block.end)}
                         type="button"
                       >
-                        <span>{visit.visitor_name ?? t("planning.visit")}</span>
+                        <span aria-hidden="true" className="timeline-bar__glyph">
+                          {getStatusGlyph(block.status)}
+                        </span>
+                        <span>{t(`status.${block.status}` as never)}</span>
                       </button>
-                    ) : (
-                      <span className="muted">{t("planning.restrictedVisitDates")}</span>
-                    )}
+                    ))}
                   </TimelineLane>
-                ))}
-
-              {showAvailability && (
-                <TimelineLane availability label={t("planning.availability")}>
-                  {sortedAvailability.map((block, index) => (
-                    <button
-                      className={`timeline-bar timeline-bar--btn is-${block.status}${selectedAvailabilityIndex === index ? " is-selected" : ""}`}
-                      key={`${block.status}-${index}-${block.start}`}
-                      onPointerEnter={(event) =>
-                        showTooltip(
-                          event,
-                          `${t(`status.${block.status}` as never)} · ${formatShortDate(block.start)} – ${formatShortDate(block.end)}`,
-                        )
-                      }
-                      onPointerLeave={hideTooltip}
-                      onPointerMove={moveTooltip}
-                      onClick={() => setSelectedAvailabilityIndex(index)}
-                      style={toBarStyle(season, block.start, block.end)}
-                      type="button"
-                    >
-                      <span>{t(`status.${block.status}` as never)}</span>
-                    </button>
-                  ))}
-                </TimelineLane>
-              )}
+                ) : null}
+              </TimelineGroup>
             </>
           )}
         </div>
@@ -461,4 +540,39 @@ const TimelineLane = ({
       {children}
     </div>
   </div>
+);
+
+const TimelineGroup = ({
+  title,
+  description,
+  count,
+  open,
+  onToggle,
+  toggleLabels,
+  children,
+}: {
+  title: string;
+  description: string;
+  count: number;
+  open: boolean;
+  onToggle?: () => void;
+  toggleLabels: { show: string; hide: string };
+  children: React.ReactNode;
+}) => (
+  <section className={`timeline__group${open ? " is-open" : " is-collapsed"}`}>
+    <div className="timeline__group-header">
+      <div>
+        <strong>{title}</strong>
+        <span>{description}</span>
+      </div>
+      <button
+        className="timeline__group-toggle"
+        onClick={onToggle}
+        type="button"
+      >
+        {open ? toggleLabels.hide : toggleLabels.show} · {count}
+      </button>
+    </div>
+    {open ? <div className="timeline__group-body">{children}</div> : null}
+  </section>
 );

@@ -15,11 +15,13 @@ export function TripOverview({
   season,
   tripSegments,
   visits,
+  showVisits = true,
   children,
 }: {
   season: SeasonRow | null;
   tripSegments: TripSegmentView[];
   visits: VisitView[];
+  showVisits?: boolean;
   children?: ReactNode;
 }) {
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
@@ -32,13 +34,14 @@ export function TripOverview({
         <div className="workspace-main" data-tour="boat-timeline">
           <Timeline
             onTripSegmentSelect={(segment) => setSelectedEntityId(segment.id)}
-            onVisitSelect={(visit) => setSelectedEntityId(visit.id)}
+            onVisitSelect={showVisits ? (visit) => setSelectedEntityId(visit.id) : undefined}
             season={season}
             selectedEntityId={selectedEntityId}
+            showVisits={showVisits}
             subtitle=""
             title={t("planning.timelineTitle")}
             tripSegments={tripSegments}
-            visits={visits}
+            visits={showVisits ? visits : []}
           />
         </div>
       </section>
@@ -80,11 +83,12 @@ export function TripOverview({
         >
           <MapPanel
             dataTour="boat-map"
+            onSelectEntity={({ entityId }) => setSelectedEntityId(entityId)}
             selectedEntityId={selectedEntityId}
             tall
             title={t("planning.tripAndVisitPlaces")}
             tripSegments={tripSegments}
-            visits={visits}
+            visits={showVisits ? visits : []}
           />
         </aside>
       </section>

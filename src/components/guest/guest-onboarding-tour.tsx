@@ -147,13 +147,6 @@ export function GuestOnboardingTour({
           "Desde aqui puedes moverte por la planificacion del barco y volver a la vista de tramos. Todo lo que ves en este recorrido es de consulta.",
       },
       {
-        target: '[data-tour="boat-nav"]',
-        title: "Visitas",
-        body: canViewVisits
-          ? "Desde la pestana Visitas puedes abrir la vista donde consultar invitados previstos, fechas, lugares de embarque y desembarque y movimientos de la temporada."
-          : "Este acceso no incluye la vista de Visitas. Si la incluyera, podrias abrirla desde aqui en modo de solo lectura.",
-      },
-      {
         target: '[data-tour="boat-timeline"]',
         title: "Timeline",
         body:
@@ -173,6 +166,16 @@ export function GuestOnboardingTour({
           "El mapa te ayuda a ubicar visualmente el recorrido y los puntos importantes de la temporada, siempre en modo de solo lectura.",
         requiredView: "trip" as const,
       },
+      ...(canViewVisits
+        ? [
+            {
+              target: '[data-tour="boat-nav"]',
+              title: "Visitas",
+              body:
+                "Desde la pestana Visitas puedes abrir la vista donde consultar invitados previstos, fechas, lugares de embarque y desembarque y movimientos de la temporada.",
+            },
+          ]
+        : []),
       ...(canViewVisits
         ? [
           {
