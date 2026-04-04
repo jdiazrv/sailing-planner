@@ -358,6 +358,10 @@ const dictionary = {
     "admin.users.lastAccess": "Último acceso",
     "admin.users.lastAccessMethod": "Método del último acceso",
     "admin.users.boatsCount": "Barcos asignados",
+    "admin.users.readonlySummaryTitle": "Resumen de actividad (solo lectura)",
+    "admin.users.readonlySummaryHelp":
+      "Estos datos son informativos y no se pueden editar.",
+    "admin.users.editableHint": "Sección editable",
     "admin.users.seasonsCount": "Temporadas",
     "admin.users.tripsCount": "Tramos última temporada",
     "admin.users.visitsCount": "Visitas última temporada",
@@ -820,6 +824,10 @@ const dictionary = {
     "admin.users.lastAccess": "Last access",
     "admin.users.lastAccessMethod": "Last access method",
     "admin.users.boatsCount": "Assigned boats",
+    "admin.users.readonlySummaryTitle": "Activity summary (read-only)",
+    "admin.users.readonlySummaryHelp":
+      "These values are informational and cannot be edited.",
+    "admin.users.editableHint": "Editable section",
     "admin.users.seasonsCount": "Seasons",
     "admin.users.tripsCount": "Latest-season segments",
     "admin.users.visitsCount": "Latest-season visits",

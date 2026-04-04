@@ -689,13 +689,10 @@ function UserEditorCard({
     boats.find((boat) => boat.id === selectedBoatId) ??
     sortedBoats[0] ??
     boats[0];
-  const selectedAssignedBoat = selectedBoat
-    ? assignedBoats.find((boat) => boat.id === selectedBoat.id)
-    : assignedBoats[0];
-  const additionalAssignedCount = Math.max(
-    assignedBoats.length - (selectedAssignedBoat ? 1 : 0),
-    0,
-  );
+  const assignedBoatsSummary =
+    locale === "es"
+      ? `${assignedBoats.length} ${assignedBoats.length === 1 ? "barco asignado" : "barcos asignados"}`
+      : `${assignedBoats.length} ${assignedBoats.length === 1 ? "assigned boat" : "assigned boats"}`;
   const canManageSecurity = isSuperuser || user.id === viewerUserId;
   const canEditPermissions = !personalMode;
   const accessSummary = canManageSecurity
@@ -847,37 +844,45 @@ function UserEditorCard({
       </div>
 
       {!personalMode ? (
-        <div className="admin-metrics-grid">
-          {metricCards.map((metric) => (
-            <div className="admin-metric-card" key={metric.label}>
-              <span>{metric.label}</span>
-              <strong>{metric.value}</strong>
-            </div>
-          ))}
+        <div className="admin-readonly-summary">
+          <div className="admin-readonly-note" role="note">
+            <strong>{t("admin.users.readonlySummaryTitle")}</strong>
+            <span>{t("admin.users.readonlySummaryHelp")}</span>
+          </div>
+          <div className="admin-metrics-grid admin-metrics-grid--readonly">
+            {metricCards.map((metric) => (
+              <div className="admin-metric-card" key={metric.label}>
+                <span>{metric.label}</span>
+                <strong>{metric.value}</strong>
+              </div>
+            ))}
+          </div>
         </div>
       ) : null}
 
-      <div className="editor-sections-nav" role="tablist" aria-label={t("admin.users.sectionNav")}>
-        {sectionOptions.map((section) => (
-          <button
-            aria-selected={activeSection === section.id}
-            className={`editor-sections-nav__item${activeSection === section.id ? " is-active" : ""}`}
-            key={section.id}
-            onClick={() => setActiveSection(section.id)}
-            role="tab"
-            type="button"
-          >
-            {section.label}
-          </button>
-        ))}
-      </div>
+      <div className="editor-sections-shell">
+        <div className="editor-sections-nav" role="tablist" aria-label={t("admin.users.sectionNav")}>
+          {sectionOptions.map((section) => (
+            <button
+              aria-selected={activeSection === section.id}
+              className={`editor-sections-nav__item${activeSection === section.id ? " is-active" : ""}`}
+              key={section.id}
+              onClick={() => setActiveSection(section.id)}
+              role="tab"
+              type="button"
+            >
+              {section.label}
+            </button>
+          ))}
+        </div>
 
-      {activeSection === "global" && (
-        <article className="admin-card admin-card--section">
+        {activeSection === "global" && (
+          <article className="admin-card admin-card--section admin-card--editable">
           <div className="card-header">
             <div>
               <p className="eyebrow">{t("admin.users.sectionGlobal")}</p>
               <p className="muted">{t("admin.users.sectionGlobalHelp")}</p>
+              <p className="admin-edit-hint">{t("admin.users.editableHint")}</p>
             </div>
           </div>
           <form
@@ -944,11 +949,11 @@ function UserEditorCard({
               </button>
             </div>
           </form>
-        </article>
-      )}
+          </article>
+        )}
 
-      {activeSection === "security" && canManageSecurity ? (
-        <article className="admin-card admin-card--section">
+        {activeSection === "security" && canManageSecurity ? (
+          <article className="admin-card admin-card--section admin-card--editable">
           <form
             className="editor-form"
             onSubmit={(event) => {
@@ -963,6 +968,7 @@ function UserEditorCard({
                 <p className="eyebrow">{t("admin.users.passwordTitle")}</p>
                 <p className="muted">{t("admin.users.sectionSecurityHelp")}</p>
                 <p className="muted">{t("admin.users.passwordHelp")}</p>
+                <p className="admin-edit-hint">{t("admin.users.editableHint")}</p>
                 {accessSummary ? <p className="muted">{accessSummary}</p> : null}
               </div>
             </div>
@@ -995,15 +1001,16 @@ function UserEditorCard({
               </button>
             </div>
           </form>
-        </article>
-      ) : null}
+          </article>
+        ) : null}
 
-      {activeSection === "boat" && canEditPermissions && (
-        <article className="admin-card admin-card--section">
+        {activeSection === "boat" && canEditPermissions && (
+          <article className="admin-card admin-card--section admin-card--editable">
           <div className="card-header">
             <div>
               <p className="eyebrow">{t("admin.users.boatsSection")}</p>
               <p className="muted">{t("admin.users.sectionBoatHelp")}</p>
+              <p className="admin-edit-hint">{t("admin.users.editableHint")}</p>
               {!user.is_superuser ? (
                 <p className="muted">{t("admin.users.singleBoatOnly")}</p>
               ) : null}
@@ -1031,6 +1038,7 @@ function UserEditorCard({
                 }))}
                 placeholder={t("admin.users.searchBoat")}
                 selectedId={selectedBoat?.id ?? ""}
+                showSelectionPreviewWhenIdle={false}
               />
             )}
 
@@ -1038,18 +1046,7 @@ function UserEditorCard({
               <div className="assigned-boats">
                 <span className="muted">{t("admin.users.assignedBoats")}</span>
                 <div className="assigned-boats__list">
-                  {selectedAssignedBoat ? (
-                    <span className="status-pill is-good" key={selectedAssignedBoat.id}>
-                      {selectedAssignedBoat.name}
-                    </span>
-                  ) : null}
-                  {additionalAssignedCount > 0 ? (
-                    <span className="status-pill is-muted">
-                      {locale === "es"
-                        ? `+${additionalAssignedCount} mas`
-                        : `+${additionalAssignedCount} more`}
-                    </span>
-                  ) : null}
+                  <span className="status-pill is-muted">{assignedBoatsSummary}</span>
                 </div>
               </div>
             ) : null}
@@ -1070,8 +1067,9 @@ function UserEditorCard({
               </div>
             ) : null}
           </div>
-        </article>
-      )}
+          </article>
+        )}
+      </div>
     </article>
   );
 }
@@ -1085,6 +1083,7 @@ function SearchableSelect({
   emptyText,
   name,
   clearSelectionWhenNoMatch = false,
+  showSelectionPreviewWhenIdle = true,
 }: {
   label: string;
   placeholder: string;
@@ -1094,6 +1093,7 @@ function SearchableSelect({
   emptyText: string;
   name?: string;
   clearSelectionWhenNoMatch?: boolean;
+  showSelectionPreviewWhenIdle?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const normalizedQuery = query.trim().toLowerCase();
@@ -1107,9 +1107,11 @@ function SearchableSelect({
   const selected = options.find((option) => option.id === selectedId) ?? filtered[0] ?? options[0];
   const visibleOptions = normalizedQuery
     ? filtered
-    : selected
-      ? [selected]
-      : filtered.slice(0, 1);
+    : showSelectionPreviewWhenIdle
+      ? selected
+        ? [selected]
+        : filtered.slice(0, 1)
+      : [];
 
   useEffect(() => {
     if (!clearSelectionWhenNoMatch) {
@@ -1128,7 +1130,11 @@ function SearchableSelect({
         <span>{label}</span>
         <input
           onChange={(event) => setQuery(event.target.value)}
-          placeholder={selected && !query ? `${selected.primary} · ${selected.secondary ?? ""}` : placeholder}
+          placeholder={
+            selected && !query && showSelectionPreviewWhenIdle
+              ? `${selected.primary} · ${selected.secondary ?? ""}`
+              : placeholder
+          }
           value={query}
         />
       </label>
@@ -1150,7 +1156,7 @@ function SearchableSelect({
             </button>
           ))
         ) : (
-          <p className="muted">{normalizedQuery ? emptyText : ""}</p>
+          <p className="muted">{normalizedQuery ? emptyText : null}</p>
         )}
       </div>
     </div>
@@ -1255,7 +1261,6 @@ function PermissionEditorRow({
 
       <div className="permission-row__header">
         <div>
-          <strong>{boat.name}</strong>
           <p className="muted">{permission ? text.existing : text.none}</p>
         </div>
       </div>
