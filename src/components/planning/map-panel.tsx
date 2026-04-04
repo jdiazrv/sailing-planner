@@ -6,10 +6,12 @@ import { useI18n } from "@/components/i18n/provider";
 import { hasGoogleMapsKey, loadGoogleMaps } from "@/lib/google-maps";
 import { recordApiUsage } from "@/lib/api-usage";
 import {
-  loadGreekCoastalZoneGeometry,
-  matchGreekCoastalZone,
+  loadGreekCoastalZoneGeometryLazy,
+  matchGreekIslandByPointLazy,
+  matchGreekCoastalZoneLazy,
+  type CoastalZoneMatch,
   type CoastalZoneGeometry,
-} from "@/lib/coastal-zones";
+} from "@/lib/coastal-zones-runtime";
 import type { TripSegmentView, VisitView } from "@/lib/planning";
 
 declare global {
@@ -30,6 +32,7 @@ type Marker = {
   glyph: string;
   order: number | null;
   sortValue: number | null;
+  coastalZone: CoastalZoneMatch | null;
 };
 
 type MapSelection = {
@@ -57,9 +60,6 @@ const BOUNDS = {
   maxLng: 38,
 };
 
-const TRIP_SQUARE_PATH = "M -7 -7 L 7 -7 L 7 7 L -7 7 z";
-const ZONE_RADIUS_METERS = 30000;
-
 const toPoint = (latitude: number, longitude: number) => {
   const x =
     ((longitude - BOUNDS.minLng) / (BOUNDS.maxLng - BOUNDS.minLng)) * 100;
@@ -67,6 +67,26 @@ const toPoint = (latitude: number, longitude: number) => {
     100 - ((latitude - BOUNDS.minLat) / (BOUNDS.maxLat - BOUNDS.minLat)) * 100;
 
   return { x, y };
+};
+
+const toLatLng = (xPercent: number, yPercent: number) => ({
+  latitude:
+    BOUNDS.maxLat - ((yPercent / 100) * (BOUNDS.maxLat - BOUNDS.minLat)),
+  longitude:
+    BOUNDS.minLng + ((xPercent / 100) * (BOUNDS.maxLng - BOUNDS.minLng)),
+});
+
+const toCoordinate = (value: unknown) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
 };
 
 const getZonePolygons = (geometry: CoastalZoneGeometry) =>
@@ -121,72 +141,80 @@ const buildMarkers = (
   tripSegments: TripSegmentView[],
   visits: VisitView[],
   sequenceBySegment: Map<string, number>,
+  coastalZoneBySegmentId: Map<string, CoastalZoneMatch | null>,
+  coastalZoneByVisitKey: Map<string, CoastalZoneMatch | null>,
 ) => {
   const orderedSegments = sortTripSegments(tripSegments);
 
-  const tripMarkers: Marker[] = orderedSegments
-    .filter(
-      (segment) =>
-        segment.location_type !== "zone" &&
-        typeof segment.latitude === "number" &&
-        typeof segment.longitude === "number",
-    )
-    .map((segment, index) => {
-      const meta = getTripMarkerMeta(segment.location_type);
+  const tripMarkers: Marker[] = orderedSegments.flatMap((segment, index) => {
+    const latitude = toCoordinate(segment.latitude);
+    const longitude = toCoordinate(segment.longitude);
+    if (latitude == null || longitude == null) {
+      return [];
+    }
 
-      return {
-        id: `trip-${segment.id}`,
-        entityId: segment.id,
-        label: segment.location_label,
-        latitude: Number(segment.latitude),
-        longitude: Number(segment.longitude),
-        tone: "trip" as const,
-        shape: "circle" as const,
-        color: meta.color,
-        glyph: meta.glyph,
-        order: sequenceBySegment.get(segment.id) ?? index + 1,
-        sortValue: segment.sort_order || (index + 1) * 10,
-      };
-    });
+    const coastalMatch = coastalZoneBySegmentId.get(segment.id);
+    const markerLocationType =
+      segment.location_type === "zone" &&
+      (coastalMatch?.kind === "island" || coastalMatch?.kind === "islet")
+        ? "island"
+        : segment.location_type;
+    const meta = getTripMarkerMeta(markerLocationType);
+
+    return [{
+      id: `trip-${segment.id}`,
+      entityId: segment.id,
+      label: segment.location_label,
+      latitude,
+      longitude,
+      tone: "trip",
+      shape: "circle",
+      color: meta.color,
+      glyph: meta.glyph,
+      order: sequenceBySegment.get(segment.id) ?? index + 1,
+      sortValue: segment.sort_order || (index + 1) * 10,
+      coastalZone: coastalMatch ?? null,
+    }];
+  });
 
   const visitMarkers: Marker[] = visits.flatMap((visit) => {
     const markers: Marker[] = [];
 
-    if (
-      typeof visit.embark_latitude === "number" &&
-      typeof visit.embark_longitude === "number"
-    ) {
+    const embarkLatitude = toCoordinate(visit.embark_latitude);
+    const embarkLongitude = toCoordinate(visit.embark_longitude);
+    if (embarkLatitude != null && embarkLongitude != null) {
       markers.push({
         id: `visit-embark-${visit.id}`,
         entityId: visit.id,
         label: `${visit.visitor_name ?? "Visit"} embark`,
-        latitude: Number(visit.embark_latitude),
-        longitude: Number(visit.embark_longitude),
+        latitude: embarkLatitude,
+        longitude: embarkLongitude,
         tone: "visit",
         shape: "circle",
         color: "#e07a5f",
         glyph: "E",
         order: null,
         sortValue: null,
+        coastalZone: coastalZoneByVisitKey.get(`visit-embark-${visit.id}`) ?? null,
       });
     }
 
-    if (
-      typeof visit.disembark_latitude === "number" &&
-      typeof visit.disembark_longitude === "number"
-    ) {
+    const disembarkLatitude = toCoordinate(visit.disembark_latitude);
+    const disembarkLongitude = toCoordinate(visit.disembark_longitude);
+    if (disembarkLatitude != null && disembarkLongitude != null) {
       markers.push({
         id: `visit-disembark-${visit.id}`,
         entityId: visit.id,
         label: `${visit.visitor_name ?? "Visit"} disembark`,
-        latitude: Number(visit.disembark_latitude),
-        longitude: Number(visit.disembark_longitude),
+        latitude: disembarkLatitude,
+        longitude: disembarkLongitude,
         tone: "visit",
         shape: "circle",
         color: "#e07a5f",
         glyph: "D",
         order: null,
         sortValue: null,
+        coastalZone: coastalZoneByVisitKey.get(`visit-disembark-${visit.id}`) ?? null,
       });
     }
 
@@ -196,37 +224,29 @@ const buildMarkers = (
   return [...tripMarkers, ...visitMarkers];
 };
 
-const buildZones = (
-  tripSegments: TripSegmentView[],
-  sequenceBySegment: Map<string, number>,
-) =>
-  sortTripSegments(tripSegments)
-    .filter(
-      (segment) =>
-        segment.location_type === "zone" &&
-        typeof segment.latitude === "number" &&
-        typeof segment.longitude === "number",
-    )
-    .map((segment, index) => ({
-      id: `zone-${segment.id}`,
-      entityId: segment.id,
-      label: segment.location_label,
-      latitude: Number(segment.latitude),
-      longitude: Number(segment.longitude),
-      order: sequenceBySegment.get(segment.id) ?? index + 1,
-    }));
-
 const buildRoutePoints = (tripSegments: TripSegmentView[]) =>
   sortTripSegments(tripSegments)
-    .filter(
-      (segment) =>
-        typeof segment.latitude === "number" &&
-        typeof segment.longitude === "number",
-    )
-    .map((segment) => ({
-      lat: Number(segment.latitude),
-      lng: Number(segment.longitude),
-    }));
+    .map((segment) => {
+      const latitude = toCoordinate(segment.latitude);
+      const longitude = toCoordinate(segment.longitude);
+      if (latitude == null || longitude == null) {
+        return null;
+      }
+
+      return {
+        lat: latitude,
+        lng: longitude,
+      };
+    })
+    .filter((point): point is { lat: number; lng: number } => Boolean(point));
+
+const toIslandZone = (zone: CoastalZoneMatch | null | undefined) => {
+  if (!zone) {
+    return null;
+  }
+
+  return zone.kind === "island" || zone.kind === "islet" ? zone : null;
+};
 
 export const MapPanel = ({
   tripSegments,
@@ -240,10 +260,13 @@ export const MapPanel = ({
 }: MapPanelProps) => {
   const { t } = useI18n();
   const mapRef = useRef<HTMLDivElement | null>(null);
+  const fallbackMapRef = useRef<HTMLDivElement | null>(null);
+  const clickResolveRequestRef = useRef(0);
   const onSelectEntityRef = useRef(onSelectEntity);
   const [mapReady, setMapReady] = useState(false);
   const [googleAvailable, setGoogleAvailable] = useState(hasGoogleMapsKey);
   const [mapMessage, setMapMessage] = useState(t("planning.loadingMap"));
+  const [activeLabel, setActiveLabel] = useState<string | null>(null);
 
   const [baseMap, setBaseMap] = useState<GoogleBaseMap>(() => {
     try {
@@ -270,24 +293,33 @@ export const MapPanel = ({
     () => buildSequenceBySegment(tripSegments),
     [tripSegments],
   );
-  const markers = useMemo(
-    () => buildMarkers(tripSegments, visits, sequenceBySegment),
-    [sequenceBySegment, tripSegments, visits],
+  const [coastalZoneBySegmentId, setCoastalZoneBySegmentId] = useState(
+    () => new Map<string, CoastalZoneMatch | null>(),
   );
-  const zones = useMemo(
-    () => buildZones(tripSegments, sequenceBySegment),
-    [sequenceBySegment, tripSegments],
+  const [coastalZoneByVisitKey, setCoastalZoneByVisitKey] = useState(
+    () => new Map<string, CoastalZoneMatch | null>(),
+  );
+  const markers = useMemo(
+    () => buildMarkers(
+      tripSegments,
+      visits,
+      sequenceBySegment,
+      coastalZoneBySegmentId,
+      coastalZoneByVisitKey,
+    ),
+    [coastalZoneBySegmentId, coastalZoneByVisitKey, sequenceBySegment, tripSegments, visits],
   );
   const routePoints = useMemo(() => buildRoutePoints(tripSegments), [tripSegments]);
   const hasSelection = Boolean(selectedEntityId);
-  const selectedTripSegment = useMemo(
-    () => tripSegments.find((segment) => segment.id === selectedEntityId) ?? null,
-    [selectedEntityId, tripSegments],
-  );
-  const selectedCoastalZone = useMemo(
-    () => matchGreekCoastalZone(selectedTripSegment?.location_label),
-    [selectedTripSegment?.location_label],
-  );
+  const [activeCoastalZone, setActiveCoastalZone] = useState<CoastalZoneMatch | null>(null);
+  const selectedCoastalZone = useMemo(() => {
+    if (activeCoastalZone) {
+      return activeCoastalZone;
+    }
+
+    const selectedMarker = markers.find((marker) => marker.entityId === selectedEntityId);
+    return selectedMarker?.coastalZone ?? null;
+  }, [activeCoastalZone, markers, selectedEntityId]);
   const [selectedCoastalGeometry, setSelectedCoastalGeometry] =
     useState<CoastalZoneGeometry | null>(null);
   const selectedCoastalZonePolygons = useMemo(
@@ -296,8 +328,68 @@ export const MapPanel = ({
   );
 
   useEffect(() => {
+    let cancelled = false;
+
+    const hasLocations = tripSegments.length > 0 || visits.length > 0;
+    if (!hasLocations) {
+      setCoastalZoneBySegmentId(new Map());
+      setCoastalZoneByVisitKey(new Map());
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void (async () => {
+      const segmentEntries = await Promise.all(
+        tripSegments.map(async (segment) => [
+          segment.id,
+          await matchGreekCoastalZoneLazy(segment.location_label),
+        ] as const),
+      );
+      const visitEntries = await Promise.all(
+        visits.flatMap((visit) => [
+          (async () => [
+            `visit-embark-${visit.id}`,
+            await matchGreekCoastalZoneLazy(visit.embark_place_label),
+          ] as const)(),
+          (async () => [
+            `visit-disembark-${visit.id}`,
+            await matchGreekCoastalZoneLazy(visit.disembark_place_label),
+          ] as const)(),
+        ]),
+      );
+
+      if (cancelled) {
+        return;
+      }
+
+      setCoastalZoneBySegmentId(new Map(segmentEntries));
+      setCoastalZoneByVisitKey(new Map(visitEntries));
+    })().catch(() => {
+      if (cancelled) {
+        return;
+      }
+
+      setCoastalZoneBySegmentId(new Map());
+      setCoastalZoneByVisitKey(new Map());
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tripSegments, visits]);
+
+  useEffect(() => {
     onSelectEntityRef.current = onSelectEntity;
   }, [onSelectEntity]);
+
+  useEffect(() => {
+    setActiveLabel(null);
+  }, [selectedEntityId]);
+
+  useEffect(() => {
+    setActiveCoastalZone(null);
+  }, [selectedEntityId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -309,7 +401,7 @@ export const MapPanel = ({
       };
     }
 
-    void loadGreekCoastalZoneGeometry(selectedCoastalZone)
+    void loadGreekCoastalZoneGeometryLazy(selectedCoastalZone)
       .then((geometry) => {
         if (!cancelled) {
           setSelectedCoastalGeometry(geometry);
@@ -354,19 +446,44 @@ export const MapPanel = ({
         return;
       }
 
-      const primaryPoint = markers[0] ?? zones[0];
+      const primaryPoint = markers[0];
       const center = primaryPoint
         ? { lat: primaryPoint.latitude, lng: primaryPoint.longitude }
         : { lat: 37.9, lng: 18.0 };
 
       const map = new maps.maps.Map(mapRef.current, {
         center,
-        zoom: markers.length + zones.length > 1 ? 5 : 6,
+        zoom: markers.length > 1 ? 5 : 6,
         mapTypeControl: false,
         mapTypeId: baseMap,
         streetViewControl: false,
         fullscreenControl: false,
         gestureHandling: "greedy",
+      });
+
+      map.addListener("click", (event: google.maps.MapMouseEvent) => {
+        if (!event.latLng) {
+          return;
+        }
+
+        clickResolveRequestRef.current += 1;
+        const requestId = clickResolveRequestRef.current;
+        void matchGreekIslandByPointLazy(event.latLng.lat(), event.latLng.lng())
+          .then((matchedZone) => {
+            if (requestId !== clickResolveRequestRef.current) {
+              return;
+            }
+            const islandZone = toIslandZone(matchedZone);
+            setActiveLabel(islandZone?.name ?? null);
+            setActiveCoastalZone(islandZone);
+          })
+          .catch(() => {
+            if (requestId !== clickResolveRequestRef.current) {
+              return;
+            }
+            setActiveLabel(null);
+            setActiveCoastalZone(null);
+          });
       });
 
       if (showSeamarks) {
@@ -388,9 +505,6 @@ export const MapPanel = ({
       const bounds = new maps.maps.LatLngBounds();
       markers.forEach((marker) => {
         bounds.extend({ lat: marker.latitude, lng: marker.longitude });
-      });
-      zones.forEach((zone) => {
-        bounds.extend({ lat: zone.latitude, lng: zone.longitude });
       });
 
       if (showRoute && routePoints.length > 1) {
@@ -415,8 +529,9 @@ export const MapPanel = ({
 
       if (selectedCoastalGeometry) {
         getZonePolygons(selectedCoastalGeometry).forEach((polygon) => {
-          new maps.maps.Polygon({
+          const coastalPolygon = new maps.maps.Polygon({
             map,
+            clickable: true,
             paths: polygon.map((ring) =>
               ring.map(([lng, lat]) => ({
                 lat,
@@ -429,53 +544,18 @@ export const MapPanel = ({
             fillColor: "#0a9396",
             fillOpacity: baseMap === "roadmap" ? 0.14 : 0.1,
           });
+
+          coastalPolygon.addListener("click", () => {
+            const islandZone = toIslandZone(selectedCoastalZone);
+            setActiveLabel(islandZone?.name ?? null);
+            setActiveCoastalZone(islandZone);
+          });
         });
       }
 
       if (!bounds.isEmpty()) {
         map.fitBounds(bounds, 48);
       }
-
-      zones.forEach((zone) => {
-        const selected = zone.entityId === selectedEntityId;
-        new maps.maps.Circle({
-          map,
-          center: { lat: zone.latitude, lng: zone.longitude },
-          radius: ZONE_RADIUS_METERS,
-          strokeColor: "#005f73",
-          strokeOpacity: selected ? 0.95 : hasSelection ? 0.28 : 0.85,
-          strokeWeight: selected ? 3 : 2,
-          fillColor: "#0a9396",
-          fillOpacity: selected ? 0.2 : hasSelection ? 0.05 : 0.12,
-        });
-
-        const zoneMarker = new maps.maps.Marker({
-          clickable: Boolean(onSelectEntityRef.current),
-          map,
-          position: { lat: zone.latitude, lng: zone.longitude },
-          title: `${zone.label} ${t("planning.zone").toLowerCase()}`,
-          label: {
-            text: String(zone.order),
-            color: "#ffffff",
-            fontSize: "9px",
-            fontWeight: "700",
-          },
-          icon: {
-            path: TRIP_SQUARE_PATH,
-            scale: selected ? 1.15 : 1,
-            fillColor: "#005f73",
-            fillOpacity: selected ? 1 : hasSelection ? 0.42 : 1,
-            strokeColor: selected ? "#17211f" : "#ffffff",
-            strokeWeight: selected ? 3 : 2,
-          },
-        });
-
-        if (onSelectEntityRef.current) {
-          zoneMarker.addListener("click", () => {
-            onSelectEntityRef.current?.({ entityId: zone.entityId, tone: "trip" });
-          });
-        }
-      });
 
       const selectedMarkers = markers.filter(
         (marker) => marker.entityId === selectedEntityId,
@@ -484,7 +564,7 @@ export const MapPanel = ({
       markers.forEach((marker) => {
         const selected = marker.entityId === selectedEntityId;
         const markerView = new maps.maps.Marker({
-          clickable: Boolean(onSelectEntityRef.current),
+          clickable: true,
           map,
           position: { lat: marker.latitude, lng: marker.longitude },
           title: marker.label,
@@ -511,10 +591,7 @@ export const MapPanel = ({
                 }
               : undefined,
           icon: {
-            path:
-              marker.shape === "square"
-                ? TRIP_SQUARE_PATH
-                : maps.maps.SymbolPath.CIRCLE,
+            path: maps.maps.SymbolPath.CIRCLE,
             scale: selected ? 9 : hasSelection ? 5.8 : 7,
             fillColor: marker.color,
             fillOpacity: selected ? 1 : hasSelection ? 0.38 : 1,
@@ -523,14 +600,14 @@ export const MapPanel = ({
           },
         });
 
-        if (onSelectEntityRef.current) {
-          markerView.addListener("click", () => {
-            onSelectEntityRef.current?.({
-              entityId: marker.entityId,
-              tone: marker.tone,
-            });
+        markerView.addListener("click", () => {
+          setActiveLabel(marker.label);
+          setActiveCoastalZone(marker.coastalZone ?? null);
+          onSelectEntityRef.current?.({
+            entityId: marker.entityId,
+            tone: marker.tone,
           });
-        }
+        });
       });
 
       if (selectedMarkers.length === 1) {
@@ -564,11 +641,11 @@ export const MapPanel = ({
     markers,
     routePoints,
     selectedCoastalGeometry,
+    selectedCoastalZone,
     selectedEntityId,
     showRoute,
     showSeamarks,
     t,
-    zones,
   ]);
 
   return (
@@ -628,11 +705,53 @@ export const MapPanel = ({
 
       {hasGoogleMapsKey && googleAvailable ? (
         <div className="map-canvas map-canvas--google">
+          {activeLabel ? (
+            <div className="map-fixed-label">{activeLabel}</div>
+          ) : null}
           <div className="map-google" ref={mapRef} />
           {!mapReady ? <div className="map-empty">{mapMessage}</div> : null}
         </div>
       ) : (
-        <div className={`map-canvas${hasSelection ? " has-selection" : ""}`}>
+        <div
+          className={`map-canvas${hasSelection ? " has-selection" : ""}`}
+          onClick={(event) => {
+            const host = fallbackMapRef.current;
+            if (!host) {
+              return;
+            }
+
+            const rect = host.getBoundingClientRect();
+            if (!rect.width || !rect.height) {
+              return;
+            }
+
+            const xPercent = ((event.clientX - rect.left) / rect.width) * 100;
+            const yPercent = ((event.clientY - rect.top) / rect.height) * 100;
+            const { latitude, longitude } = toLatLng(xPercent, yPercent);
+            clickResolveRequestRef.current += 1;
+            const requestId = clickResolveRequestRef.current;
+            void matchGreekIslandByPointLazy(latitude, longitude)
+              .then((matchedZone) => {
+                if (requestId !== clickResolveRequestRef.current) {
+                  return;
+                }
+                const islandZone = toIslandZone(matchedZone);
+                setActiveLabel(islandZone?.name ?? null);
+                setActiveCoastalZone(islandZone);
+              })
+              .catch(() => {
+                if (requestId !== clickResolveRequestRef.current) {
+                  return;
+                }
+                setActiveLabel(null);
+                setActiveCoastalZone(null);
+              });
+          }}
+          ref={fallbackMapRef}
+        >
+          {activeLabel ? (
+            <div className="map-fixed-label">{activeLabel}</div>
+          ) : null}
           <div className="map-canvas__grid" />
           {selectedCoastalZonePolygons.length ? (
             <svg
@@ -640,7 +759,7 @@ export const MapPanel = ({
               className="map-coastal-zone"
               style={{
                 inset: 0,
-                pointerEvents: "none",
+                pointerEvents: "auto",
                 position: "absolute",
                 zIndex: 0,
               }}
@@ -652,6 +771,13 @@ export const MapPanel = ({
                   fill="rgba(10, 147, 150, 0.14)"
                   fillRule="evenodd"
                   key={`${selectedCoastalZone?.id ?? "zone"}-${index}`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    const islandZone = toIslandZone(selectedCoastalZone);
+                    setActiveLabel(islandZone?.name ?? null);
+                    setActiveCoastalZone(islandZone);
+                  }}
+                  pointerEvents="visiblePainted"
                   stroke="#0a9396"
                   strokeLinejoin="round"
                   strokeOpacity="0.96"
@@ -706,22 +832,7 @@ export const MapPanel = ({
               />
             </svg>
           ) : null}
-          {zones.map((zone) => {
-            const point = toPoint(zone.latitude, zone.longitude);
-
-            return (
-              <div
-                className={`map-zone${selectedEntityId === zone.entityId ? " is-selected" : ""}`}
-                key={zone.id}
-                style={{ left: `${point.x}%`, top: `${point.y}%` }}
-                title={`${zone.label} ${t("planning.zone").toLowerCase()}`}
-              >
-                <strong>{zone.order}</strong>
-                <span>{zone.label}</span>
-              </div>
-            );
-          })}
-          {markers.length || zones.length ? (
+          {markers.length ? (
             markers.map((marker) => {
               const point = toPoint(marker.latitude, marker.longitude);
 
@@ -729,12 +840,15 @@ export const MapPanel = ({
                 <button
                   className={`map-marker is-${marker.tone} is-${marker.shape}${selectedEntityId === marker.entityId ? " is-selected" : ""}${marker.glyph === "I" ? " is-island" : ""}`}
                   key={marker.id}
-                  onClick={() =>
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setActiveLabel(marker.label);
+                    setActiveCoastalZone(marker.coastalZone ?? null);
                     onSelectEntityRef.current?.({
                       entityId: marker.entityId,
                       tone: marker.tone,
-                    })
-                  }
+                    });
+                  }}
                   style={{ left: `${point.x}%`, top: `${point.y}%`, background: marker.color }}
                   title={marker.label}
                   type="button"

@@ -938,6 +938,7 @@ const dictionary = {
 } as const;
 
 export type TranslationKey = keyof (typeof dictionary)["es"];
+export type Dictionary = (typeof dictionary)[Locale];
 
 export const getDictionary = (locale: Locale) => dictionary[locale];
 

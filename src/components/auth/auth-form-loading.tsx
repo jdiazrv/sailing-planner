@@ -1,10 +1,9 @@
 import { RouteLoading } from "@/components/ui/route-loading";
 
-export default function Loading() {
+export function AuthFormLoading() {
   return (
     <RouteLoading
-      fullScreen
-      subtitle="Verificando acceso y restaurando la sesion local."
+      subtitle="Restaurando la sesion y preparando el acceso seguro."
       title="Cargando acceso"
     />
   );

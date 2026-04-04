@@ -5,7 +5,7 @@ import { BoatSelector } from "@/components/boats/boat-selector";
 import { LastBoatTracker } from "@/components/boats/last-boat-tracker";
 import { BoatSettingsDialog } from "@/components/boats/boat-settings-dialog";
 import { AppSidebarNav } from "@/components/layout/app-sidebar-nav";
-import { getBoatWorkspace } from "@/lib/boat-data";
+import { getBoatLayoutSnapshot } from "@/lib/boat-data";
 import { getPermissionLabelForLocale, t } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n-server";
 import {
@@ -23,16 +23,16 @@ export default async function BoatLayout({
 }) {
   const { boatId } = await params;
   const locale = await getRequestLocale();
-  const workspace = await getBoatWorkspace(boatId);
-  const isSuperuser = workspace.viewer.isSuperuser;
-  const canEditBoat = isSuperuser || Boolean(workspace.permission?.can_edit);
+  const snapshot = await getBoatLayoutSnapshot(boatId);
+  const isSuperuser = snapshot.viewer.isSuperuser;
+  const canEditBoat = isSuperuser || Boolean(snapshot.permission?.can_edit);
   const canManageUsers =
-    isSuperuser || Boolean(workspace.permission?.can_manage_boat_users);
+    isSuperuser || Boolean(snapshot.permission?.can_manage_boat_users);
   const canShare = canEditBoat || canManageUsers;
 
   const settingsSlot = canEditBoat ? (
     <BoatSettingsDialog
-      boat={workspace.boat}
+      boat={snapshot.boat}
       onRemoveImage={removeBoatProfileImage}
       onSave={saveBoatProfile}
       onUploadImage={uploadBoatProfileImage}
@@ -63,15 +63,15 @@ export default async function BoatLayout({
     <>
       <AppSidebarNav
         boatId={boatId}
-        boatName={workspace.boat.name}
+        boatName={snapshot.boat.name}
         canEditBoat={canEditBoat}
         canManageUsers={canManageUsers}
         canShare={canShare}
         isSuperuser={isSuperuser}
         locale={locale}
         settingsSlot={settingsSlot}
-        currentUserId={workspace.viewer.profile?.id ?? undefined}
-        userName={workspace.viewer.profile?.display_name ?? workspace.viewer.profile?.email ?? null}
+        currentUserId={snapshot.viewer.profile?.id ?? undefined}
+        userName={snapshot.viewer.profile?.display_name ?? snapshot.viewer.profile?.email ?? null}
       />
 
       <main className="shell">
@@ -79,9 +79,9 @@ export default async function BoatLayout({
 
         <header className="workspace-header">
           <div className="workspace-header__title">
-            <h1>{workspace.boat.name}</h1>
+            <h1>{snapshot.boat.name}</h1>
             <p className="muted">
-              {workspace.boat.description ??
+              {snapshot.boat.description ??
                 t(locale, "boatLayout.defaultDescription")}
             </p>
           </div>
@@ -89,7 +89,7 @@ export default async function BoatLayout({
             <span className="badge">
               {getPermissionLabelForLocale(
                 locale,
-                workspace.permission?.permission_level,
+                snapshot.permission?.permission_level,
                 isSuperuser,
               )}
             </span>
@@ -118,8 +118,8 @@ export default async function BoatLayout({
           </div>
         </header>
 
-        {isSuperuser && workspace.boats.length > 1 && (
-          <BoatSelector activeBoatId={boatId} boats={workspace.boats} />
+        {isSuperuser && snapshot.boats.length > 1 && (
+          <BoatSelector activeBoatId={boatId} boats={snapshot.boats} />
         )}
 
         {children}

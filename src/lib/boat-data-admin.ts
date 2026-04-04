@@ -1,14 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { BoatDetails, UserAdminProfile } from "@/lib/planning";
+import type {
+  BoatDetails,
+  BoatRow,
+  PermissionRow,
+  ProfileRow,
+  UserAdminProfile,
+} from "@/lib/planning";
 
 import {
   getBoatAggregateData,
   getBoatImageUrl,
-  type BoatRow,
-  type PermissionRow,
-  type ProfileRow,
 } from "@/lib/boat-data-core";
 import { requireUserAdminAccess } from "@/lib/boat-data-viewer";
 

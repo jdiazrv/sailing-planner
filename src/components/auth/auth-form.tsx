@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { recordCurrentUserAccess } from "@/app/actions";
 import { buildAuthRedirectUrl } from "@/lib/env";
@@ -29,6 +29,7 @@ export const AuthForm = ({
   className,
 }: AuthFormProps = {}) => {
   const { t } = useI18n();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const next = getSafeNextPath(searchParams.get("next"));
 
@@ -42,7 +43,7 @@ export const AuthForm = ({
   const handlePasswordLogin = async () => {
     const supabase = createClient();
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -51,8 +52,19 @@ export const AuthForm = ({
       throw signInError;
     }
 
+    if (!data.session) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        throw new Error(t("auth.error"));
+      }
+    }
+
     void recordCurrentUserAccess("password").catch(() => {});
-    window.location.assign(next);
+    router.replace(next);
+    router.refresh();
   };
 
   const handleMagicLink = async () => {

@@ -3,17 +3,22 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
 import type {
+  BoatRow,
   BoatSummary,
+  PermissionRow,
+  ProfileRow,
+  SeasonAccessLinkRow,
+  SeasonRow,
   ViewerContext,
 } from "@/lib/planning";
 
-export type SeasonRow = Database["public"]["Tables"]["seasons"]["Row"];
-export type BoatRow = Database["public"]["Tables"]["boats"]["Row"];
-export type PermissionRow = Database["public"]["Tables"]["user_boat_permissions"]["Row"];
-export type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 export type BoatOverviewRow = Database["public"]["Views"]["boat_access_overview"]["Row"];
-export type SeasonAccessLinkRow =
-  Database["public"]["Tables"]["season_access_links"]["Row"];
+
+type ExtendedBoatRow = BoatRow & {
+  model?: string | null;
+  year_built?: number | null;
+  home_port?: string | null;
+};
 
 export type BoatAggregateData = {
   tripSegmentsCountByBoat: Map<string, number>;
@@ -44,11 +49,7 @@ export const getBoatImageUrl = (
 export const mapBoatRowToSummary = (
   supabase: Awaited<ReturnType<typeof createClient>>,
   viewer: ViewerContext,
-  boat: BoatRow & {
-    model?: string | null;
-    year_built?: number | null;
-    home_port?: string | null;
-  },
+  boat: ExtendedBoatRow,
 ) => ({
   boat_id: boat.id,
   boat_name: boat.name,
@@ -89,11 +90,7 @@ export const getAccessibleBoatBase = async (
     ]),
   );
 
-  const boatRows = (data ?? []) as (BoatRow & {
-    model?: string | null;
-    year_built?: number | null;
-    home_port?: string | null;
-  })[];
+  const boatRows = (data ?? []) as ExtendedBoatRow[];
 
   return boatRows.map((boat) => ({
     boat_id: boat.id,

@@ -4,10 +4,12 @@ export function AppLoading({
   title = "Cargando",
   subtitle = "Preparando la navegacion y sincronizando el plan.",
   eyebrow = "Sailing Planner",
+  progressLabel = "Cargando",
 }: {
   title?: string;
   subtitle?: string;
   eyebrow?: string;
+  progressLabel?: string;
 }) {
   return (
     <div className="app-loader" aria-busy="true" aria-live="polite">
@@ -23,6 +25,15 @@ export function AppLoading({
         <span className="app-loader__skeleton-line app-loader__skeleton-line--long" />
         <span className="app-loader__skeleton-line app-loader__skeleton-line--medium" />
         <span className="app-loader__skeleton-line app-loader__skeleton-line--short" />
+      </div>
+      <div
+        aria-label={progressLabel}
+        aria-valuemax={100}
+        aria-valuemin={0}
+        className="app-loader__progress"
+        role="progressbar"
+      >
+        <span className="app-loader__progress-fill" />
       </div>
       <div className="app-loader__timeline" aria-hidden="true">
         <span />

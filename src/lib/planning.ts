@@ -1,11 +1,11 @@
 import { getDocumentLocale, getIntlLocale } from "@/lib/i18n";
 import type { Database, PermissionLevel } from "@/types/database";
 
-type SeasonRow = Database["public"]["Tables"]["seasons"]["Row"];
-type BoatRow = Database["public"]["Tables"]["boats"]["Row"];
-type PermissionRow = Database["public"]["Tables"]["user_boat_permissions"]["Row"];
-type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
-type SeasonAccessLinkRow = Database["public"]["Tables"]["season_access_links"]["Row"];
+export type SeasonRow = Database["public"]["Tables"]["seasons"]["Row"];
+export type BoatRow = Database["public"]["Tables"]["boats"]["Row"];
+export type PermissionRow = Database["public"]["Tables"]["user_boat_permissions"]["Row"];
+export type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
+export type SeasonAccessLinkRow = Database["public"]["Tables"]["season_access_links"]["Row"];
 
 export type TripSegmentView =
   Database["public"]["Functions"]["get_season_trip_segments"]["Returns"][number];

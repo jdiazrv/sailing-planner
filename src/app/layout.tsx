@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Toaster } from "sonner";
 
 import { I18nProvider } from "@/components/i18n/provider";
+import { getDictionary } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n-server";
 
 import "./globals.css";
@@ -18,6 +19,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const locale = await getRequestLocale();
+  const dictionary = getDictionary(locale);
 
   return (
     <html lang={locale} suppressHydrationWarning>
@@ -29,7 +31,7 @@ export default async function RootLayout({
         />
       </head>
       <body suppressHydrationWarning>
-        <I18nProvider locale={locale}>
+        <I18nProvider dictionary={dictionary} locale={locale}>
           {children}
           <Toaster position="bottom-right" richColors />
         </I18nProvider>

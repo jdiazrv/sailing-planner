@@ -72,6 +72,11 @@ export const BoatSelector = ({
     [boats, query],
   );
   const selectedBoat = boats.find((boat) => boat.boat_id === activeBoatId) ?? null;
+  const hasAggregateStats = (boat: BoatSummary) =>
+    boat.trip_segments_count != null ||
+    boat.visits_count != null ||
+    boat.active_invites_count != null;
+  const hasLastAccess = (boat: BoatSummary) => boat.user_last_access_at != null;
 
   const selectionSummary =
     collapsible && selectedBoat ? (
@@ -187,14 +192,18 @@ export const BoatSelector = ({
               <h3>{boat.boat_name}</h3>
               {boat.user_display_name ? <p className="muted">{boat.user_display_name}</p> : null}
               <p className="meta">{boat.home_port || t("boatSelector.homePortMissing")}</p>
-              <p className="boat-card__access">
-                {locale === "es" ? "Ult. acceso" : "Last access"}: {formatLastAccess(boat.user_last_access_at)}
-              </p>
-              <div className="boat-card__stats">
-                <span>{boat.trip_segments_count ?? 0} {t("boatSelector.tripSegmentsStat")}</span>
-                <span>{boat.visits_count ?? 0} {t("boatSelector.visitsStat")}</span>
-                <span>{boat.active_invites_count ?? 0} {t("boatSelector.invitesStat")}</span>
-              </div>
+              {hasLastAccess(boat) ? (
+                <p className="boat-card__access">
+                  {locale === "es" ? "Ult. acceso" : "Last access"}: {formatLastAccess(boat.user_last_access_at)}
+                </p>
+              ) : null}
+              {hasAggregateStats(boat) ? (
+                <div className="boat-card__stats">
+                  <span>{boat.trip_segments_count ?? 0} {t("boatSelector.tripSegmentsStat")}</span>
+                  <span>{boat.visits_count ?? 0} {t("boatSelector.visitsStat")}</span>
+                  <span>{boat.active_invites_count ?? 0} {t("boatSelector.invitesStat")}</span>
+                </div>
+              ) : null}
             </Link>
           ))}
         </div>

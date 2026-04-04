@@ -2165,6 +2165,26 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
   filter: drop-shadow(0 0 10px rgba(10, 147, 150, 0.18));
 }
 
+.map-fixed-label {
+  position: absolute;
+  top: 0.65rem;
+  left: 0.65rem;
+  z-index: 6;
+  max-width: min(72%, 300px);
+  padding: 0.32rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--accent-border);
+  background: rgba(10, 16, 26, 0.9);
+  color: var(--ink);
+  font-size: 0.73rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
 .map-marker {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -3835,6 +3855,17 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
   padding-top: 0.25rem;
 }
 
+.route-loading {
+  width: 100%;
+}
+
+.route-loading--fullscreen {
+  min-height: 100vh;
+  display: grid;
+  align-items: center;
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
 .section-loading__notice {
   display: grid;
   justify-items: start;
@@ -3944,6 +3975,32 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
   margin: 1rem auto 0;
 }
 
+.app-loader__progress {
+  width: min(320px, 82%);
+  height: 0.7rem;
+  margin: 1rem auto 0;
+  padding: 0.08rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-raised) 86%, transparent);
+  overflow: hidden;
+}
+
+.app-loader__progress-fill {
+  display: block;
+  width: 42%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--accent) 68%, #48cae4),
+    #48cae4,
+    color-mix(in srgb, var(--accent) 68%, #48cae4)
+  );
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  animation: loaderProgressSlide 1.7s ease-in-out infinite;
+}
+
 .app-loader__skeleton-line {
   display: block;
   height: 0.8rem;
@@ -4022,5 +4079,17 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
   50% {
     background-position: 100% 50%;
     opacity: 1;
+  }
+}
+
+@keyframes loaderProgressSlide {
+  0% {
+    transform: translateX(-115%);
+  }
+  55% {
+    transform: translateX(90%);
+  }
+  100% {
+    transform: translateX(230%);
   }
 }

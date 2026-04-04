@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import { recordCurrentUserAccess } from "@/app/actions";
 import { useI18n } from "@/components/i18n/provider";
@@ -9,7 +8,6 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { createClient } from "@/lib/supabase/browser";
 
 export function SetPasswordForm() {
-  const router = useRouter();
   const { locale } = useI18n();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");

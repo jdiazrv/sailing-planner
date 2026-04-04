@@ -9,6 +9,7 @@ import {
   saveVisit,
 } from "@/app/boats/[boatId]/actions";
 import { DashboardOpenBoatSwitcher } from "@/components/dashboard/dashboard-open-boat-switcher";
+import { RoutePrefetcher } from "@/components/layout/route-prefetcher";
 import { NextStepCard } from "@/components/planning/next-step-card";
 import { SeasonBar } from "@/components/planning/season-bar";
 import { TripOverview } from "@/components/planning/trip-overview";
@@ -63,6 +64,13 @@ export async function DashboardOpenBoatPanel({
 
   return (
     <div className="dashboard-open-boat dashboard-open-boat--ready">
+      <RoutePrefetcher
+        routes={[
+          `/boats/${boatId}`,
+          `/boats/${boatId}?view=visits${workspace.selectedSeason ? `&season=${workspace.selectedSeason.id}` : ""}`,
+          `/boats/${boatId}/share`,
+        ]}
+      />
       <div className="stack">
         <SeasonBar
           basePath={`/dashboard?boat=${boatId}`}

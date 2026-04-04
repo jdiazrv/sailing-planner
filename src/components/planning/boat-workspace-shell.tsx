@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { useI18n } from "@/components/i18n/provider";
+import { RoutePrefetcher } from "@/components/layout/route-prefetcher";
 import { MapPanel } from "@/components/planning/map-panel";
 import { Timeline } from "@/components/planning/timeline";
 import { TripSegmentsManager } from "@/components/planning/trip-segments-manager";
@@ -189,6 +190,10 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
     timeScale === "season" ? 1 : timeScale === "month" ? 1.6 : 2.3;
   const showTable = layoutMode !== "map";
   const showMap = layoutMode !== "table";
+  const nextView = currentView === "trip" ? "visits" : "trip";
+  const viewPrefetchParams = new URLSearchParams();
+  viewPrefetchParams.set("view", nextView);
+  viewPrefetchParams.set("season", seasonId);
 
   useEffect(() => {
     if (!selectedEntityId) {
@@ -223,6 +228,14 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
 
   return (
     <>
+      <RoutePrefetcher
+        routes={[
+          "/dashboard",
+          `/boats/${boatId}/share`,
+          `/boats/${boatId}?${viewPrefetchParams.toString()}`,
+          "/shared",
+        ]}
+      />
       <div className="workspace-selector" data-tour="boat-nav">
         <button
           className={currentView === "trip" ? "is-active" : undefined}

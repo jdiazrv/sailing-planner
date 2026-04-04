@@ -1,12 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import type { SharedTimelineBoat, TripSegmentView } from "@/lib/planning";
+import type {
+  BoatRow,
+  ProfileRow,
+  SeasonRow,
+  SharedTimelineBoat,
+  TripSegmentView,
+} from "@/lib/planning";
 
 import {
   getBoatImageUrl,
-  type BoatRow,
-  type ProfileRow,
-  type SeasonRow,
 } from "@/lib/boat-data-core";
 import { requireViewer } from "@/lib/boat-data-viewer";
 

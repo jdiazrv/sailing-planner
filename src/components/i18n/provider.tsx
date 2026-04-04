@@ -3,29 +3,31 @@
 import { createContext, useContext, useMemo } from "react";
 
 import {
-  getDictionary,
   type Locale,
   type TranslationKey,
+  type Dictionary,
 } from "@/lib/i18n";
 
 const I18nContext = createContext<{
   locale: Locale;
-  dictionary: ReturnType<typeof getDictionary>;
+  dictionary: Dictionary;
 } | null>(null);
 
 export function I18nProvider({
   children,
+  dictionary,
   locale,
 }: {
   children: React.ReactNode;
+  dictionary: Dictionary;
   locale: Locale;
 }) {
   const value = useMemo(
     () => ({
       locale,
-      dictionary: getDictionary(locale),
+      dictionary,
     }),
-    [locale],
+    [dictionary, locale],
   );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
