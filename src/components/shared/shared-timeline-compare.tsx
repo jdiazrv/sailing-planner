@@ -45,6 +45,7 @@ export function SharedTimelineCompare({
         <section className="workspace-grid workspace-grid--single">
           <Timeline
             onZoomChange={setZoom}
+            onlyShowTripPlan={true}
             season={ownEntry.season}
             showAvailability={false}
             showVisits={false}
@@ -61,6 +62,7 @@ export function SharedTimelineCompare({
         <section className="workspace-grid workspace-grid--single">
           <Timeline
             onZoomChange={setZoom}
+            onlyShowTripPlan={true}
             season={selectedEntry.season}
             showAvailability={false}
             showVisits={false}

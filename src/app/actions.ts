@@ -67,8 +67,11 @@ export async function updateTimelineVisibility(isPublic: boolean) {
   revalidatePath("/", "layout");
 }
 
-export async function recordCurrentUserAccess(method?: "password" | "magic_link" | "unknown") {
-  await recordCurrentUserAccessInternal(method);
+export async function recordCurrentUserAccess(
+  method?: "password" | "magic_link" | "unknown",
+  accessToken?: string,
+) {
+  await recordCurrentUserAccessInternal(method, accessToken);
   revalidatePath("/dashboard");
   revalidatePath("/admin/users");
 }

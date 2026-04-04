@@ -21,7 +21,7 @@ export function NextStepCard({
   title,
 }: NextStepCardProps) {
   return (
-    <article className="dashboard-card workspace-main next-step-card">
+    <article className="dashboard-card workspace-main next-step-card" data-tour="next-step-card">
       <div className="card-header">
         <div>
           <p className="eyebrow">{eyebrow}</p>

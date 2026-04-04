@@ -70,6 +70,7 @@ export function SeasonBar({
           );
           setAddOpen(false);
           setEditOpen(false);
+          router.refresh();
         }).catch((error) => {
           toast.error(error instanceof Error ? error.message : t("planning.saveSeasonError"));
         });
@@ -90,6 +91,7 @@ export function SeasonBar({
           toast.success(t("planning.seasonDeleted"));
           setEditOpen(false);
           setConfirmDeleteOpen(false);
+          router.refresh();
         }).catch((error) => {
           toast.error(error instanceof Error ? error.message : t("planning.deleteSeasonError"));
         });
@@ -100,7 +102,7 @@ export function SeasonBar({
   };
 
   return (
-    <div className="season-bar">
+    <div className="season-bar" data-tour="season-bar">
       <div className="season-bar__current">
         {selected ? (
           <>

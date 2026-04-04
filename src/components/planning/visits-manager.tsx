@@ -7,6 +7,7 @@ import { useI18n } from "@/components/i18n/provider";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog } from "@/components/ui/dialog";
 import { PlaceAutocompleteField } from "@/components/places/place-autocomplete-field";
+import { GuidedEmptyState } from "@/components/planning/guided-empty-state";
 import { formatShortDate, hasVisitDateRange } from "@/lib/planning";
 import type { VisitView } from "@/lib/planning";
 
@@ -195,19 +196,20 @@ export function VisitsManager({
           ))}
         </div>
       ) : (
-        <div className="empty-state">
-          <p className="muted">{emptyMessage ?? t("planning.noVisitsEmpty")}</p>
-          {canEdit ? (
-            <button
-              className="primary-button"
-              disabled={isPending}
-              onClick={() => setAddOpen(true)}
-              type="button"
-            >
-              + {t("planning.addVisit")}
-            </button>
-          ) : null}
-        </div>
+        <GuidedEmptyState
+          icon="👥"
+          title={canEdit ? "Aún no hay visitas registradas" : "No hay visitas en esta temporada"}
+          body={
+            canEdit
+              ? "Las visitas registran a los tripulantes o invitados de la temporada: nombre, fechas de embarque y desembarque, y lugar. Cada visita aparece como una fila propia en el timeline, agrupada con otras del mismo nombre."
+              : emptyMessage ?? t("planning.noVisitsEmpty")
+          }
+          action={
+            canEdit
+              ? { label: `+ ${t("planning.addVisit")}`, onClick: () => setAddOpen(true) }
+              : undefined
+          }
+        />
       )}
 
       <Dialog

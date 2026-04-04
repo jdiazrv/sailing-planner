@@ -8,6 +8,7 @@ import type {
   ProfileRow,
   UserAdminProfile,
 } from "@/lib/planning";
+import type { PermissionLevel } from "@/types/database";
 
 import {
   getBoatAggregateData,
@@ -37,6 +38,8 @@ export const getAdminBoats = async () => {
     user_display_name: aggregateData.userLastAccessByBoat.get(boat.id)?.displayName ?? null,
     user_email: aggregateData.userLastAccessByBoat.get(boat.id)?.email ?? null,
     users_count: aggregateData.usersCountByBoat.get(boat.id) ?? 0,
+    managers_count: aggregateData.managersCountByBoat.get(boat.id) ?? 0,
+    editors_count: aggregateData.editorsCountByBoat.get(boat.id) ?? 0,
   })) as BoatDetails[];
 };
 
@@ -114,6 +117,10 @@ export const getAdminUsers = async () => {
   const tripSegmentsCountByUser = new Map<string, number>();
   const visitsCountByUser = new Map<string, number>();
   const invitesGeneratedCountByUser = new Map<string, number>();
+  const createdUsersByCreator = new Map<
+    string,
+    NonNullable<UserAdminProfile["created_users"]>
+  >();
   const seasonsByBoat = new Map<
     string,
     { id: string; boat_id: string; year: number; start_date: string }[]
@@ -237,6 +244,41 @@ export const getAdminUsers = async () => {
     }
   }
 
+  const profileById = new Map<string, ProfileRow>();
+  profiles.forEach((profile) => {
+    profileById.set(profile.id, profile);
+  });
+
+  profiles.forEach((createdProfile) => {
+    const creatorId = createdProfile.created_by_user_id;
+    if (!creatorId || !profileById.has(creatorId)) {
+      return;
+    }
+
+    const permission = permissionsByUser.get(createdProfile.id)?.[0];
+    const createdList = createdUsersByCreator.get(creatorId) ?? [];
+    createdList.push({
+      id: createdProfile.id,
+      display_name: createdProfile.display_name,
+      email: createdProfile.email,
+      boat_id: permission?.boat_id ?? null,
+      permission_level: (permission?.permission_level ?? "viewer") as PermissionLevel,
+      last_sign_in_at: createdProfile.last_sign_in_at,
+    });
+    createdUsersByCreator.set(creatorId, createdList);
+  });
+
+  createdUsersByCreator.forEach((createdList, creatorId) => {
+    createdUsersByCreator.set(
+      creatorId,
+      [...createdList].sort((left, right) =>
+        `${left.display_name ?? left.email ?? ""}`.localeCompare(
+          `${right.display_name ?? right.email ?? ""}`,
+        ),
+      ),
+    );
+  });
+
   return profiles.map((profile) => ({
     ...profile,
     permissions: permissionsByUser.get(profile.id) ?? [],
@@ -245,5 +287,6 @@ export const getAdminUsers = async () => {
     trip_segments_count: tripSegmentsCountByUser.get(profile.id) ?? 0,
     visits_count: visitsCountByUser.get(profile.id) ?? 0,
     invites_generated_count: invitesGeneratedCountByUser.get(profile.id) ?? 0,
+    created_users: createdUsersByCreator.get(profile.id) ?? [],
   })) as UserAdminProfile[];
 };

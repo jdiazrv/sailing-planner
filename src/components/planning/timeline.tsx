@@ -37,6 +37,7 @@ type TimelineProps = {
   availabilityCollapsed?: boolean;
   onToggleVisitsCollapsed?: () => void;
   onToggleAvailabilityCollapsed?: () => void;
+  onlyShowTripPlan?: boolean;
 };
 
 type TimelineTooltipState = {
@@ -150,6 +151,7 @@ export const Timeline = ({
   availabilityCollapsed = false,
   onToggleVisitsCollapsed,
   onToggleAvailabilityCollapsed,
+  onlyShowTripPlan = false,
 }: TimelineProps) => {
   const { t } = useI18n();
   const locale = getDocumentLocale();
@@ -356,51 +358,52 @@ export const Timeline = ({
               </div>
 
               <TimelineLane highlight label={t("planning.tripPlan")}>
-                {tripSegments.map((segment) => (
-                  <button
-                    className={`timeline-bar timeline-bar--btn is-${segment.status}${selectedEntityId === segment.id ? " is-selected" : ""}`}
-                    key={segment.id}
-                    onDoubleClick={() => onTripSegmentEdit?.(segment)}
-                    onPointerCancel={clearLongPress}
-                    onPointerDown={(event) =>
-                      beginLongPress(event, segment.id, () => onTripSegmentEdit?.(segment))
-                    }
-                    onPointerEnter={(event) =>
-                      showTooltip(
-                        event,
-                        `${segment.location_label} · ${t(`status.${segment.status}` as never)} · ${formatShortDate(segment.start_date)} – ${formatShortDate(segment.end_date)}`,
-                      )
-                    }
-                    onPointerLeave={() => {
-                      hideTooltip();
-                      clearLongPress();
-                    }}
-                    onPointerMove={moveTooltip}
-                    onPointerUp={clearLongPress}
-                    onClick={() => {
-                      if (consumeLongPress(segment.id)) {
-                        return;
+                {tripSegments.map((segment) => {
+                  return (
+                    <button
+                      key={segment.id}
+                      className={`timeline-bar timeline-bar--btn timeline-bar--trip is-${segment.status}${selectedEntityId === segment.id ? " is-selected" : ""}`}
+                      onDoubleClick={() => onTripSegmentEdit?.(segment)}
+                      onPointerCancel={clearLongPress}
+                      onPointerDown={(event) =>
+                        beginLongPress(event, segment.id, () => onTripSegmentEdit?.(segment))
                       }
-                      onTripSegmentSelect?.(segment);
-                    }}
-                    style={toBarStyle(season, segment.start_date, segment.end_date)}
-                    type="button"
-                  >
-                    <span aria-hidden="true" className="timeline-bar__glyph">
-                      {getStatusGlyph(segment.status)}
-                    </span>
-                    <span>{segment.location_label}</span>
-                  </button>
-                ))}
+                      onPointerEnter={(event) =>
+                        showTooltip(
+                          event,
+                          `${segment.location_label} · ${t(`status.${segment.status}` as never)} · ${formatShortDate(segment.start_date)} – ${formatShortDate(segment.end_date)}`,
+                        )
+                      }
+                      onPointerLeave={() => {
+                        hideTooltip();
+                        clearLongPress();
+                      }}
+                      onPointerMove={moveTooltip}
+                      onPointerUp={clearLongPress}
+                      onClick={() => {
+                        if (consumeLongPress(segment.id)) {
+                          return;
+                        }
+                        onTripSegmentSelect?.(segment);
+                      }}
+                      style={toBarStyle(season, segment.start_date, segment.end_date)}
+                      type="button"
+                    >
+                      <span>{segment.location_label}</span>
+                    </button>
+                  );
+                })}
               </TimelineLane>
 
-              <TimelineGroup
-                count={visits.length}
-                description={t("planning.visit")}
-                onToggle={onToggleVisitsCollapsed}
-                open={!visitsCollapsed}
-                toggleLabels={groupLabels}
-                title={groupLabels.people}
+              {!onlyShowTripPlan && (
+                <>
+                  <TimelineGroup
+                    count={visits.length}
+                    description={t("planning.visit")}
+                    onToggle={onToggleVisitsCollapsed}
+                    open={!visitsCollapsed}
+                    toggleLabels={groupLabels}
+                    title={groupLabels.people}
               >
                 {showVisits && !visitsCollapsed && visits.length === 0 ? (
                   <TimelineLane label={t("planning.visit")}>
@@ -489,7 +492,9 @@ export const Timeline = ({
                     ))}
                   </TimelineLane>
                 ) : null}
-              </TimelineGroup>
+                </TimelineGroup>
+                </>
+              )}
             </>
           )}
         </div>

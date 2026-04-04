@@ -7,6 +7,7 @@ import { useI18n } from "@/components/i18n/provider";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog } from "@/components/ui/dialog";
 import { PlaceAutocompleteField } from "@/components/places/place-autocomplete-field";
+import { GuidedEmptyState } from "@/components/planning/guided-empty-state";
 import { formatShortDate, nauticalMilesBetweenPoints } from "@/lib/planning";
 import type { TripSegmentView } from "@/lib/planning";
 
@@ -216,19 +217,20 @@ export function TripSegmentsManager({
           })}
         </div>
       ) : (
-        <div className="empty-state">
-          <p className="muted">{t("planning.noTripSegments")}</p>
-          {canEdit ? (
-            <button
-              className="primary-button"
-              disabled={isPending}
-              onClick={() => setAddOpen(true)}
-              type="button"
-            >
-              + {t("planning.addSegment")}
-            </button>
-          ) : null}
-        </div>
+        <GuidedEmptyState
+          icon="🗺️"
+          title={canEdit ? "Aún no hay tramos de viaje" : "No hay tramos planificados"}
+          body={
+            canEdit
+              ? "Los tramos definen las zonas de navegacion de la temporada: fechas, lugar, estado y millas. Añade el primero para que aparezca en el timeline y en el mapa."
+              : "Todavia no se han añadido tramos de viaje para esta temporada."
+          }
+          action={
+            canEdit
+              ? { label: `+ ${t("planning.addSegment")}`, onClick: () => setAddOpen(true) }
+              : undefined
+          }
+        />
       )}
 
       <Dialog

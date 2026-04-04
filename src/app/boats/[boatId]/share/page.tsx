@@ -33,7 +33,10 @@ export default async function BoatSharePage({
     workspace.viewer.isSuperuser || Boolean(workspace.permission?.can_edit);
   const canManageUsers =
     workspace.viewer.isSuperuser ||
-    Boolean(workspace.permission?.can_manage_boat_users);
+    Boolean(
+      workspace.permission?.can_manage_boat_users ||
+      workspace.permission?.permission_level === "manager",
+    );
   const canShare = canEdit || canManageUsers;
 
   if (!canShare) {

@@ -21,14 +21,16 @@ export default async function DashboardLayout({
     (lastBoatId && boats.some((entry) => entry.boat_id === lastBoatId)
       ? lastBoatId
       : boats[0]?.boat_id) ?? undefined;
+  const hasManageUsersPermission = (boat: (typeof boats)[number] | undefined) =>
+    Boolean(boat?.can_manage_boat_users || boat?.permission_level === "manager");
   const canManageUsers =
     viewer.isSuperuser ||
-    boats.some((entry) => entry.can_manage_boat_users);
+    boats.some((entry) => hasManageUsersPermission(entry));
   const canShare =
     viewer.isSuperuser ||
     Boolean(
       boats.find((entry) => entry.boat_id === activeBoatId)?.can_edit ||
-      boats.find((entry) => entry.boat_id === activeBoatId)?.can_manage_boat_users,
+      hasManageUsersPermission(boats.find((entry) => entry.boat_id === activeBoatId)),
     );
 
   return (

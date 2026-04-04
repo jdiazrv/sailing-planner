@@ -9,6 +9,7 @@ import {
   purgeRevokedSeasonAccessLinks as purgeRevokedSeasonAccessLinksInternal,
   revokeSeasonAccessLink as revokeSeasonAccessLinkInternal,
 } from "@/app/admin/actions";
+import { recordCurrentUserAccess } from "@/lib/auth-audit";
 import { createClient } from "@/lib/supabase/server";
 import type {
   Database,
@@ -26,6 +27,8 @@ export async function trackLastBoat(boatId: string) {
     httpOnly: true,
     sameSite: "lax",
   });
+  // Update last_sign_in_at for all users (incl. viewers) so admin stats stay current
+  void recordCurrentUserAccess("unknown").catch(() => {});
 }
 
 const refreshBoatRoutes = (boatId: string) => {
@@ -86,7 +89,7 @@ const requireBoatEditor = async (boatId: string) => {
   throwIfError(profileError);
 
   if (profile?.is_superuser) {
-    return { supabase, db };
+    return { supabase, db, user };
   }
 
   const { data: permission, error: permissionError } = await db
@@ -101,7 +104,7 @@ const requireBoatEditor = async (boatId: string) => {
     throw new Error("You do not have permission to edit this boat.");
   }
 
-  return { supabase, db };
+  return { supabase, db, user };
 };
 
 const getNextTripSortOrder = async (db: any, seasonId: string) => {
@@ -119,7 +122,7 @@ const getNextTripSortOrder = async (db: any, seasonId: string) => {
 
 export async function saveSeason(formData: FormData) {
   const boatId = formData.get("boat_id")?.toString() ?? "";
-  const { db } = await requireBoatEditor(boatId);
+  const { db, user } = await requireBoatEditor(boatId);
   const seasonId = asOptionalString(formData.get("season_id"));
 
   const payload = {
@@ -137,6 +140,21 @@ export async function saveSeason(formData: FormData) {
   } else {
     const { error } = await db.from("seasons").insert(payload);
     throwIfError(error);
+
+    const { data: profile, error: profileError } = await db
+      .from("profiles")
+      .select("onboarding_pending, onboarding_step")
+      .eq("id", user.id)
+      .maybeSingle();
+    throwIfError(profileError);
+
+    if (profile?.onboarding_pending && profile.onboarding_step === "create_season") {
+      const { error: onboardingError } = await db
+        .from("profiles")
+        .update({ onboarding_step: "full_tour" })
+        .eq("id", user.id);
+      throwIfError(onboardingError);
+    }
   }
 
   refreshBoatRoutes(boatId);
@@ -146,6 +164,18 @@ export async function deleteSeason(formData: FormData) {
   const boatId = formData.get("boat_id")?.toString() ?? "";
   const { db } = await requireBoatEditor(boatId);
   const seasonId = formData.get("season_id")?.toString() ?? "";
+
+  const { error: deleteVisitsError } = await db
+    .from("visits")
+    .delete()
+    .eq("season_id", seasonId);
+  throwIfError(deleteVisitsError);
+
+  const { error: deleteSegmentsError } = await db
+    .from("trip_segments")
+    .delete()
+    .eq("season_id", seasonId);
+  throwIfError(deleteSegmentsError);
 
   const { error } = await db.from("seasons").delete().eq("id", seasonId);
   throwIfError(error);

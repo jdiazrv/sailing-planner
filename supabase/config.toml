@@ -29,7 +29,9 @@ enabled = true
 site_url = "http://localhost:3000"
 additional_redirect_urls = [
   "http://localhost:3000/auth/callback",
-  "http://127.0.0.1:3000/auth/callback"
+  "http://127.0.0.1:3000/auth/callback",
+  "https://sail-planner.netlify.com/auth/callback",
+  "https://sail-planner.netlify.app/auth/callback"
 ]
 jwt_expiry = 3600
 enable_signup = true
@@ -41,5 +43,13 @@ double_confirm_changes = true
 enable_confirmations = false
 
 [auth.email.template.invite]
-subject = "Te han invitado a Sailing Planner"
+subject = "{{ if eq .Data.preferred_language \"en\" }}You have been invited to Sailing Planner{{ else }}Te han invitado a Sailing Planner{{ end }}"
 content_path = "./supabase/templates/invite.html"
+
+[auth.email.template.magic_link]
+subject = "{{ if eq .Data.preferred_language \"en\" }}Your magic link to Sailing Planner{{ else }}Tu enlace de acceso a Sailing Planner{{ end }}"
+content_path = "./supabase/templates/magic_link.html"
+
+[auth.email.template.confirmation]
+subject = "{{ if eq .Data.preferred_language \"en\" }}Confirm your Sailing Planner account{{ else }}Confirma tu cuenta de Sailing Planner{{ end }}"
+content_path = "./supabase/templates/confirm_signup.html"

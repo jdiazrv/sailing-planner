@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { useI18n } from "@/components/i18n/provider";
 import { RoutePrefetcher } from "@/components/layout/route-prefetcher";
+import { BlockedIntervalsManager } from "@/components/planning/blocked-intervals-manager";
 import { MapPanel } from "@/components/planning/map-panel";
 import { Timeline } from "@/components/planning/timeline";
 import { TripSegmentsManager } from "@/components/planning/trip-segments-manager";
@@ -73,7 +74,7 @@ const getAvailabilityPlaceRows = (
     const hasConfirmedVisit = visits.some(
       (visit) =>
         hasVisitDateRange(visit) &&
-        visit.status === "confirmed" &&
+        (visit.status === "confirmed" || visit.status === "blocked") &&
         rangeIncludes(visit.embark_date, visit.disembark_date, day),
     );
     const hasTentativeVisit = visits.some(
@@ -175,16 +176,22 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
   const [timelineEditSegment, setTimelineEditSegment] = useState<TripSegmentView | null>(null);
   const [showPeopleLayer, setShowPeopleLayer] = useState(true);
   const [showAvailabilityLayer, setShowAvailabilityLayer] = useState(true);
+  const [showBlockedLayer, setShowBlockedLayer] = useState(true);
+  const [blockedSectionOpen, setBlockedSectionOpen] = useState(
+    searchParams.get("blocked") === "create",
+  );
   const [layoutMode, setLayoutMode] = useState<"split" | "table" | "map">("split");
   const [timeScale, setTimeScale] = useState<"season" | "month" | "week">("season");
-  const conflicts = computeVisitConflicts(season, tripSegments, visits);
+  const regularVisits = visits.filter((v) => v.status !== "blocked");
+  const blockedIntervals = visits.filter((v) => v.status === "blocked");
+  const conflicts = computeVisitConflicts(season, tripSegments, regularVisits);
   const filteredSegments = [...tripSegments]
     .sort(
       (left, right) =>
         left.start_date.localeCompare(right.start_date) ||
         left.end_date.localeCompare(right.end_date),
     );
-  const filteredVisits = visits;
+  const filteredVisits = regularVisits;
   const availabilityPlaceRows = getAvailabilityPlaceRows(season, filteredSegments, filteredVisits);
   const timelineZoom =
     timeScale === "season" ? 1 : timeScale === "month" ? 1.6 : 2.3;
@@ -194,6 +201,12 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
   const viewPrefetchParams = new URLSearchParams();
   viewPrefetchParams.set("view", nextView);
   viewPrefetchParams.set("season", seasonId);
+
+  useEffect(() => {
+    if (searchParams.get("blocked") === "create") {
+      setBlockedSectionOpen(true);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!selectedEntityId) {
@@ -256,7 +269,7 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
         ) : null}
       </div>
 
-      <section className="dashboard-card planning-control-bar">
+      <section className="dashboard-card planning-control-bar" data-tour="planning-control-bar">
         <div className="planning-control-bar__row">
           <label className="planning-control">
             <span>Escala</span>
@@ -286,7 +299,7 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
           </label>
         </div>
         <div className="planning-control-bar__row">
-          <div className="planning-chip-group">
+          <div className="planning-chip-group" data-tour="timeline-layers">
             <span className="planning-chip-group__label">Capas</span>
             <button
               className="planning-chip is-locked"
@@ -308,6 +321,27 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
             >
               Disponibilidad
             </button>
+            <button
+              className={`planning-chip${showBlockedLayer ? " is-active" : ""}`}
+              onClick={() => setShowBlockedLayer((value) => !value)}
+              type="button"
+            >
+              Bloqueado
+            </button>
+            {canEdit ? (
+              <button
+                className="secondary-button secondary-button--small"
+                onClick={() => {
+                  const nextParams = new URLSearchParams(searchParams.toString());
+                  nextParams.set("blocked", "create");
+                  router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
+                  setBlockedSectionOpen(true);
+                }}
+                type="button"
+              >
+                + Bloquear período
+              </button>
+            ) : null}
           </div>
         </div>
       </section>
@@ -351,8 +385,10 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
             visits={visits}
             visitsCollapsed={!showPeopleLayer}
             availabilityCollapsed={!showAvailabilityLayer}
+            blockedCollapsed={!showBlockedLayer}
             onToggleVisitsCollapsed={() => setShowPeopleLayer((value) => !value)}
             onToggleAvailabilityCollapsed={() => setShowAvailabilityLayer((value) => !value)}
+            onToggleBlockedCollapsed={() => setShowBlockedLayer((value) => !value)}
             zoom={timelineZoom}
           />
         </div>
@@ -419,33 +455,51 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
                 />
               </>
             )}
-          </article>
+            <details className="inline-section" data-tour="availability-section" open>
+              <summary className="inline-section__summary">
+                Disponibilidad · {availabilityPlaceRows.length} períodos
+              </summary>
+              {availabilityPlaceRows.length ? (
+                <ul className="list availability-places-list">
+                  {availabilityPlaceRows.map((row) => (
+                    <li key={`${row.status}-${row.segmentId ?? "none"}-${row.start}`}>
+                      <span className="availability-places-list__line">
+                        <span className="availability-places-list__dates">
+                          {formatCompactAvailabilityRange(row.start, row.end)}
+                        </span>
+                        <span className="availability-places-list__label">
+                          {row.label}
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="muted">No hay períodos disponibles.</p>
+              )}
+            </details>
 
-          <article className="dashboard-card availability-places-card">
-            <div className="card-header">
-              <div>
-                <p className="eyebrow">Disponibilidad</p>
-                <h2>Fechas y lugar</h2>
-              </div>
-            </div>
-            {availabilityPlaceRows.length ? (
-              <ul className="list availability-places-list">
-                {availabilityPlaceRows.map((row) => (
-                  <li key={`${row.status}-${row.segmentId ?? "none"}-${row.start}`}>
-                    <span className="availability-places-list__line">
-                      <span className="availability-places-list__dates">
-                        {formatCompactAvailabilityRange(row.start, row.end)}
-                      </span>
-                      <span className="availability-places-list__label">
-                        {row.label}
-                      </span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="muted">No hay periodos disponibles ahora mismo.</p>
-            )}
+            <details className="inline-section" open={blockedSectionOpen}>
+              <summary
+                className="inline-section__summary"
+                onClick={(event) => {
+                  event.preventDefault();
+                  setBlockedSectionOpen((value) => !value);
+                }}
+              >
+                Bloqueado · {blockedIntervals.length} períodos
+              </summary>
+              <BlockedIntervalsManager
+                boatId={boatId}
+                canEdit={canEdit}
+                initiallyOpenAdd={searchParams.get("blocked") === "create"}
+                intervals={blockedIntervals}
+                onDelete={onDeleteVisit}
+                onSave={onSaveVisit}
+                seasonId={seasonId}
+                seasonStart={seasonStart}
+              />
+            </details>
           </article>
         </div>
         ) : null}

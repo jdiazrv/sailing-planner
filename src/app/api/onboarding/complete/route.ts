@@ -16,7 +16,7 @@ export async function POST() {
 
   const { error } = await db
     .from("profiles")
-    .update({ onboarding_pending: false })
+    .update({ onboarding_pending: false, onboarding_step: null })
     .eq("id", user.id);
 
   if (error) {

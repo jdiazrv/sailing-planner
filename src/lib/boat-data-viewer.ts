@@ -29,6 +29,7 @@ export const requireViewer = cache(async () => {
     profile,
     isSuperuser: Boolean(profile?.is_superuser),
     onboardingPending: Boolean(profile?.onboarding_pending),
+    onboardingStep: profile?.onboarding_step ?? null,
     isSeasonGuest: false,
   };
 
@@ -63,16 +64,18 @@ export const requireUserAdminAccess = cache(async () => {
 
   const { data, error } = await db
     .from("user_boat_permissions")
-    .select("boat_id")
+    .select("boat_id, permission_level, can_manage_boat_users")
     .eq("user_id", context.user.id)
-    .eq("can_manage_boat_users", true);
+    .or("can_manage_boat_users.eq.true,permission_level.eq.manager");
 
   if (error) {
     throw new Error(error.message);
   }
 
-  const manageableBoatIds = ((data ?? []) as { boat_id: string }[]).map(
-    (entry) => entry.boat_id,
+  const manageableBoatIds = Array.from(
+    new Set(
+      ((data ?? []) as { boat_id: string }[]).map((entry) => entry.boat_id),
+    ),
   );
 
   if (!manageableBoatIds.length) {

@@ -12,6 +12,7 @@ import {
   getBoatImageUrl,
 } from "@/lib/boat-data-core";
 import { requireViewer } from "@/lib/boat-data-viewer";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const SharedTimelineErrorCode = {
   PublicTimelineMigrationRequired: "PUBLIC_TIMELINE_MIGRATION_REQUIRED",
@@ -54,7 +55,7 @@ export const getSharedTimelineWorkspace = async (
   requestedBoatId?: string,
   requestedSeasonId?: string,
 ) => {
-  const { supabase, user, viewer } = await requireViewer();
+  const { supabase, viewer } = await requireViewer();
   const db = supabase as any;
   const viewerIsPublic = Boolean(viewer.profile?.is_timeline_public);
 
@@ -167,38 +168,39 @@ export const getSharedTimelineWorkspace = async (
     };
   }
 
-  const { data: profilesData, error: profilesError } = await db
-    .from("profiles")
-    .select("id, display_name, is_timeline_public")
-    .eq("is_timeline_public", true)
-    .neq("id", user.id);
-  if (profilesError) {
-    throw asSharedTimelineError(profilesError);
-  }
-
-  const publicProfiles = (profilesData ?? []) as Pick<
-    ProfileRow,
-    "id" | "display_name" | "is_timeline_public"
-  >[];
-  const publicUserIds = publicProfiles.map((profile) => profile.id);
-
-  if (!publicUserIds.length) {
-    return emptySharedWorkspace(viewer);
-  }
-
-  const { data: permissionsData, error: permissionsError } = await db
+  const admin = createAdminClient();
+  const sharedDb = (admin ?? db) as any;
+  const { data: permissionsData, error: permissionsError } = await sharedDb
     .from("user_boat_permissions")
-    .select("boat_id, user_id")
-    .in("user_id", publicUserIds);
+    .select("boat_id, user_id, created_at, profiles!inner(id, display_name, is_timeline_public)")
+    .eq("profiles.is_timeline_public", true)
+    .order("created_at", { ascending: true });
   if (permissionsError) {
-    throw new Error(permissionsError.message);
+    throw asSharedTimelineError(permissionsError);
   }
 
-  const uniqueBoatEntries = new Map<string, string>();
-  ((permissionsData ?? []) as { boat_id: string; user_id: string }[]).forEach((entry) => {
-    if (!uniqueBoatEntries.has(entry.boat_id)) {
-      uniqueBoatEntries.set(entry.boat_id, entry.user_id);
+  const uniqueBoatEntries = new Map<string, { userId: string; displayName: string | null }>();
+  ((permissionsData ?? []) as Array<{
+    boat_id: string;
+    user_id: string;
+    profiles:
+      | {
+          display_name: string | null;
+        }
+      | {
+          display_name: string | null;
+        }[]
+      | null;
+  }>).forEach((entry) => {
+    if (uniqueBoatEntries.has(entry.boat_id)) {
+      return;
     }
+
+    const profile = Array.isArray(entry.profiles) ? entry.profiles[0] : entry.profiles;
+    uniqueBoatEntries.set(entry.boat_id, {
+      userId: entry.user_id,
+      displayName: profile?.display_name ?? null,
+    });
   });
 
   const sharedBoatIds = [...uniqueBoatEntries.keys()];
@@ -209,8 +211,8 @@ export const getSharedTimelineWorkspace = async (
 
   const [{ data: boatsData, error: boatsError }, { data: seasonsData, error: seasonsError }] =
     await Promise.all([
-      db.from("boats").select("*").in("id", sharedBoatIds).order("name"),
-      db.from("seasons").select("*").in("boat_id", sharedBoatIds).order("year", {
+      sharedDb.from("boats").select("*").in("id", sharedBoatIds).order("name"),
+      sharedDb.from("seasons").select("*").in("boat_id", sharedBoatIds).order("year", {
         ascending: false,
       }),
     ]);
@@ -229,12 +231,8 @@ export const getSharedTimelineWorkspace = async (
     seasonsByBoat.set(season.boat_id, existing);
   });
 
-  const publicProfileById = new Map(
-    publicProfiles.map((profile) => [profile.id, profile.display_name ?? null]),
-  );
-
   const sharedBoats = ((boatsData ?? []) as BoatRow[]).map((boat) => {
-    const ownerUserId = uniqueBoatEntries.get(boat.id) ?? null;
+    const owner = uniqueBoatEntries.get(boat.id) ?? null;
     const seasons = seasonsByBoat.get(boat.id) ?? [];
     const season = seasons.find((entry) => entry.id === requestedSeasonId) ?? seasons[0] ?? null;
 
@@ -244,7 +242,7 @@ export const getSharedTimelineWorkspace = async (
         image_url: getBoatImageUrl(supabase, boat.image_path, boat.updated_at),
       },
       season,
-      ownerDisplayName: ownerUserId ? publicProfileById.get(ownerUserId) ?? null : null,
+      ownerDisplayName: owner?.displayName ?? null,
       tripSegments: [] as TripSegmentView[],
     } satisfies SharedTimelineBoat;
   });
@@ -253,15 +251,28 @@ export const getSharedTimelineWorkspace = async (
     sharedBoats.find((entry) => entry.boat.id === requestedBoatId) ?? sharedBoats[0] ?? null;
 
   if (selectedBoat?.season) {
-    const { data: tripData, error: tripError } = await db.rpc("get_season_trip_segments", {
-      p_season_id: selectedBoat.season.id,
-    });
+    const { data: tripData, error: tripError } = await sharedDb
+      .from("trip_segments")
+      .select(
+        "id, season_id, sort_order, start_date, end_date, location_label, location_type, place_source, external_place_id, latitude, longitude, status, public_notes, created_at, updated_at",
+      )
+      .eq("season_id", selectedBoat.season.id)
+      .order("sort_order", { ascending: true })
+      .order("start_date", { ascending: true })
+      .order("end_date", { ascending: true })
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true });
 
     if (tripError) {
       throw new Error(tripError.message);
     }
 
-    selectedBoat.tripSegments = (tripData ?? []) as TripSegmentView[];
+    selectedBoat.tripSegments = ((tripData ?? []) as Array<
+      Omit<TripSegmentView, "private_notes">
+    >).map((segment) => ({
+      ...segment,
+      private_notes: null,
+    }));
   }
 
   return {

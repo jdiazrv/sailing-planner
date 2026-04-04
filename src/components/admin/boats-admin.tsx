@@ -32,6 +32,19 @@ const formatLastAccess = (value: string | null | undefined, locale: "es" | "en")
   }).format(new Date(value));
 };
 
+type SortCol =
+  | "name"
+  | "model"
+  | "homePort"
+  | "users"
+  | "managers"
+  | "editors"
+  | "trips"
+  | "visits"
+  | "lastAccess"
+  | "status";
+type SortDir = "asc" | "desc";
+
 export function BoatsAdmin({
   boats,
   onSave,
@@ -44,6 +57,17 @@ export function BoatsAdmin({
   const [isCreating, setIsCreating] = useState(false);
   const [expandedBoatId, setExpandedBoatId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [sortCol, setSortCol] = useState<SortCol>("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const handleSort = (col: SortCol) => {
+    if (sortCol === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortCol(col);
+      setSortDir("asc");
+    }
+  };
 
   const text =
     locale === "es"
@@ -60,10 +84,19 @@ export function BoatsAdmin({
           tableModel: "Modelo",
           tableHomePort: "Puerto",
           tableUsers: "Usuarios",
+          tableUsersAbbr: "Usr",
+          tableManagers: "Gestores",
+          tableManagersAbbr: "Gest",
+          tableEditors: "Editores",
+          tableEditorsAbbr: "Ed",
           tableTrips: "Tramos",
+          tableTripsAbbr: "Tr",
           tableVisits: "Visitas",
+          tableVisitsAbbr: "Vis",
           tableLastAccess: "Último acceso",
+          tableLastAccessAbbr: "Acceso",
           tableStatus: "Estado",
+          tableStatusAbbr: "Est",
           tableActions: "Acciones",
           active: "Activo",
           inactive: "Inactivo",
@@ -71,7 +104,7 @@ export function BoatsAdmin({
           edit: "Editar",
           delete: "Borrar",
           deleteConfirm:
-            "¿Borrar el barco \"{name}\"? Esto también elimina sus temporadas, tramos, visitas y permisos.",
+            "¿Borrar el barco \"{name}\"? Esto también elimina sus temporadas, tramos, visitas, permisos y los lectores, editores o gestores asignados solo a este barco.",
           deleted: "Barco borrado",
           deleteError: "No se pudo borrar el barco",
           createTitle: "Crear barco",
@@ -100,10 +133,19 @@ export function BoatsAdmin({
           tableModel: "Model",
           tableHomePort: "Port",
           tableUsers: "Users",
+          tableUsersAbbr: "Usr",
+          tableManagers: "Managers",
+          tableManagersAbbr: "Mgr",
+          tableEditors: "Editors",
+          tableEditorsAbbr: "Ed",
           tableTrips: "Trips",
+          tableTripsAbbr: "Tr",
           tableVisits: "Visits",
+          tableVisitsAbbr: "Vis",
           tableLastAccess: "Last access",
+          tableLastAccessAbbr: "Access",
           tableStatus: "Status",
+          tableStatusAbbr: "St",
           tableActions: "Actions",
           active: "Active",
           inactive: "Inactive",
@@ -111,7 +153,7 @@ export function BoatsAdmin({
           edit: "Edit",
           delete: "Delete",
           deleteConfirm:
-            'Delete boat "{name}"? This also removes its seasons, trips, visits and permissions.',
+            'Delete boat "{name}"? This also removes its seasons, trips, visits, permissions, and any readers, editors, or managers assigned only to this boat.',
           deleted: "Boat deleted",
           deleteError: "Could not delete boat",
           createTitle: "Create boat",
@@ -130,20 +172,53 @@ export function BoatsAdmin({
 
   const filteredBoats = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) {
-      return [...boats].sort((a, b) => a.name.localeCompare(b.name, locale));
-    }
+    const list = query
+      ? boats.filter((boat) =>
+          [boat.name, boat.home_port, boat.description, boat.user_display_name, boat.user_email]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase()
+            .includes(query),
+        )
+      : [...boats];
 
-    return boats
-      .filter((boat) =>
-        [boat.name, boat.home_port, boat.description, boat.user_display_name, boat.user_email]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase()
-          .includes(query),
-      )
-      .sort((a, b) => a.name.localeCompare(b.name, locale));
-  }, [boats, locale, search]);
+    return list.sort((a, b) => {
+      let cmp = 0;
+      switch (sortCol) {
+        case "name":
+          cmp = a.name.localeCompare(b.name, locale);
+          break;
+        case "model":
+          cmp = (a.model ?? "").localeCompare(b.model ?? "", locale);
+          break;
+        case "homePort":
+          cmp = (a.home_port ?? "").localeCompare(b.home_port ?? "", locale);
+          break;
+        case "users":
+          cmp = (a.users_count ?? 0) - (b.users_count ?? 0);
+          break;
+        case "managers":
+          cmp = (a.managers_count ?? 0) - (b.managers_count ?? 0);
+          break;
+        case "editors":
+          cmp = (a.editors_count ?? 0) - (b.editors_count ?? 0);
+          break;
+        case "trips":
+          cmp = (a.trip_segments_count ?? 0) - (b.trip_segments_count ?? 0);
+          break;
+        case "visits":
+          cmp = (a.visits_count ?? 0) - (b.visits_count ?? 0);
+          break;
+        case "lastAccess":
+          cmp = (a.user_last_access_at ?? "").localeCompare(b.user_last_access_at ?? "");
+          break;
+        case "status":
+          cmp = Number(b.is_active) - Number(a.is_active);
+          break;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [boats, locale, search, sortCol, sortDir]);
 
   const expandedBoat = useMemo(
     () => filteredBoats.find((boat) => boat.id === expandedBoatId) ?? boats.find((boat) => boat.id === expandedBoatId) ?? null,
@@ -215,14 +290,76 @@ export function BoatsAdmin({
               <thead>
                 <tr>
                   <th>{text.tableImage}</th>
-                  <th>{text.tableBoat}</th>
-                  <th>{text.tableModel}</th>
-                  <th>{text.tableHomePort}</th>
-                  <th style={{ textAlign: "right" }}>{text.tableUsers}</th>
-                  <th style={{ textAlign: "right" }}>{text.tableTrips}</th>
-                  <th style={{ textAlign: "right" }}>{text.tableVisits}</th>
-                  <th>{text.tableLastAccess}</th>
-                  <th>{text.tableStatus}</th>
+                  <th
+                    className={`sortable-th${sortCol === "name" ? " is-sorted" : ""}`}
+                    onClick={() => handleSort("name")}
+                  >
+                    {text.tableBoat}
+                    <span className="sort-icon">{sortCol === "name" ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}</span>
+                  </th>
+                  <th
+                    className={`sortable-th${sortCol === "model" ? " is-sorted" : ""}`}
+                    onClick={() => handleSort("model")}
+                  >
+                    {text.tableModel}
+                    <span className="sort-icon">{sortCol === "model" ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}</span>
+                  </th>
+                  <th
+                    className={`sortable-th${sortCol === "homePort" ? " is-sorted" : ""}`}
+                    onClick={() => handleSort("homePort")}
+                  >
+                    {text.tableHomePort}
+                    <span className="sort-icon">{sortCol === "homePort" ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}</span>
+                  </th>
+                  <th
+                    className={`sortable-th admin-boats-table__num${sortCol === "users" ? " is-sorted" : ""}`}
+                    onClick={() => handleSort("users")}
+                    title={text.tableUsers}
+                  >
+                    {text.tableUsersAbbr}<span className="sort-icon">{sortCol === "users" ? (sortDir === "asc" ? "↑" : "↓") : "↕"}</span>
+                  </th>
+                  <th
+                    className={`sortable-th admin-boats-table__num${sortCol === "managers" ? " is-sorted" : ""}`}
+                    onClick={() => handleSort("managers")}
+                    title={text.tableManagers}
+                  >
+                    {text.tableManagersAbbr}<span className="sort-icon">{sortCol === "managers" ? (sortDir === "asc" ? "↑" : "↓") : "↕"}</span>
+                  </th>
+                  <th
+                    className={`sortable-th admin-boats-table__num${sortCol === "editors" ? " is-sorted" : ""}`}
+                    onClick={() => handleSort("editors")}
+                    title={text.tableEditors}
+                  >
+                    {text.tableEditorsAbbr}<span className="sort-icon">{sortCol === "editors" ? (sortDir === "asc" ? "↑" : "↓") : "↕"}</span>
+                  </th>
+                  <th
+                    className={`sortable-th admin-boats-table__num${sortCol === "trips" ? " is-sorted" : ""}`}
+                    onClick={() => handleSort("trips")}
+                    title={text.tableTrips}
+                  >
+                    {text.tableTripsAbbr}<span className="sort-icon">{sortCol === "trips" ? (sortDir === "asc" ? "↑" : "↓") : "↕"}</span>
+                  </th>
+                  <th
+                    className={`sortable-th admin-boats-table__num${sortCol === "visits" ? " is-sorted" : ""}`}
+                    onClick={() => handleSort("visits")}
+                    title={text.tableVisits}
+                  >
+                    {text.tableVisitsAbbr}<span className="sort-icon">{sortCol === "visits" ? (sortDir === "asc" ? "↑" : "↓") : "↕"}</span>
+                  </th>
+                  <th
+                    className={`sortable-th${sortCol === "lastAccess" ? " is-sorted" : ""}`}
+                    onClick={() => handleSort("lastAccess")}
+                    title={text.tableLastAccess}
+                  >
+                    {text.tableLastAccessAbbr}<span className="sort-icon">{sortCol === "lastAccess" ? (sortDir === "asc" ? "↑" : "↓") : "↕"}</span>
+                  </th>
+                  <th
+                    className={`sortable-th admin-boats-table__num${sortCol === "status" ? " is-sorted" : ""}`}
+                    onClick={() => handleSort("status")}
+                    title={text.tableStatus}
+                  >
+                    {text.tableStatusAbbr}<span className="sort-icon">{sortCol === "status" ? (sortDir === "asc" ? "↑" : "↓") : "↕"}</span>
+                  </th>
                   <th>{text.tableActions}</th>
                 </tr>
               </thead>
@@ -242,11 +379,13 @@ export function BoatsAdmin({
                     </td>
                     <td>{boat.model ?? "—"}</td>
                     <td>{boat.home_port ?? "—"}</td>
-                    <td style={{ textAlign: "right" }}>{boat.users_count ?? 0}</td>
-                    <td style={{ textAlign: "right" }}>{boat.trip_segments_count ?? 0}</td>
-                    <td style={{ textAlign: "right" }}>{boat.visits_count ?? 0}</td>
+                    <td className="admin-boats-table__num">{boat.users_count ?? 0}</td>
+                    <td className="admin-boats-table__num">{boat.managers_count ?? 0}</td>
+                    <td className="admin-boats-table__num">{boat.editors_count ?? 0}</td>
+                    <td className="admin-boats-table__num">{boat.trip_segments_count ?? 0}</td>
+                    <td className="admin-boats-table__num">{boat.visits_count ?? 0}</td>
                     <td className="meta">{formatLastAccess(boat.user_last_access_at, locale)}</td>
-                    <td>
+                    <td className="admin-boats-table__num">
                       <span className={`status-pill ${boat.is_active ? "is-good" : "is-muted"}`}>
                         {boat.is_active ? text.active : text.inactive}
                       </span>
@@ -254,11 +393,13 @@ export function BoatsAdmin({
                     <td>
                       <div className="admin-boats-table__actions">
                         <button
-                          className="secondary-button secondary-button--small"
+                          aria-label={text.expand}
+                          className="admin-table-icon-btn"
                           onClick={() => setExpandedBoatId(boat.id)}
+                          title={text.expand}
                           type="button"
                         >
-                          {text.expand}
+                          🔍
                         </button>
 
                         <BoatSettingsDialog
@@ -268,17 +409,20 @@ export function BoatsAdmin({
                             await onSave(fd);
                           }}
                           onUploadImage={onUploadImage}
-                          triggerClassName="secondary-button secondary-button--small"
-                          triggerLabel={text.edit}
+                          triggerClassName="admin-table-icon-btn"
+                          triggerLabel="✏️"
+                          triggerTitle={text.edit}
                         />
 
                         <button
-                          className="link-button link-button--danger"
+                          aria-label={text.delete}
+                          className="admin-table-icon-btn admin-table-icon-btn--danger"
                           disabled={isPending}
                           onClick={() => handleDeleteBoat(boat)}
+                          title={text.delete}
                           type="button"
                         >
-                          {text.delete}
+                          🗑
                         </button>
                       </div>
                     </td>

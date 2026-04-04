@@ -18,7 +18,41 @@ export function SetPasswordForm() {
 
   useEffect(() => {
     const supabase = createClient();
-    void supabase.auth.getSession().then(() => setIsReady(true));
+    void (async () => {
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
+      const code = new URLSearchParams(window.location.search).get("code");
+
+      if (accessToken && refreshToken) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (sessionError) {
+          setError(sessionError.message || text.failed);
+        }
+      } else if (code) {
+        const { error: codeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (codeError) {
+          setError(codeError.message || text.failed);
+        }
+      }
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        setError(
+          locale === "es"
+            ? "Sesion no encontrada. Solicita una nueva invitacion o enlace de restablecimiento."
+            : "Auth session missing. Request a new invitation or reset link.",
+        );
+      }
+
+      setIsReady(true);
+    })();
   }, []);
 
   const text =
@@ -80,7 +114,15 @@ export function SetPasswordForm() {
     }
 
     setMessage(text.success);
-    void recordCurrentUserAccess("magic_link").catch(() => {});
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    try {
+      await recordCurrentUserAccess("magic_link", session?.access_token);
+    } catch {
+      // Do not block first access if audit logging fails.
+    }
     window.location.assign("/dashboard");
   };
 

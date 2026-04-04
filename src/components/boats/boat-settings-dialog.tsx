@@ -1,39 +1,49 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { type ReactNode, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { type ReactNode, useEffect, useRef, useState, useTransition } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 import { useI18n } from "@/components/i18n/provider";
 import { BoatPlaceholder } from "@/components/ui/boat-placeholder";
 import { Dialog } from "@/components/ui/dialog";
 import type { BoatDetails } from "@/lib/planning";
+import type { OnboardingStep } from "@/types/database";
 
 type BoatSettingsDialogProps = {
+  boatId: string;
   boat: BoatDetails;
+  onboardingStep?: OnboardingStep | null;
   onSave: (fd: FormData) => Promise<void>;
   onUploadImage: (fd: FormData) => Promise<void>;
   onRemoveImage: (fd: FormData) => Promise<void>;
   triggerLabel?: string;
   triggerClassName?: string;
+  triggerTitle?: string;
   triggerIcon?: ReactNode;
 };
 
 export function BoatSettingsDialog({
+  boatId,
   boat,
+  onboardingStep,
   onSave,
   onUploadImage,
   onRemoveImage,
   triggerLabel,
   triggerClassName,
+  triggerTitle,
   triggerIcon,
 }: BoatSettingsDialogProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { locale } = useI18n();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const skipDialogCloseRef = useRef(false);
 
   const text =
     locale === "es"
@@ -82,11 +92,44 @@ export function BoatSettingsDialog({
           imageRemoveError: "Could not remove boat image",
         };
 
+  const markBoatSettingsCompleted = async () => {
+    if (onboardingStep !== "configure_boat") {
+      return;
+    }
+
+    await fetch("/api/onboarding/progress", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "boat_settings_completed", boatId }),
+    });
+  };
+
+  const handleDialogClose = () => {
+    if (skipDialogCloseRef.current) {
+      skipDialogCloseRef.current = false;
+      return;
+    }
+
+    setOpen(false);
+
+    if (onboardingStep !== "configure_boat") {
+      return;
+    }
+
+    void markBoatSettingsCompleted().then(() => {
+      router.refresh();
+    });
+  };
+
   const handleSave = (formData: FormData) => {
     startTransition(() => {
       try {
-        void onSave(formData).then(() => {
+        void onSave(formData).then(async () => {
+          await markBoatSettingsCompleted();
           toast.success(text.saved);
+          skipDialogCloseRef.current = true;
           router.refresh();
           setOpen(false);
         }).catch((error) => {
@@ -140,11 +183,24 @@ export function BoatSettingsDialog({
     });
   };
 
+  useEffect(() => {
+    if (searchParams.get("openBoatSettings") !== "1") {
+      return;
+    }
+
+    setOpen(true);
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete("openBoatSettings");
+    const nextUrl = nextParams.toString() ? `${pathname}?${nextParams.toString()}` : pathname;
+    router.replace(nextUrl, { scroll: false });
+  }, [pathname, router, searchParams]);
+
   return (
     <>
       <button
         className={triggerClassName ?? "secondary-button"}
         aria-label={triggerLabel ?? text.open}
+        title={triggerTitle ?? triggerLabel ?? text.open}
         onClick={() => setOpen(true)}
         type="button"
       >
@@ -158,7 +214,7 @@ export function BoatSettingsDialog({
         )}
       </button>
 
-      <Dialog onClose={() => setOpen(false)} open={open} title={text.title}>
+      <Dialog onClose={handleDialogClose} open={open} title={text.title}>
         <div className="editor-form">
           <p className="muted">{text.subtitle}</p>
 

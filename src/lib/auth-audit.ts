@@ -1,11 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
 import type { SignInMethod } from "@/types/database";
 
-export async function recordCurrentUserAccess(method: SignInMethod = "unknown") {
+export async function recordCurrentUserAccess(
+  method: SignInMethod = "unknown",
+  accessToken?: string,
+) {
   const supabase = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = accessToken
+    ? await supabase.auth.getUser(accessToken)
+    : await supabase.auth.getUser();
 
   if (!user) {
     return;

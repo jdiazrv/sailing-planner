@@ -1,5 +1,5 @@
 import { getDocumentLocale, getIntlLocale } from "@/lib/i18n";
-import type { Database, PermissionLevel } from "@/types/database";
+import type { Database, OnboardingStep, PermissionLevel } from "@/types/database";
 
 export type SeasonRow = Database["public"]["Tables"]["seasons"]["Row"];
 export type BoatRow = Database["public"]["Tables"]["boats"]["Row"];
@@ -37,6 +37,17 @@ export type BoatDetails = BoatRow & {
   user_display_name?: string | null;
   user_email?: string | null;
   users_count?: number;
+  managers_count?: number;
+  editors_count?: number;
+};
+
+export type CreatedUserSummary = {
+  id: string;
+  display_name: string | null;
+  email: string | null;
+  boat_id: string | null;
+  permission_level: PermissionLevel;
+  last_sign_in_at: string | null;
 };
 
 export type UserAdminProfile = ProfileRow & {
@@ -46,6 +57,7 @@ export type UserAdminProfile = ProfileRow & {
   trip_segments_count?: number;
   visits_count?: number;
   invites_generated_count?: number;
+  created_users?: CreatedUserSummary[];
 };
 
 export type SharedTimelineBoat = {
@@ -59,6 +71,7 @@ export type ViewerContext = {
   profile: ProfileRow | null;
   isSuperuser: boolean;
   onboardingPending?: boolean;
+  onboardingStep?: OnboardingStep | null;
   isSeasonGuest?: boolean;
   seasonGuestCanViewVisits?: boolean;
   seasonGuestCreatorName?: string | null;
@@ -257,7 +270,7 @@ export const computeAvailability = (
     const hasConfirmedVisit = visits.some(
       (visit) =>
         hasVisitDateRange(visit) &&
-        visit.status === "confirmed" &&
+        (visit.status === "confirmed" || visit.status === "blocked") &&
         rangeIncludes(visit.embark_date, visit.disembark_date, day),
     );
     const hasTentativeVisit = visits.some(
@@ -335,6 +348,10 @@ export const computeVisitConflicts = (
   const conflicts: VisitConflict[] = [];
 
   visits.forEach((visit, visitIndex) => {
+    if (visit.status === "blocked") {
+      return;
+    }
+
     if (!hasVisitDateRange(visit)) {
       conflicts.push({
         visitId: visit.id,

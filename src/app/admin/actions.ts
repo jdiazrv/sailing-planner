@@ -195,12 +195,75 @@ export async function deleteBoat(formData: FormData) {
   const { supabase } = await requireSuperuser();
   const db = supabase as any;
   const boatId = formData.get("boat_id")?.toString() ?? "";
+  const admin = createAdminClient();
+
+  if (!boatId) {
+    throw new Error("Boat id is required.");
+  }
 
   const { data: boat } = await db
     .from("boats")
     .select("image_path")
     .eq("id", boatId)
     .single();
+
+  const { data: assignedPermissions, error: assignedPermissionsError } = await db
+    .from("user_boat_permissions")
+    .select("user_id")
+    .eq("boat_id", boatId);
+  throwIfError(assignedPermissionsError);
+
+  const assignedUserIds = Array.from(
+    new Set(((assignedPermissions ?? []) as Array<{ user_id: string }>).map((entry) => entry.user_id)),
+  );
+
+  let usersToDelete: string[] = [];
+
+  if (assignedUserIds.length > 0) {
+    const { data: profiles, error: profilesError } = await db
+      .from("profiles")
+      .select("id, is_superuser")
+      .in("id", assignedUserIds);
+    throwIfError(profilesError);
+
+    const nonSuperuserIds = ((profiles ?? []) as Array<{ id: string; is_superuser: boolean }>)
+      .filter((profile) => !profile.is_superuser)
+      .map((profile) => profile.id);
+
+    if (nonSuperuserIds.length > 0) {
+      const { data: remainingPermissions, error: remainingPermissionsError } = await db
+        .from("user_boat_permissions")
+        .select("user_id, boat_id")
+        .in("user_id", nonSuperuserIds);
+      throwIfError(remainingPermissionsError);
+
+      const permissionsByUser = new Map<string, Set<string>>();
+      for (const entry of (remainingPermissions ?? []) as Array<{ user_id: string; boat_id: string }>) {
+        const boatIds = permissionsByUser.get(entry.user_id) ?? new Set<string>();
+        boatIds.add(entry.boat_id);
+        permissionsByUser.set(entry.user_id, boatIds);
+      }
+
+      usersToDelete = nonSuperuserIds.filter((userId) => {
+        const boatIds = permissionsByUser.get(userId);
+        return Boolean(boatIds) && boatIds.size === 1 && boatIds.has(boatId);
+      });
+    }
+  }
+
+  if (usersToDelete.length > 0 && !admin) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY is required to delete the users assigned only to this boat.",
+    );
+  }
+
+  for (const userId of usersToDelete) {
+    const { error } = await admin!.auth.admin.deleteUser(userId);
+
+    if (error) {
+      throw new Error(error.message ?? "Unexpected related user deletion error.");
+    }
+  }
 
   if (boat?.image_path) {
     const { error } = await supabase.storage.from("boat-images").remove([boat.image_path]);
@@ -443,6 +506,7 @@ export async function createUserAccount(formData: FormData) {
       .update({
         preferred_language: preferredLanguage,
         onboarding_pending: true,
+        onboarding_step: "welcome",
         is_guest_user: isGuestUser,
         created_by_user_id: user.id,
       })
@@ -505,15 +569,20 @@ export async function inviteUserAccount(formData: FormData) {
     }
 
     const requestOrigin = await getRequestOriginFromHeaders();
+    const setPasswordUrl = new URL(
+      buildAuthRedirectUrl("/auth/callback", {
+        requestOrigin: resolveAppOrigin({ requestOrigin }),
+      }),
+    );
+    setPasswordUrl.searchParams.set("next", "/auth/set-password");
     const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
       data: {
         ...(displayName ? { display_name: displayName } : {}),
         preferred_language: preferredLanguage,
+        locale: preferredLanguage,
         inviter_email: user.email ?? "",
       },
-      redirectTo: buildAuthRedirectUrl("/auth/set-password", {
-        requestOrigin: resolveAppOrigin({ requestOrigin }),
-      }),
+      redirectTo: setPasswordUrl.toString(),
     });
 
     if (error) {
@@ -528,6 +597,7 @@ export async function inviteUserAccount(formData: FormData) {
           display_name: displayName,
           preferred_language: preferredLanguage,
           onboarding_pending: true,
+          onboarding_step: "welcome",
           is_guest_user: isGuestUser,
           created_by_user_id: user.id,
         })

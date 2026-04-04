@@ -14,7 +14,7 @@ export type TripSegmentStatus =
   | "active"
   | "completed"
   | "cancelled";
-export type VisitStatus = "tentative" | "confirmed" | "cancelled";
+export type VisitStatus = "tentative" | "confirmed" | "cancelled" | "blocked";
 export type LocationType =
   | "zone"
   | "island"
@@ -32,7 +32,12 @@ export type PlaceSource =
   | "openstreetmap"
   | "other";
 export type PreferredLanguage = "es" | "en";
-export type SignInMethod = "password" | "magic_link" | "unknown";
+export type SignInMethod = "password" | "magic_link" | "google" | "unknown";
+export type OnboardingStep =
+  | "welcome"
+  | "configure_boat"
+  | "create_season"
+  | "full_tour";
 export type SeasonAccessWindow =
   | "one_use"
   | "one_day"
@@ -79,6 +84,7 @@ export interface Database {
           email: string | null;
           is_superuser: boolean;
           onboarding_pending: boolean;
+          onboarding_step: OnboardingStep | null;
           is_guest_user: boolean;
           is_timeline_public: boolean;
           created_by_user_id: string | null;
@@ -95,6 +101,7 @@ export interface Database {
           email?: string | null;
           is_superuser?: boolean;
           onboarding_pending?: boolean;
+          onboarding_step?: OnboardingStep | null;
           is_guest_user?: boolean;
           is_timeline_public?: boolean;
           created_by_user_id?: string | null;

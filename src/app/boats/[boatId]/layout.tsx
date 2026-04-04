@@ -27,12 +27,18 @@ export default async function BoatLayout({
   const isSuperuser = snapshot.viewer.isSuperuser;
   const canEditBoat = isSuperuser || Boolean(snapshot.permission?.can_edit);
   const canManageUsers =
-    isSuperuser || Boolean(snapshot.permission?.can_manage_boat_users);
+    isSuperuser ||
+    Boolean(
+      snapshot.permission?.can_manage_boat_users ||
+      snapshot.permission?.permission_level === "manager",
+    );
   const canShare = canEditBoat || canManageUsers;
 
   const settingsSlot = canEditBoat ? (
     <BoatSettingsDialog
+      boatId={boatId}
       boat={snapshot.boat}
+      onboardingStep={snapshot.viewer.onboardingStep}
       onRemoveImage={removeBoatProfileImage}
       onSave={saveBoatProfile}
       onUploadImage={uploadBoatProfileImage}

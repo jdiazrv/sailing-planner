@@ -42,17 +42,6 @@ export default async function AdminUsersPage({
         <div>
           <p className="eyebrow">{t(locale, "admin.users.eyebrow")}</p>
           <h1>{isOwnProfileMode ? (locale === "es" ? "Mi cuenta" : "My account") : t(locale, "admin.users.title")}</h1>
-          <p className="muted">
-            {isOwnProfileMode
-              ? (locale === "es"
-                  ? "Actualiza tus datos personales y tu contraseña. Tus permisos se gestionan por separado."
-                  : "Update your personal details and password. Your permissions are managed separately.")
-              : access.viewer.isSuperuser
-                ? t(locale, "admin.users.subtitle")
-                : (locale === "es"
-                    ? "Gestiona usuarios de tu propio barco: crear, invitar, actualizar datos y cambiar contraseñas."
-                    : "Manage users for your own boat: create, invite, update details and change passwords.")}
-          </p>
         </div>
       </header>
 
@@ -69,6 +58,7 @@ export default async function AdminUsersPage({
         personalMode={isOwnProfileMode}
         singleBoatContext={!access.viewer.isSuperuser}
         viewerUserId={access.user.id}
+        viewerEmail={access.user.email ?? ""}
         onDeletePermission={deleteUserBoatPermission}
         onDeleteUser={deleteUserAccount}
         onInviteUser={createUserAccount}

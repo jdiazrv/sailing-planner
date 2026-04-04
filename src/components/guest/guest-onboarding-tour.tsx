@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import type { OnboardingStep } from "@/types/database";
 
 type TourStep = {
   target: string;
@@ -26,6 +27,14 @@ type GuestOnboardingTourProps = {
   canManageUsers?: boolean;
   canShare?: boolean;
   canEditBoat?: boolean;
+  /** True if the user has no edit, manage, or share permissions */
+  isReadOnly?: boolean;
+  /** Whether the season has any trip segments already */
+  hasSegments?: boolean;
+  /** Whether the season has any visits already */
+  hasVisits?: boolean;
+  memberPhase?: OnboardingStep | null;
+  onDismiss?: () => void;
   variant?: "guest" | "member";
   resetKey?: string;
 };
@@ -36,6 +45,11 @@ export function GuestOnboardingTour({
   canManageUsers = false,
   canShare = false,
   canEditBoat = false,
+  isReadOnly = false,
+  hasSegments = false,
+  hasVisits = false,
+  memberPhase,
+  onDismiss,
   variant = "guest",
   resetKey,
 }: GuestOnboardingTourProps) {
@@ -49,37 +63,131 @@ export function GuestOnboardingTour({
   const isVisitsView = pathname.includes("/visits") || searchParams.get("view") === "visits";
 
   const steps = useMemo<TourStep[]>(() => {
+    // -----------------------------------------------------------------------
+    // MEMBER variant
+    // -----------------------------------------------------------------------
     if (variant === "member") {
+      // Phase 1: configure_boat
+      if (memberPhase === "configure_boat") {
+        return [
+          {
+            target: '[data-tour="sidebar-boat-settings"]',
+            title: "Configurar barco",
+            body: canEditBoat
+              ? "El primer paso es revisar y completar los datos del barco. Abre la configuracion, rellena el modelo, año y puerto base, y guarda. Cuando cierres, el tour continuara automaticamente."
+              : "Antes de empezar, revisa los datos del barco asignado. Un gestor debe haberlos completado para que puedas comenzar.",
+          },
+        ];
+      }
+
+      // Phase 2: create_season
+      if (memberPhase === "create_season") {
+        return [
+          {
+            target: '[data-tour="next-step-card"]',
+            title: "Crear la primera temporada",
+            body: "La temporada define el periodo de navegacion: fechas de inicio y fin, nombre del año. Sin temporada no hay timeline. Crea la primera desde esta card para continuar.",
+          },
+        ];
+      }
+
+      // Phase 3: full_tour — READ-ONLY member
+      if (isReadOnly) {
+        return [
+          {
+            target: '[data-tour="boat-timeline"]',
+            title: "Timeline de la temporada",
+            body: "El timeline muestra el plan completo de la temporada: tramos del viaje, visitas de invitados y disponibilidad del barco. Es de solo lectura para tu perfil.",
+          },
+          {
+            target: '[data-tour="planning-control-bar"]',
+            title: "Controles de vista",
+            body: "Puedes ajustar la escala temporal del timeline (temporada completa, mes o semana) y cambiar entre vista de tabla, mapa o ambas.",
+          },
+          {
+            target: '[data-tour="boat-detail"]',
+            title: "Tramos del viaje",
+            body: "Aqui puedes consultar todos los tramos planificados con sus fechas, lugares y estado. Esta informacion es de solo consulta para tu perfil.",
+            requiredView: "trip",
+          },
+          {
+            target: '[data-tour="boat-map"]',
+            title: "Mapa del recorrido",
+            body: "El mapa situa visualmente el recorrido y los puntos clave de la temporada. Puedes seleccionar un tramo para ver su ubicacion destacada.",
+            requiredView: "trip",
+          },
+          ...(canViewVisits
+            ? [
+                {
+                  target: '[data-tour="boat-visits-card"]',
+                  title: "Visitas de la temporada",
+                  body: "En esta card ves todas las visitas registradas: quien viene, en que fechas y desde donde embarca y desembarca. Modo consulta.",
+                  requiredView: "visits" as const,
+                },
+              ]
+            : []),
+        ];
+      }
+
+      // Phase 3: full_tour — EDITOR/MANAGER member
       return [
         {
-          target: '[data-tour="sidebar-plan"]',
-          title: "Panel del barco",
-          body:
-            "Este panel es el espacio para gestionar la informacion de la temporada. Desde aqui puedes organizar el plan, revisar el contexto del barco y mantener al dia tramos y visitas.",
+          target: '[data-tour="boat-timeline"]',
+          title: "Timeline de la temporada",
+          body: hasSegments
+            ? "El timeline muestra el plan completo. Las barras del viaje estan en la fila superior. Debajo aparecen las visitas agrupadas por persona, la disponibilidad calculada y los periodos bloqueados."
+            : "El timeline es el corazon del panel. Cuando añadas tramos y visitas, aqui veras una vision completa de la temporada de un vistazo.",
+        },
+        {
+          target: '[data-tour="planning-control-bar"]',
+          title: "Controles del timeline",
+          body: "Aqui ajustas la escala temporal (temporada, mes o semana), cambias entre tabla + mapa, solo tabla o solo mapa, y activas o desactivas las capas de visitas, disponibilidad y fechas bloqueadas.",
+        },
+        {
+          target: '[data-tour="timeline-layers"]',
+          title: "Capas del timeline",
+          body: "Cada capa controla que grupo de filas se muestra. Visitas muestra las personas agrupadas. Disponibilidad calcula los huecos libres del barco. Bloqueado marca periodos cerrados por mantenimiento u otros motivos.",
+        },
+        {
+          target: '[data-tour="boat-detail"]',
+          title: "Tramos del viaje",
+          body: canEditBoat
+            ? "Aqui creas y editas los tramos: zona de navegacion, fechas, estado y ubicaciones. Cada tramo que añadas aparecera inmediatamente en el timeline."
+            : "Aqui consultas el detalle de los tramos planificados con fechas, lugares y estado de cada uno.",
+          requiredView: "trip",
+        },
+        {
+          target: '[data-tour="boat-map"]',
+          title: "Mapa del recorrido",
+          body: "El mapa situa visualmente todos los tramos y visitas. Selecciona cualquier elemento del timeline o la tabla para verlo destacado en el mapa.",
+          requiredView: "trip",
+        },
+        ...(canViewVisits
+          ? [
+              {
+                target: '[data-tour="boat-visits-card"]',
+                title: "Visitas de la temporada",
+                body: canEditBoat
+                  ? hasVisits
+                    ? "Aqui gestionas las visitas registradas. Puedes editar fechas, lugares de embarque y desembarque, estado y notas. Cada visita aparece como una fila en el timeline con su nombre."
+                    : "Aqui añadiras las visitas de la temporada. Cada visita necesita nombre, fechas de embarque y desembarque. Una vez creada, aparece automaticamente en el timeline agrupada por nombre."
+                  : "Consulta las visitas previstas con sus fechas, lugares y estado actual.",
+                requiredView: "visits" as const,
+              },
+            ]
+          : []),
+        {
+          target: '[data-tour="availability-section"]',
+          title: "Disponibilidad y bloqueos",
+          body: "Bajo la tabla principal encontraras la disponibilidad calculada automaticamente (periodos libres segun los tramos y visitas) y la seccion de fechas bloqueadas, donde puedes cerrar periodos por mantenimiento o cualquier otra razon.",
+          requiredView: "trip",
         },
         ...(canShare
           ? [
               {
                 target: '[data-tour="sidebar-invite"]',
-                title: "Invitar",
-                body:
-                  "Desde Invitar generas enlaces de acceso rapido para invitados. Esos enlaces no piden contraseña y sirven para entrar directamente al panel compartido en modo de solo lectura.",
-              },
-              {
-                target: '[data-tour="sidebar-invite"]',
-                title: "Invitados frente a usuarios",
-                body:
-                  "Los invitados entran solo con el enlace y solo pueden ver. Los usuarios, en cambio, tienen cuenta propia, pueden iniciar sesion y reciben permisos como lector, editor o gestor segun lo que les asignes.",
-              },
-            ]
-          : []),
-        ...(canEditBoat
-          ? [
-              {
-                target: '[data-tour="sidebar-boat-settings"]',
-                title: "Detalles del barco",
-                body:
-                  "Desde esta opcion puedes actualizar los detalles visibles del barco, como imagen, modelo, puerto base y descripcion, sin salir del espacio de trabajo.",
+                title: "Invitar tripulantes",
+                body: "Desde Invitar generas un enlace de acceso directo para invitados. El enlace no requiere contraseña y da acceso al panel compartido en modo consulta, con la visibilidad que tu configures.",
               },
             ]
           : []),
@@ -87,108 +195,62 @@ export function GuestOnboardingTour({
           ? [
               {
                 target: '[data-tour="sidebar-users"]',
-                title: "Usuarios",
-                body:
-                  "En Usuarios puedes crear otras cuentas de tu barco y asignarles nivel lector o editor. Desde ahi actualizas sus datos, accesos y contraseñas sin tocar tus propios permisos.",
-              },
-              {
-                target: '[data-tour="sidebar-user-settings"]',
-                title: "Tu cuenta",
-                body:
-                  "Desde Mi cuenta entras directamente a tu ficha dentro de Usuarios. Ahi puedes cambiar tus datos y, si tienes permiso, tambien actualizar tu contraseña con el formulario ya existente.",
-              },
-            ]
-          : []),
-        {
-          target: '[data-tour="boat-timeline"]',
-          title: "Timeline",
-          body:
-            "El timeline te da una vision general de la temporada y te ayuda a entender rapidamente como encajan tramos y visitas.",
-        },
-        {
-          target: '[data-tour="boat-detail"]',
-          title: "Detalle de tramos",
-          body:
-            "Aqui gestionas el detalle de los tramos. Es la zona para crear nuevos, editar el plan existente y ajustar fechas, estados y ubicaciones.",
-          requiredView: "trip" as const,
-        },
-        {
-          target: '[data-tour="boat-map"]',
-          title: "Mapa",
-          body:
-            "El mapa te ayuda a situar visualmente el recorrido y los puntos clave de la temporada mientras gestionas el plan.",
-          requiredView: "trip" as const,
-        },
-        ...(canViewVisits
-          ? [
-              {
-                target: '[data-tour="boat-visits-card"]',
-                title: "Card de visitas",
-                body:
-                  "Esta card es el equivalente de gestion para las visitas: aqui puedes crear nuevas, modificar las existentes y mantener claro quien viene, cuando y desde donde.",
-                requiredView: "visits" as const,
+                title: "Gestionar usuarios",
+                body: "En Usuarios creas otras cuentas para el barco y les asignas nivel lector o editor. Desde ahi gestionas sus datos y accesos sin afectar a tus propios permisos.",
               },
             ]
           : []),
       ];
     }
 
+    // -----------------------------------------------------------------------
+    // GUEST variant (token access)
+    // -----------------------------------------------------------------------
     return [
       {
         target: '[data-tour="guest-header"]',
-        title: "Bienvenido",
-        body:
-          "Esta vista es de solo lectura. Desde aqui puedes seguir el plan completo de la temporada sin modificar ningun dato.",
+        title: "Bienvenido al panel compartido",
+        body: "Esta vista es de solo lectura. Puedes seguir el plan completo de la temporada sin modificar ningun dato. Navega libremente por los tramos, el mapa y las visitas.",
       },
       {
         target: '[data-tour="boat-nav"]',
-        title: "Tramos",
-        body:
-          "Desde aqui puedes moverte por la planificacion del barco y volver a la vista de tramos. Todo lo que ves en este recorrido es de consulta.",
+        title: "Navegacion del panel",
+        body: "Usa estas pestanas para moverte entre la vista de tramos del viaje y las visitas de la temporada. Todo lo que ves es de consulta.",
       },
       {
         target: '[data-tour="boat-timeline"]',
-        title: "Timeline",
-        body:
-          "El timeline te permite ver de un vistazo el plan de la temporada. Si pausas el raton sobre una barra, apareceran detalles adicionales, siempre en modo consulta.",
+        title: "Timeline de la temporada",
+        body: "El timeline muestra el plan completo de un vistazo. Pasa el cursor sobre las barras para ver detalles de fechas, lugares y estado de cada elemento.",
       },
       {
         target: '[data-tour="boat-detail"]',
         title: "Detalle de tramos",
-        body:
-          "Aqui puedes ver el detalle estructurado de los tramos del viaje. Es una vista de consulta para entender mejor el plan, sin modificarlo.",
-        requiredView: "trip" as const,
+        body: "Aqui ves el listado estructurado de todos los tramos del viaje con sus fechas, lugares y estado. Es una vista de consulta.",
+        requiredView: "trip",
       },
       {
         target: '[data-tour="boat-map"]',
-        title: "Mapa",
-        body:
-          "El mapa te ayuda a ubicar visualmente el recorrido y los puntos importantes de la temporada, siempre en modo de solo lectura.",
-        requiredView: "trip" as const,
+        title: "Mapa del recorrido",
+        body: "El mapa situa visualmente el recorrido y los puntos clave de la temporada. Selecciona un tramo en la tabla para verlo destacado.",
+        requiredView: "trip",
       },
       ...(canViewVisits
         ? [
             {
               target: '[data-tour="boat-nav"]',
-              title: "Visitas",
-              body:
-                "Desde la pestana Visitas puedes abrir la vista donde consultar invitados previstos, fechas, lugares de embarque y desembarque y movimientos de la temporada.",
+              title: "Vista de visitas",
+              body: "Desde la pestana Visitas puedes consultar los invitados previstos, sus fechas de embarque y desembarque y los lugares.",
+            },
+            {
+              target: '[data-tour="boat-visits-card"]',
+              title: "Visitas de la temporada",
+              body: "Aqui ves todas las visitas registradas con sus fechas, lugares y estado. Vista de consulta.",
+              requiredView: "visits" as const,
             },
           ]
         : []),
-      ...(canViewVisits
-        ? [
-          {
-            target: '[data-tour="boat-visits-card"]',
-            title: "Card de visitas",
-            body:
-              "Aqui puedes consultar de un vistazo las visitas previstas, con sus fechas, lugares y estado, sin posibilidad de editar.",
-            requiredView: "visits" as const,
-          },
-        ]
-        : []),
     ];
-  }, [canEditBoat, canManageUsers, canShare, canViewVisits, variant]);
+  }, [canEditBoat, canManageUsers, canShare, canViewVisits, hasSegments, hasVisits, isReadOnly, memberPhase, variant]);
 
   useEffect(() => {
     const requiredView = steps[stepIndex]?.requiredView;
@@ -234,10 +296,10 @@ export function GuestOnboardingTour({
   useEffect(() => {
     setIsOpen(enabled);
     setStepIndex(0);
-  }, [enabled, resetKey]);
+  }, [enabled, memberPhase, resetKey]);
 
   useEffect(() => {
-    if (variant !== "member") {
+    if (variant === "member") {
       return;
     }
 
@@ -342,7 +404,6 @@ export function GuestOnboardingTour({
       popover.style.left = `${left}px`;
     };
 
-    // Instant scroll so the rect is stable before the rAF loop starts
     element.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
 
     let frameId = 0;
@@ -361,7 +422,7 @@ export function GuestOnboardingTour({
     };
   }, [isOpen, stepIndex, steps]);
 
-  const closeTour = () => {
+  const dismissTour = async () => {
     document
       .querySelectorAll<HTMLElement>("[data-tour-active='true']")
       .forEach((node) => node.setAttribute("data-tour-active", "false"));
@@ -374,9 +435,10 @@ export function GuestOnboardingTour({
       nextParams.delete("welcome");
       const nextUrl = nextParams.toString() ? `${pathname}?${nextParams.toString()}` : pathname;
       router.replace(nextUrl, { scroll: false });
-    } else {
-      void fetch("/api/onboarding/complete", { method: "POST" });
+      return;
     }
+
+    onDismiss?.();
   };
 
   const step = steps[stepIndex];
@@ -406,21 +468,42 @@ export function GuestOnboardingTour({
   }
 
   const isLastStep = stepIndex === steps.length - 1;
+  const isConfigureBoatPhase = variant === "member" && memberPhase === "configure_boat";
+  const isCreateSeasonPhase = variant === "member" && memberPhase === "create_season";
+  const isPhaseAction = isConfigureBoatPhase || isCreateSeasonPhase;
+
+  const handleMemberPhaseAction = () => {
+    if (isConfigureBoatPhase) {
+      const nextParams = new URLSearchParams(searchParams.toString());
+      nextParams.set("openBoatSettings", "1");
+      setIsOpen(false);
+      router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
+      return;
+    }
+
+    if (isCreateSeasonPhase) {
+      const nextParams = new URLSearchParams(searchParams.toString());
+      nextParams.set("setup", "create-season");
+      setIsOpen(false);
+      router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
+    }
+  };
 
   return (
     <>
       <div className="tour-overlay" />
       <div className="tour-popover" ref={popoverRef}>
-        <p className="tour-popover__step">
-          Paso {stepIndex + 1} de {steps.length}
-        </p>
+        <p className="tour-popover__step">Paso {stepIndex + 1} de {steps.length}</p>
         <h3>{step.title}</h3>
         <p>{step.body}</p>
         <div className="tour-popover__actions">
-          <button className="secondary-button" onClick={closeTour} type="button">
+          {/* Cerrar: always present, permanently dismisses the tour */}
+          <button className="secondary-button" onClick={() => void dismissTour()} type="button">
             Cerrar
           </button>
-          {stepIndex > 0 ? (
+
+          {/* Anterior: available on non-first steps when not in a phase action */}
+          {stepIndex > 0 && !isPhaseAction ? (
             <button
               className="secondary-button"
               onClick={() => setStepIndex((value) => value - 1)}
@@ -429,18 +512,33 @@ export function GuestOnboardingTour({
               Anterior
             </button>
           ) : null}
+
+          {/* Primary action: phase-specific or Siguiente/Terminar */}
           <button
             className="primary-button"
             onClick={() => {
+              if (isPhaseAction) {
+                handleMemberPhaseAction();
+                return;
+              }
               if (isLastStep) {
-                closeTour();
+                void fetch("/api/onboarding/complete", { method: "POST" }).then(() => {
+                  setIsOpen(false);
+                  router.refresh();
+                });
               } else {
                 setStepIndex((value) => value + 1);
               }
             }}
             type="button"
           >
-            {isLastStep ? "Terminar" : "Siguiente"}
+            {isConfigureBoatPhase
+              ? "Abrir configuracion"
+              : isCreateSeasonPhase
+                ? "Crear temporada"
+                : isLastStep
+                  ? "Terminar"
+                  : "Siguiente"}
           </button>
         </div>
       </div>

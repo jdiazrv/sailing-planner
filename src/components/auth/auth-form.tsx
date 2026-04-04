@@ -28,7 +28,7 @@ export const AuthForm = ({
   showHeader = true,
   className,
 }: AuthFormProps = {}) => {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = getSafeNextPath(searchParams.get("next"));
@@ -80,6 +80,11 @@ export const AuthForm = ({
       email,
       options: {
         emailRedirectTo: redirectUrl.toString(),
+        shouldCreateUser: false,
+        data: {
+          preferred_language: locale,
+          locale,
+        },
       },
     });
 
@@ -94,14 +99,17 @@ export const AuthForm = ({
     const supabase = createClient();
     const requestOrigin =
       typeof window !== "undefined" ? window.location.origin : undefined;
-    const redirectUrl = buildAuthRedirectUrl("/auth/set-password", {
-      requestOrigin,
-    });
+    const redirectUrl = new URL(
+      buildAuthRedirectUrl("/auth/callback", {
+        requestOrigin,
+      }),
+    );
+    redirectUrl.searchParams.set("next", "/auth/set-password");
 
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(
       email,
       {
-        redirectTo: redirectUrl,
+        redirectTo: redirectUrl.toString(),
       },
     );
 
@@ -110,6 +118,30 @@ export const AuthForm = ({
     }
 
     setMessage(t("auth.resetSent"));
+  };
+
+  const handleGoogleLogin = async () => {
+    const supabase = createClient();
+    const requestOrigin =
+      typeof window !== "undefined" ? window.location.origin : undefined;
+    const redirectUrl = new URL(
+      buildAuthRedirectUrl("/auth/callback", { requestOrigin }),
+    );
+    redirectUrl.searchParams.set("next", next);
+
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: redirectUrl.toString(),
+        queryParams: {
+          prompt: "select_account",
+        },
+      },
+    });
+
+    if (oauthError) {
+      throw oauthError;
+    }
   };
 
   const ensureEmail = () => {
@@ -239,6 +271,29 @@ export const AuthForm = ({
             type="button"
           >
             {t("auth.magicMode")}
+          </button>
+          <button
+            className="secondary-button"
+            disabled={isLoading}
+            onClick={() => {
+              setIsLoading(true);
+              setError(null);
+              setMessage(null);
+              void handleGoogleLogin()
+                .catch((submitError) => {
+                  setError(
+                    submitError instanceof Error
+                      ? submitError.message
+                      : t("auth.error"),
+                  );
+                })
+                .finally(() => {
+                  setIsLoading(false);
+                });
+            }}
+            type="button"
+          >
+            {t("auth.googleMode")}
           </button>
         </div>
       ) : null}

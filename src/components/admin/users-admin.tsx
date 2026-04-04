@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { useI18n } from "@/components/i18n/provider";
@@ -20,6 +20,7 @@ type UsersAdminProps = {
   canInviteUsers: boolean;
   isSuperuser: boolean;
   viewerUserId: string;
+  viewerEmail: string;
   initialSelectedUserId?: string;
   initialSection?: UserEditorSection;
   personalMode?: boolean;
@@ -37,8 +38,9 @@ type InvitePermissionsState = {
   canViewAvailability: boolean;
 };
 
-type UserEditorSection = "global" | "boat" | "security";
-type AccessSetupMode = "create" | "invite";
+type UserEditorSection = "global" | "boat" | "security" | "roles";
+type UserSortCol = "name" | "boats" | "lastAccess" | "type";
+type SortDir2 = "asc" | "desc";
 
 const isNextRedirectSignal = (error: unknown) => {
   if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
@@ -131,6 +133,8 @@ const formatAccessMethod = (
       return locale === "es" ? "Contraseña" : "Password";
     case "magic_link":
       return "Magic link";
+    case "google":
+      return "Google";
     default:
       return locale === "es" ? "Sin registrar" : "Not recorded";
   }
@@ -155,21 +159,98 @@ export function UsersAdmin({
   singleBoatContext = false,
 }: UsersAdminProps) {
   const [isPending, startTransition] = useTransition();
-  const [accessSetupMode, setAccessSetupMode] = useState<AccessSetupMode>("create");
-  const [showAccessSetupForm, setShowAccessSetupForm] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showInviteForm, setShowInviteForm] = useState(false);
+  const [createPermissions, setCreatePermissions] = useState<InvitePermissionsState>(
+    getPermissionPreset("viewer"),
+  );
   const [selectedUserId, setSelectedUserId] = useState(initialSelectedUserId ?? users[0]?.id ?? "");
+  const [createSelectedBoatId, setCreateSelectedBoatId] = useState(boats[0]?.id ?? "");
+  const [userSearch, setUserSearch] = useState("");
+  const [userSortCol, setUserSortCol] = useState<UserSortCol>("name");
+  const [userSortDir, setUserSortDir] = useState<SortDir2>("asc");
   const { locale, t } = useI18n();
-  const sortedUsers = [...users].sort((a, b) =>
-    `${a.display_name ?? ""}${a.email ?? ""}`.localeCompare(
-      `${b.display_name ?? ""}${b.email ?? ""}`,
-      locale,
-    ),
+  const sortedUsers = useMemo(
+    () =>
+      [...users].sort((a, b) =>
+        `${a.display_name ?? ""}${a.email ?? ""}`.localeCompare(
+          `${b.display_name ?? ""}${b.email ?? ""}`,
+          locale,
+        ),
+      ),
+    [users, locale],
   );
   const selectedUser =
     sortedUsers.find((user) => user.id === selectedUserId) ??
     users.find((user) => user.id === selectedUserId) ??
     null;
+
+  const sortedBoats = useMemo(
+    () => [...boats].sort((a, b) => a.name.localeCompare(b.name, locale)),
+    [boats, locale],
+  );
+
+  const handleUserSort = (col: UserSortCol) => {
+    if (userSortCol === col) {
+      setUserSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setUserSortCol(col);
+      setUserSortDir("asc");
+    }
+  };
+
+  const filteredUsers = useMemo(() => {
+    const q = userSearch.trim().toLowerCase();
+    let list = q
+      ? sortedUsers.filter((u) => {
+          const boatNames = u.permissions
+            .map((p) => boats.find((b) => b.id === p.boat_id)?.name ?? "")
+            .join(" ");
+          return [
+            u.display_name ?? "",
+            u.email ?? "",
+            boatNames,
+          ]
+            .join(" ")
+            .toLowerCase()
+            .includes(q);
+        })
+      : sortedUsers;
+
+    return [...list].sort((a, b) => {
+      let cmp = 0;
+      switch (userSortCol) {
+        case "name":
+          cmp = `${a.display_name ?? a.email ?? ""}`.localeCompare(`${b.display_name ?? b.email ?? ""}`, locale);
+          break;
+        case "boats":
+          cmp = a.permissions.length - b.permissions.length;
+          break;
+        case "lastAccess":
+          cmp = (a.last_sign_in_at ?? "").localeCompare(b.last_sign_in_at ?? "");
+          break;
+        case "type":
+          cmp = Number(b.is_superuser) - Number(a.is_superuser);
+          break;
+      }
+      return userSortDir === "asc" ? cmp : -cmp;
+    });
+  }, [sortedUsers, userSearch, boats, userSortCol, userSortDir, locale]);
   const canAssignManagerRole = isSuperuser;
+
+  useEffect(() => {
+    if (!boats.length) {
+      if (createSelectedBoatId) {
+        setCreateSelectedBoatId("");
+      }
+      return;
+    }
+
+    if (!boats.some((boat) => boat.id === createSelectedBoatId)) {
+      setCreateSelectedBoatId(boats[0]?.id ?? "");
+    }
+  }, [boats, createSelectedBoatId]);
+
   const showActionError = (error: unknown) => {
     if (isNextRedirectSignal(error)) {
       return;
@@ -177,17 +258,6 @@ export function UsersAdmin({
 
     toast.error(error instanceof Error ? error.message : t("auth.error"));
   };
-
-  useEffect(() => {
-    if (!selectedUserId && sortedUsers[0]?.id) {
-      setSelectedUserId(sortedUsers[0].id);
-      return;
-    }
-
-    if (selectedUserId && !sortedUsers.some((user) => user.id === selectedUserId)) {
-      setSelectedUserId(sortedUsers[0]?.id ?? "");
-    }
-  }, [selectedUserId, sortedUsers]);
 
   const inviteUser = (formData: FormData) => {
     startTransition(() => {
@@ -220,148 +290,279 @@ export function UsersAdmin({
   return (
     <section className="admin-stack">
       {!personalMode ? (
-      <article className="dashboard-card admin-card">
-        <div className="card-header">
-          <div>
-            <p className="eyebrow">{t("admin.users.accessEyebrow")}</p>
-            <h2>{t("admin.users.accessTitle")}</h2>
-            <p className="muted">{t("admin.users.accessBody")}</p>
-          </div>
-          <button
-            className="secondary-button"
-            onClick={() => setShowAccessSetupForm((value) => !value)}
-            type="button"
-          >
-            {showAccessSetupForm
-              ? t("admin.users.hideForm")
-              : t("admin.users.openForm")}
-          </button>
-        </div>
-        {showAccessSetupForm ? canInviteUsers ? (
-          <>
-            <div className="editor-sections-nav" role="tablist" aria-label={t("admin.users.accessTitle")}>
+        <div
+          className="dashboard-card admin-alta-strip"
+          title={t("admin.users.accessBody")}
+        >
+          <p className="eyebrow">{t("admin.users.accessEyebrow")}</p>
+          <div className="admin-alta-actions">
+            <button
+              className={`secondary-button secondary-button--small${showCreateForm ? " is-active-form" : ""}`}
+              onClick={() => { setShowCreateForm((v) => !v); setShowInviteForm(false); }}
+              type="button"
+            >
+              {locale === "es" ? "+ Crear usuario" : "+ Create user"}
+            </button>
+            {canInviteUsers ? (
               <button
-                aria-selected={accessSetupMode === "create"}
-                className={`editor-sections-nav__item${accessSetupMode === "create" ? " is-active" : ""}`}
-                onClick={() => setAccessSetupMode("create")}
-                role="tab"
+                className={`secondary-button secondary-button--small${showInviteForm ? " is-active-form" : ""}`}
+                onClick={() => { setShowInviteForm((v) => !v); setShowCreateForm(false); }}
                 type="button"
               >
-                {t("admin.users.createMode")}
+                {locale === "es" ? "Enviar invitación" : "Send invitation"}
               </button>
-              <button
-                aria-selected={accessSetupMode === "invite"}
-                className={`editor-sections-nav__item${accessSetupMode === "invite" ? " is-active" : ""}`}
-                onClick={() => setAccessSetupMode("invite")}
-                role="tab"
-                type="button"
-              >
-                {t("admin.users.inviteMode")}
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {!personalMode && showCreateForm ? (
+        <article className="dashboard-card admin-card">
+          <form
+            className="editor-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              inviteUser(new FormData(event.currentTarget));
+              event.currentTarget.reset();
+              setCreatePermissions(getPermissionPreset("viewer"));
+              setShowCreateForm(false);
+            }}
+          >
+            <div className="form-grid">
+              {singleBoatContext && createSelectedBoatId ? (
+                <input name="boat_id" type="hidden" value={createSelectedBoatId} />
+              ) : null}
+              <input
+                name="permission_level"
+                type="hidden"
+                value={createPermissions.permissionLevel}
+              />
+              <input name="can_edit" type="hidden" value={createPermissions.canEdit ? "on" : ""} />
+              <input
+                name="can_view_all_visits"
+                type="hidden"
+                value={createPermissions.canViewAllVisits ? "on" : ""}
+              />
+              <input
+                name="can_view_visit_names"
+                type="hidden"
+                value={createPermissions.canViewVisitNames ? "on" : ""}
+              />
+              <input
+                name="can_view_private_notes"
+                type="hidden"
+                value={createPermissions.canViewPrivateNotes ? "on" : ""}
+              />
+              <input
+                name="can_view_only_own_visit"
+                type="hidden"
+                value={createPermissions.canViewOnlyOwnVisit ? "on" : ""}
+              />
+              <input
+                name="can_manage_boat_users"
+                type="hidden"
+                value={createPermissions.canManageBoatUsers ? "on" : ""}
+              />
+              <input
+                name="can_view_availability"
+                type="hidden"
+                value={createPermissions.canViewAvailability ? "on" : ""}
+              />
+              <label>
+                <span>{t("auth.email")}</span>
+                <input name="email" placeholder="crew@example.com" required type="email" />
+              </label>
+              <label>
+                <span>{t("admin.users.displayName")}</span>
+                <input name="display_name" placeholder={t("admin.users.displayNamePlaceholder")} />
+              </label>
+              <label>
+                <span>{t("auth.password")}</span>
+                <input
+                  minLength={8}
+                  name="password"
+                  placeholder={t("admin.users.passwordPlaceholder")}
+                  required
+                  type="password"
+                />
+              </label>
+              <label>
+                <span>{t("admin.users.language")}</span>
+                <select defaultValue="es" name="preferred_language">
+                  <option value="es">Español</option>
+                  <option value="en">English</option>
+                </select>
+              </label>
+              {singleBoatContext && sortedBoats.length > 0 ? (
+                <label className="form-grid__wide">
+                  <span>{locale === "es" ? "Barco asignado" : "Assigned boat"}</span>
+                  <input
+                    disabled
+                    readOnly
+                    value={sortedBoats.find((boat) => boat.id === createSelectedBoatId)?.name ?? ""}
+                  />
+                </label>
+              ) : null}
+              <label>
+                <span>{locale === "es" ? "Perfil" : "Role"}</span>
+                <div className="permission-presets">
+                  {([
+                    ["viewer", locale === "es" ? "Lector" : "Viewer"],
+                    ["editor", locale === "es" ? "Editor" : "Editor"],
+                    ...(isSuperuser
+                      ? ([
+                          ["manager", locale === "es" ? "Gestor" : "Manager"],
+                        ] as const)
+                      : []),
+                  ] as const).map(([value, label]) => (
+                    <button
+                      className={`permission-preset${createPermissions.permissionLevel === value ? " is-active" : ""}`}
+                      key={value}
+                      onClick={() => setCreatePermissions(getPermissionPreset(value))}
+                      type="button"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </label>
+              {createPermissions.permissionLevel === "viewer" ? (
+                <label className="checkbox-field">
+                  <input
+                    checked={createPermissions.canViewAllVisits}
+                    onChange={(event) =>
+                      setCreatePermissions((current) => ({
+                        ...current,
+                        canViewAllVisits: event.target.checked,
+                        canViewVisitNames: event.target.checked,
+                      }))
+                    }
+                    type="checkbox"
+                  />
+                  <span>
+                    {locale === "es"
+                      ? "El lector puede ver visitas"
+                      : "Viewer can see visits"}
+                  </span>
+                </label>
+              ) : null}
+            </div>
+            <div className="modal__footer">
+              <button className="primary-button" disabled={isPending} type="submit">
+                {isPending ? t("admin.users.creatingUser") : t("admin.users.createUser")}
               </button>
             </div>
-            {accessSetupMode === "create" ? (
-              <form
-                className="editor-form"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  inviteUser(new FormData(event.currentTarget));
-                  event.currentTarget.reset();
-                  setShowAccessSetupForm(false);
-                }}
-              >
-                <div className="form-grid">
-                  {singleBoatContext && boats[0]?.id ? (
-                    <input name="boat_id" type="hidden" value={boats[0].id} />
-                  ) : null}
-                  <label>
-                    <span>{t("auth.email")}</span>
-                    <input name="email" placeholder="crew@example.com" required type="email" />
-                  </label>
-                  <label>
-                    <span>{t("admin.users.displayName")}</span>
-                    <input name="display_name" placeholder={t("admin.users.displayNamePlaceholder")} />
-                  </label>
-                  <label>
-                    <span>{t("auth.password")}</span>
-                    <input
-                      minLength={8}
-                      name="password"
-                      placeholder={t("admin.users.passwordPlaceholder")}
-                      required
-                      type="password"
-                    />
-                  </label>
-                  <label>
-                    <span>{t("admin.users.language")}</span>
-                    <select defaultValue="es" name="preferred_language">
-                      <option value="es">Español</option>
-                      <option value="en">English</option>
-                    </select>
-                  </label>
-                </div>
-                <div className="modal__footer">
-                  <button className="primary-button" disabled={isPending} type="submit">
-                    {isPending ? t("admin.users.creatingUser") : t("admin.users.createUser")}
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <InviteUserForm
-                allowManagerRole={canAssignManagerRole}
-                boats={boats}
-                isPending={isPending}
-                locale={locale}
-                onSubmit={sendInvite}
-              />
-            )}
-          </>
-        ) : (
-          <p className="muted">{t("admin.users.serviceRoleMissing")}</p>
-        ) : (
-          <p className="muted">{t("admin.users.formCollapsedHelp")}</p>
-        )}
-      </article>
+          </form>
+        </article>
+      ) : null}
+
+      {!personalMode && showInviteForm && canInviteUsers ? (
+        <article className="dashboard-card admin-card">
+          <InviteUserForm
+            allowManagerRole={canAssignManagerRole}
+            boats={boats}
+            isPending={isPending}
+            locale={locale}
+            singleBoatContext={singleBoatContext}
+            viewerEmail={viewerEmail}
+            onSubmit={(fd) => { sendInvite(fd); setShowInviteForm(false); }}
+          />
+        </article>
       ) : null}
 
       {!personalMode ? (
-      <article className="dashboard-card admin-card">
-        <div className="card-header">
-          <div>
-            <p className="eyebrow">{t("admin.users.selectEyebrow")}</p>
-            <h2>{t("admin.users.selectTitle")}</h2>
-            <p className="muted">{t("admin.users.selectHelp")}</p>
-          </div>
-        </div>
-        <SearchableSelect
-          clearSelectionWhenNoMatch
-          emptyText={t("admin.users.noUsersMatch")}
-          label={t("admin.users.user")}
-          onSelect={setSelectedUserId}
-          options={sortedUsers.map((user) => ({
-            id: user.id,
-            primary: user.display_name ?? user.email ?? user.id,
-            secondary: user.email ?? "—",
-            tertiary:
-              !singleBoatContext && user.permissions[0]
-                ? boats.find((boat) => boat.id === user.permissions[0]?.boat_id)?.name ?? "—"
-                : undefined,
-          }))}
-          placeholder={t("admin.users.searchUser")}
-          selectedId={selectedUser?.id ?? ""}
-        />
-      </article>
-      ) : null}
-
-      {!personalMode && !selectedUser ? (
         <article className="dashboard-card admin-card">
-          <p className="eyebrow">{t("admin.users.selectTitle")}</p>
-          <p className="muted">
-            {singleBoatContext
-              ? locale === "es"
-                ? "No hay otros usuarios de tu barco que puedas gestionar ahora mismo."
-                : "There are no other users in your boat you can manage right now."
-              : t("admin.users.noUsersMatch")}
-          </p>
+          <label className="admin-users-search">
+            <span className="eyebrow">{locale === "es" ? "Buscar usuarios" : "Search users"}</span>
+            <input
+              onChange={(e) => { setUserSearch(e.target.value); setSelectedUserId(""); }}
+              placeholder={locale === "es" ? "Nombre, correo o barco…" : "Name, email or boat…"}
+              value={userSearch}
+            />
+          </label>
+
+          {filteredUsers.length ? (
+            <div className="metrics-table-wrap admin-users-table-wrap">
+              <table className="metrics-table admin-users-table">
+                <thead>
+                  <tr>
+                    <th
+                      className={`sortable-th${userSortCol === "name" ? " is-sorted" : ""}`}
+                      onClick={() => handleUserSort("name")}
+                    >
+                      {locale === "es" ? "Usuario" : "User"}
+                      <span className="sort-icon">{userSortCol === "name" ? (userSortDir === "asc" ? "↑" : "↓") : "↕"}</span>
+                    </th>
+                    <th
+                      className={`sortable-th${userSortCol === "boats" ? " is-sorted" : ""}`}
+                      onClick={() => handleUserSort("boats")}
+                      title={locale === "es" ? "Ordena ascendente para ver usuarios sin barco primero" : "Sort ascending to see users without a boat first"}
+                    >
+                      {locale === "es" ? "Barcos" : "Boats"}
+                      <span className="sort-icon">{userSortCol === "boats" ? (userSortDir === "asc" ? "↑" : "↓") : "↕"}</span>
+                    </th>
+                    <th
+                      className={`sortable-th${userSortCol === "lastAccess" ? " is-sorted" : ""}`}
+                      onClick={() => handleUserSort("lastAccess")}
+                    >
+                      {locale === "es" ? "Último acceso" : "Last access"}
+                      <span className="sort-icon">{userSortCol === "lastAccess" ? (userSortDir === "asc" ? "↑" : "↓") : "↕"}</span>
+                    </th>
+                    <th
+                      className={`sortable-th${userSortCol === "type" ? " is-sorted" : ""}`}
+                      onClick={() => handleUserSort("type")}
+                    >
+                      {locale === "es" ? "Tipo" : "Type"}
+                      <span className="sort-icon">{userSortCol === "type" ? (userSortDir === "asc" ? "↑" : "↓") : "↕"}</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((user) => {
+                    const isSelected = selectedUserId === user.id;
+                    const assignedBoatNames = user.permissions
+                      .slice(0, 2)
+                      .map((p) => boats.find((b) => b.id === p.boat_id)?.name ?? "—");
+                    const extraCount = user.permissions.length - assignedBoatNames.length;
+                    return (
+                      <tr
+                        className={`admin-users-table__row${isSelected ? " is-selected" : ""}`}
+                        key={user.id}
+                        onClick={() => setSelectedUserId(isSelected ? "" : user.id)}
+                      >
+                        <td>
+                          <strong>{user.display_name ?? user.email ?? "—"}</strong>
+                          <div className="meta">{user.email ?? "—"}</div>
+                        </td>
+                        <td>
+                          {assignedBoatNames.length > 0 ? (
+                            <span>
+                              {assignedBoatNames.join(", ")}
+                              {extraCount > 0 ? ` +${extraCount}` : ""}
+                            </span>
+                          ) : (
+                            <span className="meta">—</span>
+                          )}
+                        </td>
+                        <td className="meta">
+                          {formatLastAccess(user.last_sign_in_at, locale)}
+                        </td>
+                        <td>
+                          <span className={`status-pill ${user.is_superuser ? "is-good" : "is-muted"}`}>
+                            {user.is_superuser ? t("admin.users.superuser") : t("admin.users.standardUser")}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="muted">
+              {locale === "es" ? "Ningún usuario coincide con la búsqueda." : "No users match the search."}
+            </p>
+          )}
         </article>
       ) : null}
 
@@ -392,12 +593,16 @@ function InviteUserForm({
   boats,
   isPending,
   locale,
+  singleBoatContext,
+  viewerEmail,
   onSubmit,
 }: {
   allowManagerRole: boolean;
   boats: BoatDetails[];
   isPending: boolean;
   locale: "es" | "en";
+  singleBoatContext: boolean;
+  viewerEmail: string;
   onSubmit: (fd: FormData) => void;
 }) {
   const [permissions, setPermissions] = useState<InvitePermissionsState>(
@@ -405,6 +610,19 @@ function InviteUserForm({
   );
   const [selectedBoatId, setSelectedBoatId] = useState(boats[0]?.id ?? "");
   const sortedBoats = [...boats].sort((a, b) => a.name.localeCompare(b.name, locale));
+
+  useEffect(() => {
+    if (!sortedBoats.length) {
+      if (selectedBoatId) {
+        setSelectedBoatId("");
+      }
+      return;
+    }
+
+    if (!sortedBoats.some((boat) => boat.id === selectedBoatId)) {
+      setSelectedBoatId(sortedBoats[0]?.id ?? "");
+    }
+  }, [selectedBoatId, sortedBoats]);
 
   const text =
     locale === "es"
@@ -469,6 +687,10 @@ function InviteUserForm({
           <input name="email" placeholder="crew@example.com" required type="email" />
         </label>
         <label>
+          <span>{locale === "es" ? "Invitación de" : "Invitation from"}</span>
+          <input readOnly type="email" value={viewerEmail} />
+        </label>
+        <label>
           <span>{tLabel(locale, "admin.users.displayName")}</span>
           <input
             name="display_name"
@@ -482,22 +704,33 @@ function InviteUserForm({
             <option value="en">English</option>
           </select>
         </label>
-        <div className="form-grid__wide">
-          <SearchableSelect
-            emptyText={locale === "es" ? "Ningún barco coincide con la búsqueda." : "No boats match the search."}
-            label={text.boat}
-            name="boat_id"
-            onSelect={setSelectedBoatId}
-            options={sortedBoats.map((boat) => ({
-              id: boat.id,
-              primary: boat.name,
-              secondary: boat.home_port ?? "—",
-              tertiary: boat.model ?? "",
-            }))}
-            placeholder={locale === "es" ? "Escribe para buscar un barco" : "Type to search a boat"}
-            selectedId={selectedBoatId}
-          />
-        </div>
+        {singleBoatContext ? (
+          <label>
+            <span>{text.boat}</span>
+            <input
+              disabled
+              readOnly
+              value={sortedBoats.find((boat) => boat.id === selectedBoatId)?.name ?? ""}
+            />
+          </label>
+        ) : (
+          <div className="form-grid__wide">
+            <SearchableSelect
+              emptyText={locale === "es" ? "Ningún barco coincide con la búsqueda." : "No boats match the search."}
+              label={text.boat}
+              name="boat_id"
+              onSelect={setSelectedBoatId}
+              options={sortedBoats.map((boat) => ({
+                id: boat.id,
+                primary: boat.name,
+                secondary: boat.home_port ?? "—",
+                tertiary: boat.model ?? "",
+              }))}
+              placeholder={locale === "es" ? "Escribe para buscar un barco" : "Type to search a boat"}
+              selectedId={selectedBoatId}
+            />
+          </div>
+        )}
         <label>
           <span>{text.level}</span>
           <input name="permission_level" type="hidden" value={permissions.permissionLevel} />
@@ -547,6 +780,7 @@ function InviteUserForm({
         <label className="checkbox-field">
           <input
             checked={permissions.canEdit}
+            disabled={permissions.permissionLevel === "viewer"}
             name="can_edit"
             onChange={(event) =>
               setPermissions((current) => ({
@@ -713,6 +947,9 @@ function UserEditorCard({
     ...(canManageSecurity
       ? ([{ id: "security", label: t("admin.users.sectionSecurity") }] as const)
       : []),
+    ...(canEditPermissions
+      ? [{ id: "roles" as const, label: locale === "es" ? "Roles" : "Roles" }]
+      : []),
   ];
   const metricCards = [
     { label: t("admin.users.accessCount"), value: String(user.sign_in_count ?? 0) },
@@ -821,8 +1058,17 @@ function UserEditorCard({
       <div className="card-header">
         <div>
           <p className="eyebrow">{t("admin.users.userEyebrow")}</p>
-          <h2>{user.display_name ?? user.email ?? t("admin.users.unnamedUser")}</h2>
-          <p className="muted">{user.email ?? "—"}</p>
+          <h2>
+            {user.display_name ?? user.email ?? t("admin.users.unnamedUser")}
+            {user.display_name ? (
+              <span className="admin-user-email-inline"> · {user.email}</span>
+            ) : null}
+          </h2>
+          <p className="muted">
+            {assignedBoats.length > 0
+              ? assignedBoats.map((b) => b.name).join(", ")
+              : (locale === "es" ? "Sin barco asignado" : "No boat assigned")}
+          </p>
         </div>
         <div className="admin-user-header-actions">
           {!personalMode ? (
@@ -845,10 +1091,6 @@ function UserEditorCard({
 
       {!personalMode ? (
         <div className="admin-readonly-summary">
-          <div className="admin-readonly-note" role="note">
-            <strong>{t("admin.users.readonlySummaryTitle")}</strong>
-            <span>{t("admin.users.readonlySummaryHelp")}</span>
-          </div>
           <div className="admin-metrics-grid admin-metrics-grid--readonly">
             {metricCards.map((metric) => (
               <div className="admin-metric-card" key={metric.label}>
@@ -881,8 +1123,6 @@ function UserEditorCard({
           <div className="card-header">
             <div>
               <p className="eyebrow">{t("admin.users.sectionGlobal")}</p>
-              <p className="muted">{t("admin.users.sectionGlobalHelp")}</p>
-              <p className="admin-edit-hint">{t("admin.users.editableHint")}</p>
             </div>
           </div>
           <form
@@ -966,9 +1206,6 @@ function UserEditorCard({
             <div className="card-header">
               <div>
                 <p className="eyebrow">{t("admin.users.passwordTitle")}</p>
-                <p className="muted">{t("admin.users.sectionSecurityHelp")}</p>
-                <p className="muted">{t("admin.users.passwordHelp")}</p>
-                <p className="admin-edit-hint">{t("admin.users.editableHint")}</p>
                 {accessSummary ? <p className="muted">{accessSummary}</p> : null}
               </div>
             </div>
@@ -1009,11 +1246,6 @@ function UserEditorCard({
           <div className="card-header">
             <div>
               <p className="eyebrow">{t("admin.users.boatsSection")}</p>
-              <p className="muted">{t("admin.users.sectionBoatHelp")}</p>
-              <p className="admin-edit-hint">{t("admin.users.editableHint")}</p>
-              {!user.is_superuser ? (
-                <p className="muted">{t("admin.users.singleBoatOnly")}</p>
-              ) : null}
             </div>
           </div>
 
@@ -1067,6 +1299,55 @@ function UserEditorCard({
               </div>
             ) : null}
           </div>
+          </article>
+        )}
+        {activeSection === "roles" && canEditPermissions && (
+          <article className="admin-card admin-card--section">
+            <div className="metrics-table-wrap admin-users-table-wrap">
+              {(user.created_users?.length ?? 0) > 0 ? (
+                <table className="metrics-table">
+                  <thead>
+                    <tr>
+                      <th>{locale === "es" ? "Usuario" : "User"}</th>
+                      <th>{locale === "es" ? "Barco" : "Boat"}</th>
+                      <th>{locale === "es" ? "Rol" : "Role"}</th>
+                      <th>{locale === "es" ? "Último acceso" : "Last access"}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {user.created_users?.map((createdUser) => {
+                      const boat = boats.find((b) => b.id === createdUser.boat_id);
+                      const roleLabel =
+                        createdUser.permission_level === "manager"
+                          ? (locale === "es" ? "Gestor" : "Manager")
+                          : createdUser.permission_level === "editor"
+                            ? (locale === "es" ? "Editor" : "Editor")
+                            : (locale === "es" ? "Lector" : "Viewer");
+                      return (
+                        <tr key={createdUser.id}>
+                          <td>
+                            <strong>{createdUser.display_name ?? createdUser.email ?? "—"}</strong>
+                            <div className="meta">{createdUser.email ?? "—"}</div>
+                          </td>
+                          <td><strong>{boat?.name ?? (locale === "es" ? "Sin barco" : "No boat")}</strong></td>
+                          <td>
+                            <span className={`status-pill ${
+                              createdUser.permission_level === "manager" ? "is-good" :
+                              createdUser.permission_level === "editor" ? "is-accent" : "is-muted"
+                            }`}>{roleLabel}</span>
+                          </td>
+                          <td className="meta">{formatLastAccess(createdUser.last_sign_in_at, locale)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="muted" style={{ padding: "0.75rem" }}>
+                  {locale === "es" ? "Este usuario no ha creado usuarios todavía." : "This user has not created users yet."}
+                </p>
+              )}
+            </div>
           </article>
         )}
       </div>

@@ -37,7 +37,10 @@ export default async function BoatWorkspacePage({
     workspace.viewer.isSuperuser || Boolean(workspace.permission?.can_edit);
   const canManageUsers =
     workspace.viewer.isSuperuser ||
-    Boolean(workspace.permission?.can_manage_boat_users);
+    Boolean(
+      workspace.permission?.can_manage_boat_users ||
+      workspace.permission?.permission_level === "manager",
+    );
   const canShare = canEdit || canManageUsers;
   const currentView = view === "visits" ? "visits" : "trip";
 
@@ -45,10 +48,14 @@ export default async function BoatWorkspacePage({
     <>
       {workspace.viewer.onboardingPending ? (
         <MemberFirstAccess
+          boatName={workspace.boat.name}
           canEditBoat={canEdit}
           canManageUsers={canManageUsers}
           canShare={canShare}
           canViewVisits
+          hasSegments={workspace.tripSegments.length > 0}
+          hasVisits={workspace.visits.filter((v) => v.status !== "blocked").length > 0}
+          onboardingStep={workspace.viewer.onboardingStep}
           viewerId={`${workspace.viewer.profile?.id ?? boatId}:${workspace.selectedSeason?.id ?? "no-season"}`}
         />
       ) : null}

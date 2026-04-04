@@ -29,6 +29,8 @@ export type BoatAggregateData = {
     { lastAccessAt: string | null; displayName: string | null; email: string | null }
   >;
   usersCountByBoat: Map<string, number>;
+  managersCountByBoat: Map<string, number>;
+  editorsCountByBoat: Map<string, number>;
 };
 
 export const getBoatImageUrl = (
@@ -92,25 +94,27 @@ export const getAccessibleBoatBase = async (
 
   const boatRows = (data ?? []) as ExtendedBoatRow[];
 
-  return boatRows.map((boat) => ({
-    boat_id: boat.id,
-    boat_name: boat.name,
-    permission_level:
-      overviewByBoat.get(boat.id)?.permission_level ??
-      (viewer.isSuperuser ? null : "viewer"),
-    can_edit:
-      overviewByBoat.get(boat.id)?.can_edit ?? Boolean(viewer.isSuperuser),
-    can_manage_boat_users:
-      overviewByBoat.get(boat.id)?.can_manage_boat_users ??
-      Boolean(viewer.isSuperuser),
-    description: boat.description,
-    home_port: boat.home_port ?? null,
-    image_path: boat.image_path ?? null,
-    image_url: getBoatImageUrl(supabase, boat.image_path, boat.updated_at),
-    model: boat.model ?? null,
-    year_built: boat.year_built ?? null,
-    is_active: boat.is_active,
-  })) as BoatSummary[];
+  return boatRows.map((boat) => {
+    const overview = overviewByBoat.get(boat.id);
+    const canManageFromRole = overview?.permission_level === "manager";
+
+    return {
+      boat_id: boat.id,
+      boat_name: boat.name,
+      permission_level:
+        overview?.permission_level ?? (viewer.isSuperuser ? null : "viewer"),
+      can_edit: overview?.can_edit ?? Boolean(viewer.isSuperuser),
+      can_manage_boat_users:
+        overview?.can_manage_boat_users ?? canManageFromRole ?? Boolean(viewer.isSuperuser),
+      description: boat.description,
+      home_port: boat.home_port ?? null,
+      image_path: boat.image_path ?? null,
+      image_url: getBoatImageUrl(supabase, boat.image_path, boat.updated_at),
+      model: boat.model ?? null,
+      year_built: boat.year_built ?? null,
+      is_active: boat.is_active,
+    };
+  }) as BoatSummary[];
 };
 
 const updateLastAccess = (
@@ -151,6 +155,8 @@ export const getBoatAggregateData = async (
       { lastAccessAt: string | null; displayName: string | null; email: string | null }
     >(),
     usersCountByBoat: new Map<string, number>(),
+    managersCountByBoat: new Map<string, number>(),
+    editorsCountByBoat: new Map<string, number>(),
   };
 
   if (!boatIds.length) {
@@ -166,13 +172,13 @@ export const getBoatAggregateData = async (
         .in("boat_id", boatIds),
       db
         .from("user_boat_permissions")
-        .select("boat_id, user_id")
+        .select("boat_id, user_id, permission_level")
         .in("boat_id", boatIds),
     ]);
 
   const permissionRows = (permissionsData ?? []) as Pick<
     PermissionRow,
-    "boat_id" | "user_id"
+    "boat_id" | "user_id" | "permission_level"
   >[];
   const userIds = [...new Set(permissionRows.map((permission) => permission.user_id))];
   const { data: profilesData } = userIds.length
@@ -247,6 +253,18 @@ export const getBoatAggregateData = async (
     const users = usersByBoat.get(permission.boat_id) ?? new Set<string>();
     users.add(permission.user_id);
     usersByBoat.set(permission.boat_id, users);
+
+    if (permission.permission_level === "manager") {
+      aggregateData.managersCountByBoat.set(
+        permission.boat_id,
+        (aggregateData.managersCountByBoat.get(permission.boat_id) ?? 0) + 1,
+      );
+    } else if (permission.permission_level === "editor") {
+      aggregateData.editorsCountByBoat.set(
+        permission.boat_id,
+        (aggregateData.editorsCountByBoat.get(permission.boat_id) ?? 0) + 1,
+      );
+    }
 
     const profile = profileById.get(permission.user_id);
     if (!profile || profile.is_superuser) {
