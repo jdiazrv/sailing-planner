@@ -2165,26 +2165,6 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
   filter: drop-shadow(0 0 10px rgba(10, 147, 150, 0.18));
 }
 
-.map-fixed-label {
-  position: absolute;
-  top: 0.65rem;
-  left: 0.65rem;
-  z-index: 6;
-  max-width: min(72%, 300px);
-  padding: 0.32rem 0.55rem;
-  border-radius: 999px;
-  border: 1px solid var(--accent-border);
-  background: rgba(10, 16, 26, 0.9);
-  color: var(--ink);
-  font-size: 0.73rem;
-  font-weight: 600;
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  pointer-events: none;
-}
-
 .map-marker {
   position: absolute;
   transform: translate(-50%, -50%);

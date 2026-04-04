@@ -7,7 +7,6 @@ import { hasGoogleMapsKey, loadGoogleMaps } from "@/lib/google-maps";
 import { recordApiUsage } from "@/lib/api-usage";
 import {
   loadGreekCoastalZoneGeometryLazy,
-  matchGreekIslandByPointLazy,
   matchGreekCoastalZoneLazy,
   type CoastalZoneMatch,
   type CoastalZoneGeometry,
@@ -68,13 +67,6 @@ const toPoint = (latitude: number, longitude: number) => {
 
   return { x, y };
 };
-
-const toLatLng = (xPercent: number, yPercent: number) => ({
-  latitude:
-    BOUNDS.maxLat - ((yPercent / 100) * (BOUNDS.maxLat - BOUNDS.minLat)),
-  longitude:
-    BOUNDS.minLng + ((xPercent / 100) * (BOUNDS.maxLng - BOUNDS.minLng)),
-});
 
 const toCoordinate = (value: unknown) => {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -240,14 +232,6 @@ const buildRoutePoints = (tripSegments: TripSegmentView[]) =>
     })
     .filter((point): point is { lat: number; lng: number } => Boolean(point));
 
-const toIslandZone = (zone: CoastalZoneMatch | null | undefined) => {
-  if (!zone) {
-    return null;
-  }
-
-  return zone.kind === "island" || zone.kind === "islet" ? zone : null;
-};
-
 export const MapPanel = ({
   tripSegments,
   visits,
@@ -260,13 +244,10 @@ export const MapPanel = ({
 }: MapPanelProps) => {
   const { t } = useI18n();
   const mapRef = useRef<HTMLDivElement | null>(null);
-  const fallbackMapRef = useRef<HTMLDivElement | null>(null);
-  const clickResolveRequestRef = useRef(0);
   const onSelectEntityRef = useRef(onSelectEntity);
   const [mapReady, setMapReady] = useState(false);
   const [googleAvailable, setGoogleAvailable] = useState(hasGoogleMapsKey);
   const [mapMessage, setMapMessage] = useState(t("planning.loadingMap"));
-  const [activeLabel, setActiveLabel] = useState<string | null>(null);
 
   const [baseMap, setBaseMap] = useState<GoogleBaseMap>(() => {
     try {
@@ -311,15 +292,10 @@ export const MapPanel = ({
   );
   const routePoints = useMemo(() => buildRoutePoints(tripSegments), [tripSegments]);
   const hasSelection = Boolean(selectedEntityId);
-  const [activeCoastalZone, setActiveCoastalZone] = useState<CoastalZoneMatch | null>(null);
   const selectedCoastalZone = useMemo(() => {
-    if (activeCoastalZone) {
-      return activeCoastalZone;
-    }
-
     const selectedMarker = markers.find((marker) => marker.entityId === selectedEntityId);
     return selectedMarker?.coastalZone ?? null;
-  }, [activeCoastalZone, markers, selectedEntityId]);
+  }, [markers, selectedEntityId]);
   const [selectedCoastalGeometry, setSelectedCoastalGeometry] =
     useState<CoastalZoneGeometry | null>(null);
   const selectedCoastalZonePolygons = useMemo(
@@ -382,14 +358,6 @@ export const MapPanel = ({
   useEffect(() => {
     onSelectEntityRef.current = onSelectEntity;
   }, [onSelectEntity]);
-
-  useEffect(() => {
-    setActiveLabel(null);
-  }, [selectedEntityId]);
-
-  useEffect(() => {
-    setActiveCoastalZone(null);
-  }, [selectedEntityId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -461,31 +429,6 @@ export const MapPanel = ({
         gestureHandling: "greedy",
       });
 
-      map.addListener("click", (event: google.maps.MapMouseEvent) => {
-        if (!event.latLng) {
-          return;
-        }
-
-        clickResolveRequestRef.current += 1;
-        const requestId = clickResolveRequestRef.current;
-        void matchGreekIslandByPointLazy(event.latLng.lat(), event.latLng.lng())
-          .then((matchedZone) => {
-            if (requestId !== clickResolveRequestRef.current) {
-              return;
-            }
-            const islandZone = toIslandZone(matchedZone);
-            setActiveLabel(islandZone?.name ?? null);
-            setActiveCoastalZone(islandZone);
-          })
-          .catch(() => {
-            if (requestId !== clickResolveRequestRef.current) {
-              return;
-            }
-            setActiveLabel(null);
-            setActiveCoastalZone(null);
-          });
-      });
-
       if (showSeamarks) {
         map.overlayMapTypes.clear();
         map.overlayMapTypes.push(
@@ -529,9 +472,8 @@ export const MapPanel = ({
 
       if (selectedCoastalGeometry) {
         getZonePolygons(selectedCoastalGeometry).forEach((polygon) => {
-          const coastalPolygon = new maps.maps.Polygon({
+          new maps.maps.Polygon({
             map,
-            clickable: true,
             paths: polygon.map((ring) =>
               ring.map(([lng, lat]) => ({
                 lat,
@@ -543,12 +485,6 @@ export const MapPanel = ({
             strokeWeight: 3,
             fillColor: "#0a9396",
             fillOpacity: baseMap === "roadmap" ? 0.14 : 0.1,
-          });
-
-          coastalPolygon.addListener("click", () => {
-            const islandZone = toIslandZone(selectedCoastalZone);
-            setActiveLabel(islandZone?.name ?? null);
-            setActiveCoastalZone(islandZone);
           });
         });
       }
@@ -564,7 +500,7 @@ export const MapPanel = ({
       markers.forEach((marker) => {
         const selected = marker.entityId === selectedEntityId;
         const markerView = new maps.maps.Marker({
-          clickable: true,
+          clickable: Boolean(onSelectEntityRef.current),
           map,
           position: { lat: marker.latitude, lng: marker.longitude },
           title: marker.label,
@@ -600,14 +536,14 @@ export const MapPanel = ({
           },
         });
 
-        markerView.addListener("click", () => {
-          setActiveLabel(marker.label);
-          setActiveCoastalZone(marker.coastalZone ?? null);
-          onSelectEntityRef.current?.({
-            entityId: marker.entityId,
-            tone: marker.tone,
+        if (onSelectEntityRef.current) {
+          markerView.addListener("click", () => {
+            onSelectEntityRef.current?.({
+              entityId: marker.entityId,
+              tone: marker.tone,
+            });
           });
-        });
+        }
       });
 
       if (selectedMarkers.length === 1) {
@@ -705,53 +641,11 @@ export const MapPanel = ({
 
       {hasGoogleMapsKey && googleAvailable ? (
         <div className="map-canvas map-canvas--google">
-          {activeLabel ? (
-            <div className="map-fixed-label">{activeLabel}</div>
-          ) : null}
           <div className="map-google" ref={mapRef} />
           {!mapReady ? <div className="map-empty">{mapMessage}</div> : null}
         </div>
       ) : (
-        <div
-          className={`map-canvas${hasSelection ? " has-selection" : ""}`}
-          onClick={(event) => {
-            const host = fallbackMapRef.current;
-            if (!host) {
-              return;
-            }
-
-            const rect = host.getBoundingClientRect();
-            if (!rect.width || !rect.height) {
-              return;
-            }
-
-            const xPercent = ((event.clientX - rect.left) / rect.width) * 100;
-            const yPercent = ((event.clientY - rect.top) / rect.height) * 100;
-            const { latitude, longitude } = toLatLng(xPercent, yPercent);
-            clickResolveRequestRef.current += 1;
-            const requestId = clickResolveRequestRef.current;
-            void matchGreekIslandByPointLazy(latitude, longitude)
-              .then((matchedZone) => {
-                if (requestId !== clickResolveRequestRef.current) {
-                  return;
-                }
-                const islandZone = toIslandZone(matchedZone);
-                setActiveLabel(islandZone?.name ?? null);
-                setActiveCoastalZone(islandZone);
-              })
-              .catch(() => {
-                if (requestId !== clickResolveRequestRef.current) {
-                  return;
-                }
-                setActiveLabel(null);
-                setActiveCoastalZone(null);
-              });
-          }}
-          ref={fallbackMapRef}
-        >
-          {activeLabel ? (
-            <div className="map-fixed-label">{activeLabel}</div>
-          ) : null}
+        <div className={`map-canvas${hasSelection ? " has-selection" : ""}`}>
           <div className="map-canvas__grid" />
           {selectedCoastalZonePolygons.length ? (
             <svg
@@ -759,7 +653,7 @@ export const MapPanel = ({
               className="map-coastal-zone"
               style={{
                 inset: 0,
-                pointerEvents: "auto",
+                pointerEvents: "none",
                 position: "absolute",
                 zIndex: 0,
               }}
@@ -771,13 +665,6 @@ export const MapPanel = ({
                   fill="rgba(10, 147, 150, 0.14)"
                   fillRule="evenodd"
                   key={`${selectedCoastalZone?.id ?? "zone"}-${index}`}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    const islandZone = toIslandZone(selectedCoastalZone);
-                    setActiveLabel(islandZone?.name ?? null);
-                    setActiveCoastalZone(islandZone);
-                  }}
-                  pointerEvents="visiblePainted"
                   stroke="#0a9396"
                   strokeLinejoin="round"
                   strokeOpacity="0.96"
@@ -842,8 +729,6 @@ export const MapPanel = ({
                   key={marker.id}
                   onClick={(event) => {
                     event.stopPropagation();
-                    setActiveLabel(marker.label);
-                    setActiveCoastalZone(marker.coastalZone ?? null);
                     onSelectEntityRef.current?.({
                       entityId: marker.entityId,
                       tone: marker.tone,

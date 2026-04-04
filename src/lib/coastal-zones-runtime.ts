@@ -243,59 +243,6 @@ const getZoneTokens = (feature: CoastalZoneMatch) => {
   return values.map(normalizeZoneText).filter(Boolean);
 };
 
-const pointInRing = (
-  latitude: number,
-  longitude: number,
-  ring: number[][],
-) => {
-  let inside = false;
-
-  for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index++) {
-    const [lngCurrent, latCurrent] = ring[index] ?? [0, 0];
-    const [lngPrevious, latPrevious] = ring[previous] ?? [0, 0];
-
-    const intersects =
-      latCurrent > latitude !== latPrevious > latitude &&
-      longitude <
-        ((lngPrevious - lngCurrent) * (latitude - latCurrent)) /
-          ((latPrevious - latCurrent) || Number.EPSILON) +
-          lngCurrent;
-
-    if (intersects) {
-      inside = !inside;
-    }
-  }
-
-  return inside;
-};
-
-const pointInPolygon = (
-  latitude: number,
-  longitude: number,
-  rings: number[][][],
-) => {
-  const [outerRing, ...holes] = rings;
-  if (!outerRing || !pointInRing(latitude, longitude, outerRing)) {
-    return false;
-  }
-
-  return !holes.some((hole) => pointInRing(latitude, longitude, hole));
-};
-
-const pointInGeometry = (
-  latitude: number,
-  longitude: number,
-  geometry: CoastalZoneGeometry,
-) => {
-  if (geometry.type === "Polygon") {
-    return pointInPolygon(latitude, longitude, geometry.coordinates);
-  }
-
-  return geometry.coordinates.some((polygon) =>
-    pointInPolygon(latitude, longitude, polygon),
-  );
-};
-
 const getKindPriority = (kind: CoastalZoneKind) => {
   switch (kind) {
     case "island":
@@ -368,27 +315,6 @@ const getIslandMatchById = async () => {
   }
 
   return islandMatchByIdPromise ?? new Map<string, CoastalZoneMatch>();
-};
-
-const matchGreekCoastalZoneByPoint = (
-  latitude: number,
-  longitude: number,
-) => {
-  for (const feature of LEGACY_GREECE_COASTAL_ZONES.features) {
-    if (pointInGeometry(latitude, longitude, feature.geometry)) {
-      return {
-        id: feature.properties.id,
-        name: feature.properties.name,
-        kind: feature.properties.kind,
-        country: feature.properties.country,
-        aliases: mergeAliases([feature.properties.name], feature.properties.aliases),
-        rank: 1,
-        geometry: feature.geometry,
-      } satisfies CoastalZoneMatch;
-    }
-  }
-
-  return null;
 };
 
 export const matchGreekCoastalZoneLazy = async (
@@ -495,56 +421,4 @@ export const loadGreekCoastalZoneGeometryLazy = async (
   const geometry = (await response.json()) as CoastalZoneGeometry;
   geometryCache.set(zone.id, geometry);
   return geometry;
-};
-
-export const matchGreekIslandByPointLazy = async (
-  latitude: number,
-  longitude: number,
-) => {
-  const legacyHit = matchGreekCoastalZoneByPoint(latitude, longitude);
-  if (!legacyHit) {
-    return null;
-  }
-
-  if (legacyHit.kind === "island") {
-    const curated = await matchGreekCoastalZoneLazy(legacyHit.name);
-    if (curated && (curated.kind === "island" || curated.kind === "islet")) {
-      return curated;
-    }
-
-    return legacyHit;
-  }
-
-  const legacyTokens = [legacyHit.name, ...legacyHit.aliases]
-    .map(normalizeZoneText)
-    .filter(Boolean);
-  const zones = await getCoastalZones();
-  const islandMatchById = await getIslandMatchById();
-  const candidateMacroZones = zones.filter((zone) => {
-    if (zone.kind !== "macro_zone") {
-      return false;
-    }
-
-    return getZoneTokens(zone).some((token) => legacyTokens.includes(token));
-  });
-
-  for (const macroZone of candidateMacroZones) {
-    for (const islandId of macroZone.islandIds ?? []) {
-      const islandZone = islandMatchById.get(islandId);
-      if (!islandZone) {
-        continue;
-      }
-
-      const islandGeometry = await loadGreekCoastalZoneGeometryLazy(islandZone);
-      if (!islandGeometry) {
-        continue;
-      }
-
-      if (pointInGeometry(latitude, longitude, islandGeometry)) {
-        return islandZone;
-      }
-    }
-  }
-
-  return null;
 };

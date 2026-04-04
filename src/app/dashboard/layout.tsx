@@ -1,14 +1,12 @@
 import { cookies } from "next/headers";
+import { Suspense } from "react";
 
 import { AppSidebarNav } from "@/components/layout/app-sidebar-nav";
+import { SidebarLoadingShell } from "@/components/layout/sidebar-loading-shell";
 import { getAccessibleBoatsLite, requireViewer } from "@/lib/boat-data";
 import { getRequestLocale } from "@/lib/i18n-server";
 
-export default async function DashboardLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+async function DashboardSidebar() {
   const [locale, { viewer }, boats, cookieStore] = await Promise.all([
     getRequestLocale(),
     requireViewer(),
@@ -32,16 +30,28 @@ export default async function DashboardLayout({
     );
 
   return (
+    <AppSidebarNav
+      boatId={activeBoatId}
+      canManageUsers={canManageUsers}
+      canShare={canShare}
+      currentUserId={viewer.profile?.id ?? undefined}
+      isSuperuser={viewer.isSuperuser}
+      locale={locale}
+      userName={viewer.profile?.display_name ?? viewer.profile?.email ?? null}
+    />
+  );
+}
+
+export default function DashboardLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
     <>
-      <AppSidebarNav
-        boatId={activeBoatId}
-        canManageUsers={canManageUsers}
-        canShare={canShare}
-        currentUserId={viewer.profile?.id ?? undefined}
-        isSuperuser={viewer.isSuperuser}
-        locale={locale}
-        userName={viewer.profile?.display_name ?? viewer.profile?.email ?? null}
-      />
+      <Suspense fallback={<SidebarLoadingShell />}>
+        <DashboardSidebar />
+      </Suspense>
       <main className="shell">{children}</main>
     </>
   );
