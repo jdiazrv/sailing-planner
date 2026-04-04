@@ -65,6 +65,140 @@ Important runtime pieces:
 - [`src/lib/boat-data.ts`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/lib/boat-data.ts)
   Viewer context, boat lists, workspaces and shared timeline data
 
+## Map curation
+
+The planning map can optionally highlight the exact silhouette of islands when a trip segment location matches a curated coastal dataset.
+
+Current implementation for Greece:
+
+- lightweight matching manifest in [`src/lib/data/greece-islands-manifest.json`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/lib/data/greece-islands-manifest.json)
+- exact geometries served lazily from [`public/data/greece-islands`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/public/data/greece-islands)
+- matching and lazy loading logic in [`src/lib/coastal-zones.ts`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/lib/coastal-zones.ts)
+- map rendering in [`src/components/planning/map-panel.tsx`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/components/planning/map-panel.tsx)
+
+Important product rule:
+
+- users still pick places exactly as before through Google Places
+- the app never forces a curated zone or island during data entry
+- if the selected `location_label` matches a curated island, the map highlights it
+- if there is no match, nothing changes and the normal marker flow still works
+
+### Why this is split into manifest + geometry files
+
+Do not import a whole country worth of polygons directly into the client bundle.
+
+This repository uses:
+
+- one light manifest with names, aliases and file paths
+- one geometry file per island
+- lazy loading only for the selected island
+
+This keeps the app responsive even when a country contains hundreds or thousands of islands.
+
+### Source workflow used for Greece
+
+The most reliable approach was:
+
+1. Download one complete OSM extract for the country.
+2. Filter only `place=island` and `place=islet`.
+3. Export those relations into GIS-style polygon features.
+4. Curate names and aliases locally.
+5. Generate:
+   - a manifest JSON for matching
+   - one geometry JSON per island
+
+For Greece the extract came from Geofabrik:
+
+- https://download.geofabrik.de/europe/greece.html
+
+### Local tools
+
+This workflow uses `osmium-tool`.
+
+Install it on macOS with:
+
+```bash
+brew install osmium-tool
+```
+
+### End-to-end curation steps for another country
+
+Example pattern:
+
+1. Download the country extract:
+
+```bash
+curl -L -o /tmp/<country>.osm.pbf https://download.geofabrik.de/<region>/<country>-latest.osm.pbf
+```
+
+2. Filter only islands and islets:
+
+```bash
+osmium tags-filter /tmp/<country>.osm.pbf r/place=island r/place=islet \
+  -o /tmp/<country>-islands.osm.pbf --overwrite
+```
+
+3. Export them as polygon features:
+
+```bash
+osmium export --geometry-types=polygon /tmp/<country>-islands.osm.pbf \
+  -o /tmp/<country>-islands.geojsonseq --overwrite
+```
+
+4. Generate the repository dataset.
+
+The repo currently includes the generator for Greece in:
+
+- [`scripts/build-greece-islands-dataset.mjs`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/scripts/build-greece-islands-dataset.mjs)
+
+Usage:
+
+```bash
+node scripts/build-greece-islands-dataset.mjs /tmp/greece-islands.geojsonseq
+```
+
+That script writes:
+
+- `public/data/greece-islands/*.json`
+- `src/lib/data/greece-islands-manifest.json`
+
+### How to adapt this to another country
+
+If you want to curate another country, copy the Greece pattern instead of mixing everything into one giant dataset.
+
+Recommended structure:
+
+- `public/data/<country>-islands/*.json`
+- `src/lib/data/<country>-islands-manifest.json`
+- a small builder script similar to [`scripts/build-greece-islands-dataset.mjs`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/scripts/build-greece-islands-dataset.mjs)
+
+Then extend [`src/lib/coastal-zones.ts`](/Users/juandiaz/Library/CloudStorage/Dropbox/MOODY/Proyectos/Projects/sailing-planner/src/lib/coastal-zones.ts) to:
+
+- load the new manifest
+- merge aliases for that country
+- resolve best match by normalized `location_label`
+- lazy-load geometry only when selected
+
+### Curation guidance
+
+Before shipping a new country, review these points:
+
+- prefer `name:en`, `int_name`, `name:es` and local names as aliases
+- keep common transliterations like `Chios`, `Khios`, `Quíos`
+- add product-level aliases manually for names sailors actually type
+- deduplicate islands with the same visible name using stable ids
+- use ranking so the larger/more important island wins when names are ambiguous
+- keep macro zones optional and secondary to exact islands
+
+### What not to do
+
+Avoid these shortcuts:
+
+- do not replace Google Places input with your own curated picker
+- do not import the full country geometry bundle into the client at startup
+- do not rely on one-by-one live API lookups for every island during runtime
+- do not use rough rectangles if the goal is exact island silhouettes
+
 ## Environment variables
 
 Copy `.env.example` to `.env.local`:
