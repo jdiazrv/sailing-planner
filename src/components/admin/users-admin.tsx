@@ -683,11 +683,19 @@ function UserEditorCard({
   const { locale, t } = useI18n();
   const assignedBoatIds = user.permissions.map((entry) => entry.boat_id);
   const sortedBoats = [...boats].sort((a, b) => a.name.localeCompare(b.name, locale));
+  const assignedBoats = sortedBoats.filter((boat) => assignedBoatIds.includes(boat.id));
   const selectedBoat =
     sortedBoats.find((boat) => boat.id === selectedBoatId) ??
     boats.find((boat) => boat.id === selectedBoatId) ??
     sortedBoats[0] ??
     boats[0];
+  const selectedAssignedBoat = selectedBoat
+    ? assignedBoats.find((boat) => boat.id === selectedBoat.id)
+    : assignedBoats[0];
+  const additionalAssignedCount = Math.max(
+    assignedBoats.length - (selectedAssignedBoat ? 1 : 0),
+    0,
+  );
   const canManageSecurity = isSuperuser || user.id === viewerUserId;
   const canEditPermissions = !personalMode;
   const accessSummary = canManageSecurity
@@ -1030,13 +1038,18 @@ function UserEditorCard({
               <div className="assigned-boats">
                 <span className="muted">{t("admin.users.assignedBoats")}</span>
                 <div className="assigned-boats__list">
-                  {boats
-                    .filter((boat) => assignedBoatIds.includes(boat.id))
-                    .map((boat) => (
-                      <span className="status-pill is-good" key={boat.id}>
-                        {boat.name}
-                      </span>
-                    ))}
+                  {selectedAssignedBoat ? (
+                    <span className="status-pill is-good" key={selectedAssignedBoat.id}>
+                      {selectedAssignedBoat.name}
+                    </span>
+                  ) : null}
+                  {additionalAssignedCount > 0 ? (
+                    <span className="status-pill is-muted">
+                      {locale === "es"
+                        ? `+${additionalAssignedCount} mas`
+                        : `+${additionalAssignedCount} more`}
+                    </span>
+                  ) : null}
                 </div>
               </div>
             ) : null}
@@ -1083,14 +1096,20 @@ function SearchableSelect({
   clearSelectionWhenNoMatch?: boolean;
 }) {
   const [query, setQuery] = useState("");
+  const normalizedQuery = query.trim().toLowerCase();
   const filtered = options.filter((option) =>
     [option.primary, option.secondary, option.tertiary]
       .filter(Boolean)
       .join(" ")
       .toLowerCase()
-      .includes(query.trim().toLowerCase()),
+      .includes(normalizedQuery),
   );
   const selected = options.find((option) => option.id === selectedId) ?? filtered[0] ?? options[0];
+  const visibleOptions = normalizedQuery
+    ? filtered
+    : selected
+      ? [selected]
+      : filtered.slice(0, 1);
 
   useEffect(() => {
     if (!clearSelectionWhenNoMatch) {
@@ -1114,8 +1133,8 @@ function SearchableSelect({
         />
       </label>
       <div className="search-select__list">
-        {filtered.length ? (
-          filtered.map((option) => (
+        {visibleOptions.length ? (
+          visibleOptions.map((option) => (
             <button
               className={`search-select__option${option.id === selectedId ? " is-active" : ""}`}
               key={option.id}
@@ -1131,7 +1150,7 @@ function SearchableSelect({
             </button>
           ))
         ) : (
-          <p className="muted">{emptyText}</p>
+          <p className="muted">{normalizedQuery ? emptyText : ""}</p>
         )}
       </div>
     </div>

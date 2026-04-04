@@ -646,10 +646,10 @@ textarea {
   align-items: center;
   justify-content: center;
   min-height: var(--button-height);
-  border-radius: 999px;
+  border-radius: 12px;
   border: 1px solid transparent;
   transition:
-    transform 120ms ease,
+    box-shadow 120ms ease,
     background 120ms ease,
     border-color 120ms ease;
 }
@@ -680,7 +680,7 @@ textarea {
 .secondary-button:hover,
 .link-button:hover,
 .segmented-control button:hover {
-  transform: translateY(-1px);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
 .link-button {
@@ -2890,7 +2890,7 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
 
 .editor-sections-nav__item {
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 12px;
   background: var(--surface-raised);
   color: var(--ink);
   padding: 0.38rem 0.75rem;
@@ -2898,13 +2898,13 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
   font-size: 0.82rem;
   cursor: pointer;
   transition:
-    transform 120ms ease,
+    box-shadow 120ms ease,
     background 120ms ease,
     border-color 120ms ease;
 }
 
 .editor-sections-nav__item:hover {
-  transform: translateY(-1px);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .editor-sections-nav__item.is-active {

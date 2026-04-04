@@ -320,7 +320,7 @@ const dictionary = {
     "admin.users.noAssignedBoat": "Sin barco asignado",
     "admin.users.sectionNav": "Secciones de edición",
     "admin.users.sectionGlobal": "Perfil global",
-    "admin.users.sectionBoat": "Acceso por barco",
+    "admin.users.sectionBoat": "Permisos",
     "admin.users.sectionSecurity": "Seguridad",
     "admin.users.sectionGlobalHelp":
       "Estos cambios afectan al perfil del usuario en toda la plataforma.",
@@ -782,7 +782,7 @@ const dictionary = {
     "admin.users.noAssignedBoat": "No assigned boat",
     "admin.users.sectionNav": "Editing sections",
     "admin.users.sectionGlobal": "Global profile",
-    "admin.users.sectionBoat": "Per-boat access",
+    "admin.users.sectionBoat": "Permissions",
     "admin.users.sectionSecurity": "Security",
     "admin.users.sectionGlobalHelp":
       "These changes affect the user profile across the whole platform.",
