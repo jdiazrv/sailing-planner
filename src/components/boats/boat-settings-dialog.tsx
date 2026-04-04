@@ -83,12 +83,15 @@ export function BoatSettingsDialog({
         };
 
   const handleSave = (formData: FormData) => {
-    startTransition(async () => {
+    startTransition(() => {
       try {
-        await onSave(formData);
-        toast.success(text.saved);
-        router.refresh();
-        setOpen(false);
+        void onSave(formData).then(() => {
+          toast.success(text.saved);
+          router.refresh();
+          setOpen(false);
+        }).catch((error) => {
+          toast.error(error instanceof Error ? error.message : text.saveError);
+        });
       } catch (error) {
         toast.error(error instanceof Error ? error.message : text.saveError);
       }
@@ -104,12 +107,15 @@ export function BoatSettingsDialog({
     formData.set("boat_id", boat.id);
     formData.set("image", imageFile);
 
-    startTransition(async () => {
+    startTransition(() => {
       try {
-        await onUploadImage(formData);
-        toast.success(text.imageUpdated);
-        setImageFile(null);
-        router.refresh();
+        void onUploadImage(formData).then(() => {
+          toast.success(text.imageUpdated);
+          setImageFile(null);
+          router.refresh();
+        }).catch((error) => {
+          toast.error(error instanceof Error ? error.message : text.imageUpdateError);
+        });
       } catch (error) {
         toast.error(error instanceof Error ? error.message : text.imageUpdateError);
       }
@@ -120,11 +126,14 @@ export function BoatSettingsDialog({
     const formData = new FormData();
     formData.set("boat_id", boat.id);
 
-    startTransition(async () => {
+    startTransition(() => {
       try {
-        await onRemoveImage(formData);
-        toast.success(text.imageRemoved);
-        router.refresh();
+        void onRemoveImage(formData).then(() => {
+          toast.success(text.imageRemoved);
+          router.refresh();
+        }).catch((error) => {
+          toast.error(error instanceof Error ? error.message : text.imageRemoveError);
+        });
       } catch (error) {
         toast.error(error instanceof Error ? error.message : text.imageRemoveError);
       }

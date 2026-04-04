@@ -1,8 +1,6 @@
-import { Suspense } from "react";
 import { redirect } from "next/navigation";
 
 import { AuthForm } from "@/components/auth/auth-form";
-import { AuthFormLoading } from "@/components/auth/auth-form-loading";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function Home() {
@@ -17,9 +15,7 @@ export default async function Home() {
 
   return (
     <main className="auth-layout">
-      <Suspense fallback={<AuthFormLoading />}>
-        <AuthForm />
-      </Suspense>
+      <AuthForm />
     </main>
   );
 }

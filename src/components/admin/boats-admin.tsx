@@ -313,18 +313,18 @@ function BoatEditorCard({
         };
 
   const saveBoat = (formData: FormData) => {
-    startTransition(async () => {
-      try {
-        const result = await onSave(formData);
-        toast.success(text.saved);
-        if (!boat.id && result && "id" in result && result.id) {
-          router.prefetch(`/boats/${result.id}/trip`);
-          onCreated?.();
-        }
-        router.refresh();
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : text.saveError);
-      }
+    startTransition(() => {
+      void onSave(formData)
+        .then((result) => {
+          toast.success(text.saved);
+          if (!boat.id && result && "id" in result && result.id) {
+            router.prefetch(`/boats/${result.id}/trip`);
+            onCreated?.();
+          }
+        })
+        .catch((error) => {
+          toast.error(error instanceof Error ? error.message : text.saveError);
+        });
     });
   };
 
@@ -337,15 +337,15 @@ function BoatEditorCard({
     formData.set("boat_id", boat.id);
     formData.set("image", imageFile);
 
-    startTransition(async () => {
-      try {
-        await onUploadImage(formData);
-        toast.success(text.imageUpdated);
-        setImageFile(null);
-        router.refresh();
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : text.imageUpdateError);
-      }
+    startTransition(() => {
+      void onUploadImage(formData)
+        .then(() => {
+          toast.success(text.imageUpdated);
+          setImageFile(null);
+        })
+        .catch((error) => {
+          toast.error(error instanceof Error ? error.message : text.imageUpdateError);
+        });
     });
   };
 
@@ -357,14 +357,14 @@ function BoatEditorCard({
     const formData = new FormData();
     formData.set("boat_id", boat.id);
 
-    startTransition(async () => {
-      try {
-        await onRemoveImage(formData);
-        toast.success(text.imageRemoved);
-        router.refresh();
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : text.imageRemoveError);
-      }
+    startTransition(() => {
+      void onRemoveImage(formData)
+        .then(() => {
+          toast.success(text.imageRemoved);
+        })
+        .catch((error) => {
+          toast.error(error instanceof Error ? error.message : text.imageRemoveError);
+        });
     });
   };
 
@@ -379,14 +379,14 @@ function BoatEditorCard({
     const formData = new FormData();
     formData.set("boat_id", boat.id);
 
-    startTransition(async () => {
-      try {
-        await onDelete(formData);
-        toast.success(text.deleted);
-        router.refresh();
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : text.deleteError);
-      }
+    startTransition(() => {
+      void onDelete(formData)
+        .then(() => {
+          toast.success(text.deleted);
+        })
+        .catch((error) => {
+          toast.error(error instanceof Error ? error.message : text.deleteError);
+        });
     });
   };
 

@@ -27,9 +27,14 @@ export function LanguageSwitcher() {
             key={entry}
             onClick={() => {
               const nextLocale = entry as Locale;
-              startTransition(async () => {
-                await updateLanguagePreference(nextLocale);
-                router.refresh();
+              startTransition(() => {
+                void updateLanguagePreference(nextLocale)
+                  .then(() => {
+                    router.refresh();
+                  })
+                  .catch(() => {
+                    // Preference updates already surface errors server-side; keep the UI stable.
+                  });
               });
             }}
             type="button"

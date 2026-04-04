@@ -37,6 +37,10 @@ function formatDate(iso: string | null | undefined, locale: Locale): string {
   });
 }
 
+function formatNumber(value: number, locale: Locale): string {
+  return new Intl.NumberFormat(locale === "en" ? "en-US" : "es-ES").format(value);
+}
+
 function formatBytes(bytes: number): string {
   if (bytes >= 1_000_000_000) return `${(bytes / 1_000_000_000).toFixed(1)} GB`;
   if (bytes >= 1_000_000) return `${(bytes / 1_000_000).toFixed(1)} MB`;
@@ -225,7 +229,7 @@ export function MetricsDashboard({
           </div>
           <div className="dashboard-card metrics-stat-card">
             <p className="metrics-stat-card__value">
-              {supabaseUsage.monthlyActiveUsers.toLocaleString()}
+              {formatNumber(supabaseUsage.monthlyActiveUsers, locale)}
             </p>
             <p className="meta">{d["metrics.supabaseMau"]}</p>
           </div>
@@ -233,7 +237,7 @@ export function MetricsDashboard({
             <p className="metrics-stat-card__value">
               {supabaseUsage.totalApiRequests === null
                 ? "—"
-                : supabaseUsage.totalApiRequests.toLocaleString()}
+                : formatNumber(supabaseUsage.totalApiRequests, locale)}
             </p>
             <p className="meta">{d["metrics.supabaseApiRequests"]}</p>
           </div>
@@ -251,25 +255,25 @@ export function MetricsDashboard({
               <tr>
                 <td>{d["metrics.supabaseAuthRequests"]}</td>
                 <td style={{ textAlign: "right" }}>
-                  {supabaseUsage.authApiRequests === null ? "—" : supabaseUsage.authApiRequests.toLocaleString()}
+                  {supabaseUsage.authApiRequests === null ? "—" : formatNumber(supabaseUsage.authApiRequests, locale)}
                 </td>
               </tr>
               <tr>
                 <td>{d["metrics.supabaseRestRequests"]}</td>
                 <td style={{ textAlign: "right" }}>
-                  {supabaseUsage.restApiRequests === null ? "—" : supabaseUsage.restApiRequests.toLocaleString()}
+                  {supabaseUsage.restApiRequests === null ? "—" : formatNumber(supabaseUsage.restApiRequests, locale)}
                 </td>
               </tr>
               <tr>
                 <td>{d["metrics.supabaseStorageRequests"]}</td>
                 <td style={{ textAlign: "right" }}>
-                  {supabaseUsage.storageApiRequests === null ? "—" : supabaseUsage.storageApiRequests.toLocaleString()}
+                  {supabaseUsage.storageApiRequests === null ? "—" : formatNumber(supabaseUsage.storageApiRequests, locale)}
                 </td>
               </tr>
               <tr>
                 <td>{d["metrics.supabaseRealtimeRequests"]}</td>
                 <td style={{ textAlign: "right" }}>
-                  {supabaseUsage.realtimeApiRequests === null ? "—" : supabaseUsage.realtimeApiRequests.toLocaleString()}
+                  {supabaseUsage.realtimeApiRequests === null ? "—" : formatNumber(supabaseUsage.realtimeApiRequests, locale)}
                 </td>
               </tr>
             </tbody>
@@ -315,8 +319,8 @@ export function MetricsDashboard({
                   return (
                     <tr key={`${row.service}::${row.sku}`}>
                       <td>{SKU_LABELS[row.sku] ?? `${row.service} / ${row.sku}`}</td>
-                      <td style={{ textAlign: "right" }}>{row.eventsThisMonth.toLocaleString()}</td>
-                      <td style={{ textAlign: "right" }}>{limit ? limit.toLocaleString() : "—"}</td>
+                      <td style={{ textAlign: "right" }}>{formatNumber(row.eventsThisMonth, locale)}</td>
+                      <td style={{ textAlign: "right" }}>{limit ? formatNumber(limit, locale) : "—"}</td>
                       <td>{limit ? <UsageBar value={row.eventsThisMonth} max={limit} /> : "—"}</td>
                     </tr>
                   );

@@ -165,25 +165,26 @@ export function SeasonAccessPanel({
       formData.set("invitee_name", inviteeName.trim());
     }
 
-    startTransition(async () => {
-      try {
-        const result = await onGenerate(formData);
-        if ("error" in result) {
-          toast.error(result.error);
-          return;
-        }
-        setGeneratedLink({
-          id: result.id,
-          inviteeName: result.inviteeName ?? (inviteeName.trim() || null),
-          expiresAt: result.expiresAt,
-          url: result.url,
+    startTransition(() => {
+      void onGenerate(formData)
+        .then((result) => {
+          if ("error" in result) {
+            toast.error(result.error);
+            return;
+          }
+          setGeneratedLink({
+            id: result.id,
+            inviteeName: result.inviteeName ?? (inviteeName.trim() || null),
+            expiresAt: result.expiresAt,
+            url: result.url,
+          });
+          setInviteeName("");
+          toast.success(text.generated);
+          router.refresh();
+        })
+        .catch((error) => {
+          toast.error(error instanceof Error ? error.message : "Unexpected error");
         });
-        setInviteeName("");
-        toast.success(text.generated);
-        router.refresh();
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Unexpected error");
-      }
     });
   };
 
@@ -193,19 +194,21 @@ export function SeasonAccessPanel({
     formData.set("link_id", linkId);
 
     setRevokingLinkId(linkId);
-    startTransition(async () => {
-      try {
-        await onRevoke(formData);
-        if (generatedLink?.id === linkId) {
-          setGeneratedLink(null);
-        }
-        toast.success(text.revoked);
-        router.refresh();
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Unexpected error");
-      } finally {
-        setRevokingLinkId((current) => (current === linkId ? null : current));
-      }
+    startTransition(() => {
+      void onRevoke(formData)
+        .then(() => {
+          if (generatedLink?.id === linkId) {
+            setGeneratedLink(null);
+          }
+          toast.success(text.revoked);
+          router.refresh();
+        })
+        .catch((error) => {
+          toast.error(error instanceof Error ? error.message : "Unexpected error");
+        })
+        .finally(() => {
+          setRevokingLinkId((current) => (current === linkId ? null : current));
+        });
     });
   };
 
@@ -223,16 +226,18 @@ export function SeasonAccessPanel({
     formData.set("season_id", seasonId);
 
     setIsPurgingRevoked(true);
-    startTransition(async () => {
-      try {
-        await onPurgeRevoked(formData);
-        toast.success(text.revokedPurged);
-        router.refresh();
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Unexpected error");
-      } finally {
-        setIsPurgingRevoked(false);
-      }
+    startTransition(() => {
+      void onPurgeRevoked(formData)
+        .then(() => {
+          toast.success(text.revokedPurged);
+          router.refresh();
+        })
+        .catch((error) => {
+          toast.error(error instanceof Error ? error.message : "Unexpected error");
+        })
+        .finally(() => {
+          setIsPurgingRevoked(false);
+        });
     });
   };
 

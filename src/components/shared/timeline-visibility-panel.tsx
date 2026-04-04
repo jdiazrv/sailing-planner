@@ -46,14 +46,15 @@ export function TimelineVisibilityPanel({
   const [isPending, startTransition] = useTransition();
 
   const handleToggle = () => {
-    startTransition(async () => {
-      try {
-        await updateTimelineVisibility(!isPublic);
-        toast.success(t("shared.visibilitySaved"));
-        router.refresh();
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : t("auth.error"));
-      }
+    startTransition(() => {
+      void updateTimelineVisibility(!isPublic)
+        .then(() => {
+          toast.success(t("shared.visibilitySaved"));
+          router.refresh();
+        })
+        .catch((error) => {
+          toast.error(error instanceof Error ? error.message : t("auth.error"));
+        });
     });
   };
 

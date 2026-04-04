@@ -58,12 +58,18 @@ export function VisitsManager({
   const handleSave = (formData: FormData) => {
     const isEdit = Boolean(formData.get("visit_id"));
     setFormError(null);
-    startTransition(async () => {
+    startTransition(() => {
       try {
-        await onSave(formData);
-        toast.success(isEdit ? t("planning.visitUpdated") : t("planning.visitAdded"));
-        setAddOpen(false);
-        setEditingVisit(null);
+        void onSave(formData).then(() => {
+          toast.success(isEdit ? t("planning.visitUpdated") : t("planning.visitAdded"));
+          setAddOpen(false);
+          setEditingVisit(null);
+        }).catch((error) => {
+          const message =
+            error instanceof Error ? error.message : t("planning.saveVisitError");
+          setFormError(message);
+          toast.error(message);
+        });
       } catch (error) {
         const message =
           error instanceof Error ? error.message : t("planning.saveVisitError");
@@ -80,11 +86,14 @@ export function VisitsManager({
     const fd = new FormData();
     fd.set("boat_id", boatId);
     fd.set("visit_id", visitToDelete.id);
-    startTransition(async () => {
+    startTransition(() => {
       try {
-        await onDelete(fd);
-        toast.success(t("planning.visitDeleted"));
-        setVisitToDelete(null);
+        void onDelete(fd).then(() => {
+          toast.success(t("planning.visitDeleted"));
+          setVisitToDelete(null);
+        }).catch((error) => {
+          toast.error(error instanceof Error ? error.message : t("planning.deleteVisitError"));
+        });
       } catch (error) {
         toast.error(error instanceof Error ? error.message : t("planning.deleteVisitError"));
       }

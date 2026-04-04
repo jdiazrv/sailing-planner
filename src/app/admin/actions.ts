@@ -433,7 +433,7 @@ export async function createUserAccount(formData: FormData) {
   });
 
   if (error) {
-    throw error;
+    throw new Error(error.message ?? "Unexpected admin auth error.");
   }
 
   if (data.user?.id) {
@@ -517,7 +517,7 @@ export async function inviteUserAccount(formData: FormData) {
     });
 
     if (error) {
-      throw error;
+      throw new Error(error.message ?? "Unexpected invitation error.");
     }
 
     if (data.user?.id) {
@@ -593,7 +593,7 @@ export async function updateUserPassword(formData: FormData) {
   const { error } = await admin.auth.admin.updateUserById(userId, { password });
 
   if (error) {
-    throw error;
+    throw new Error(error.message ?? "Unexpected password update error.");
   }
 
   refreshAdminRoutes();
@@ -642,7 +642,7 @@ export async function deleteUserAccount(formData: FormData) {
   const { error } = await admin.auth.admin.deleteUser(userId);
 
   if (error) {
-    throw error;
+    throw new Error(error.message ?? "Unexpected user deletion error.");
   }
 
   refreshAdminRoutes();

@@ -1641,6 +1641,17 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
 .workspace-grid--trip {
   grid-template-columns: minmax(0, 1.02fr) minmax(380px, 0.98fr);
   align-items: start;
+  position: relative;
+}
+
+.workspace-grid--trip > .stack:first-child {
+  position: relative;
+  z-index: 2;
+}
+
+.workspace-grid--trip > aside.stack {
+  position: relative;
+  z-index: 1;
 }
 
 .workspace-grid--trip .card-header {
@@ -3848,7 +3859,7 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
 
 .section-loading__notice {
   display: grid;
-  justify-items: start;
+  justify-items: center;
 }
 
 .section-loading__notice .app-loader {

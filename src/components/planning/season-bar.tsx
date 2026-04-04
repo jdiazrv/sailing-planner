@@ -62,14 +62,17 @@ export function SeasonBar({
 
   const handleSave = (formData: FormData) => {
     const isEdit = Boolean(formData.get("season_id"));
-    startTransition(async () => {
+    startTransition(() => {
       try {
-        await onSave(formData);
-        toast.success(
-          isEdit ? t("planning.seasonUpdated") : t("planning.seasonCreated"),
-        );
-        setAddOpen(false);
-        setEditOpen(false);
+        void onSave(formData).then(() => {
+          toast.success(
+            isEdit ? t("planning.seasonUpdated") : t("planning.seasonCreated"),
+          );
+          setAddOpen(false);
+          setEditOpen(false);
+        }).catch((error) => {
+          toast.error(error instanceof Error ? error.message : t("planning.saveSeasonError"));
+        });
       } catch (error) {
         toast.error(error instanceof Error ? error.message : t("planning.saveSeasonError"));
       }
@@ -81,12 +84,15 @@ export function SeasonBar({
     const fd = new FormData();
     fd.set("boat_id", boatId);
     fd.set("season_id", selected.id);
-    startTransition(async () => {
+    startTransition(() => {
       try {
-        await onDelete(fd);
-        toast.success(t("planning.seasonDeleted"));
-        setEditOpen(false);
-        setConfirmDeleteOpen(false);
+        void onDelete(fd).then(() => {
+          toast.success(t("planning.seasonDeleted"));
+          setEditOpen(false);
+          setConfirmDeleteOpen(false);
+        }).catch((error) => {
+          toast.error(error instanceof Error ? error.message : t("planning.deleteSeasonError"));
+        });
       } catch (error) {
         toast.error(error instanceof Error ? error.message : t("planning.deleteSeasonError"));
       }

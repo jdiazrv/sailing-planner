@@ -56,14 +56,20 @@ export function TripSegmentsManager({
   const handleSave = (formData: FormData) => {
     const isEdit = Boolean(formData.get("segment_id"));
     setFormError(null);
-    startTransition(async () => {
+    startTransition(() => {
       try {
-        await onSave(formData);
-        toast.success(
-          isEdit ? t("planning.segmentUpdated") : t("planning.segmentAdded"),
-        );
-        setAddOpen(false);
-        setEditingSegment(null);
+        void onSave(formData).then(() => {
+          toast.success(
+            isEdit ? t("planning.segmentUpdated") : t("planning.segmentAdded"),
+          );
+          setAddOpen(false);
+          setEditingSegment(null);
+        }).catch((error) => {
+          const message =
+            error instanceof Error ? error.message : t("planning.saveSegmentError");
+          setFormError(message);
+          toast.error(message);
+        });
       } catch (error) {
         const message =
           error instanceof Error ? error.message : t("planning.saveSegmentError");
@@ -80,11 +86,16 @@ export function TripSegmentsManager({
     const fd = new FormData();
     fd.set("boat_id", boatId);
     fd.set("segment_id", segmentToDelete.id);
-    startTransition(async () => {
+    startTransition(() => {
       try {
-        await onDelete(fd);
-        toast.success(t("planning.segmentDeleted"));
-        setSegmentToDelete(null);
+        void onDelete(fd).then(() => {
+          toast.success(t("planning.segmentDeleted"));
+          setSegmentToDelete(null);
+        }).catch((error) => {
+          toast.error(
+            error instanceof Error ? error.message : t("planning.deleteSegmentError"),
+          );
+        });
       } catch (error) {
         toast.error(
           error instanceof Error ? error.message : t("planning.deleteSegmentError"),

@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { useI18n } from "@/components/i18n/provider";
@@ -40,6 +39,19 @@ type InvitePermissionsState = {
 
 type UserEditorSection = "global" | "boat" | "security";
 type AccessSetupMode = "create" | "invite";
+
+const isNextRedirectSignal = (error: unknown) => {
+  if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
+    return true;
+  }
+
+  if (typeof error !== "object" || error === null || !("digest" in error)) {
+    return false;
+  }
+
+  const digest = (error as { digest?: unknown }).digest;
+  return typeof digest === "string" && digest.startsWith("NEXT_REDIRECT");
+};
 
 const getPermissionPreset = (
   level: PermissionLevel,
@@ -142,7 +154,6 @@ export function UsersAdmin({
   personalMode = false,
   singleBoatContext = false,
 }: UsersAdminProps) {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [accessSetupMode, setAccessSetupMode] = useState<AccessSetupMode>("create");
   const [showAccessSetupForm, setShowAccessSetupForm] = useState(false);
@@ -157,35 +168,52 @@ export function UsersAdmin({
   const selectedUser =
     sortedUsers.find((user) => user.id === selectedUserId) ??
     users.find((user) => user.id === selectedUserId) ??
-    sortedUsers[0] ??
-    users[0];
+    null;
   const canAssignManagerRole = isSuperuser;
+  const showActionError = (error: unknown) => {
+    if (isNextRedirectSignal(error)) {
+      return;
+    }
+
+    toast.error(error instanceof Error ? error.message : t("auth.error"));
+  };
+
+  useEffect(() => {
+    if (!selectedUserId && sortedUsers[0]?.id) {
+      setSelectedUserId(sortedUsers[0].id);
+      return;
+    }
+
+    if (selectedUserId && !sortedUsers.some((user) => user.id === selectedUserId)) {
+      setSelectedUserId(sortedUsers[0]?.id ?? "");
+    }
+  }, [selectedUserId, sortedUsers]);
 
   const inviteUser = (formData: FormData) => {
-    startTransition(async () => {
-      try {
-        await onInviteUser(formData);
-        toast.success(t("admin.users.userCreated"));
-        router.refresh();
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : t("auth.error"));
-      }
+    startTransition(() => {
+      void onInviteUser(formData)
+        .then(() => {
+          toast.success(t("admin.users.userCreated"));
+        })
+        .catch((error) => {
+          showActionError(error);
+        });
     });
   };
 
   const sendInvite = (formData: FormData) => {
-    startTransition(async () => {
-      try {
-        const result = await onSendInvite(formData);
-        if (result.error) {
-          toast.error(result.error);
-          return;
-        }
-        toast.success(t("admin.users.invitationSent"));
-        router.refresh();
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : t("auth.error"));
-      }
+    startTransition(() => {
+      void onSendInvite(formData)
+        .then((result) => {
+          if (result.error) {
+            toast.error(result.error);
+            return;
+          }
+          toast.success(t("admin.users.invitationSent"));
+        })
+        .catch((error) => {
+          showActionError(error);
+        });
     });
   };
 
@@ -305,6 +333,7 @@ export function UsersAdmin({
           </div>
         </div>
         <SearchableSelect
+          clearSelectionWhenNoMatch
           emptyText={t("admin.users.noUsersMatch")}
           label={t("admin.users.user")}
           onSelect={setSelectedUserId}
@@ -646,7 +675,6 @@ function UserEditorCard({
   personalMode: boolean;
   singleBoatContext: boolean;
 }) {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [selectedBoatId, setSelectedBoatId] = useState(
     user.permissions[0]?.boat_id ?? boats[0]?.id ?? "",
@@ -697,16 +725,23 @@ function UserEditorCard({
     { label: t("admin.users.tripsCount"), value: String(user.trip_segments_count ?? 0) },
     { label: t("admin.users.visitsCount"), value: String(user.visits_count ?? 0) },
   ];
+  const showActionError = (error: unknown) => {
+    if (isNextRedirectSignal(error)) {
+      return;
+    }
+
+    toast.error(error instanceof Error ? error.message : t("auth.error"));
+  };
 
   const saveProfile = (formData: FormData) => {
-    startTransition(async () => {
-      try {
-        await onSaveProfile(formData);
-        toast.success(t("admin.users.userUpdated"));
-        router.refresh();
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : t("auth.error"));
-      }
+    startTransition(() => {
+      void onSaveProfile(formData)
+        .then(() => {
+          toast.success(t("admin.users.userUpdated"));
+        })
+        .catch((error) => {
+          showActionError(error);
+        });
     });
   };
 
@@ -720,26 +755,26 @@ function UserEditorCard({
       return;
     }
     setPasswordError(null);
-    startTransition(async () => {
-      try {
-        await onUpdatePassword(formData);
-        toast.success(t("admin.users.passwordUpdated"));
-        router.refresh();
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : t("auth.error"));
-      }
+    startTransition(() => {
+      void onUpdatePassword(formData)
+        .then(() => {
+          toast.success(t("admin.users.passwordUpdated"));
+        })
+        .catch((error) => {
+          showActionError(error);
+        });
     });
   };
 
   const savePermission = (formData: FormData) => {
-    startTransition(async () => {
-      try {
-        await onSavePermission(formData);
-        toast.success(t("admin.users.permissionSaved"));
-        router.refresh();
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : t("auth.error"));
-      }
+    startTransition(() => {
+      void onSavePermission(formData)
+        .then(() => {
+          toast.success(t("admin.users.permissionSaved"));
+        })
+        .catch((error) => {
+          showActionError(error);
+        });
     });
   };
 
@@ -748,14 +783,14 @@ function UserEditorCard({
     formData.set("user_id", user.id);
     formData.set("boat_id", boatId);
 
-    startTransition(async () => {
-      try {
-        await onDeletePermission(formData);
-        toast.success(t("admin.users.permissionRemoved"));
-        router.refresh();
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : t("auth.error"));
-      }
+    startTransition(() => {
+      void onDeletePermission(formData)
+        .then(() => {
+          toast.success(t("admin.users.permissionRemoved"));
+        })
+        .catch((error) => {
+          showActionError(error);
+        });
     });
   };
 
@@ -765,14 +800,14 @@ function UserEditorCard({
     const formData = new FormData();
     formData.set("user_id", user.id);
 
-    startTransition(async () => {
-      try {
-        await onDeleteUser(formData);
-        toast.success(t("admin.users.userDeleted"));
-        router.refresh();
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : t("auth.error"));
-      }
+    startTransition(() => {
+      void onDeleteUser(formData)
+        .then(() => {
+          toast.success(t("admin.users.userDeleted"));
+        })
+        .catch((error) => {
+          showActionError(error);
+        });
     });
   };
 
@@ -1036,6 +1071,7 @@ function SearchableSelect({
   onSelect,
   emptyText,
   name,
+  clearSelectionWhenNoMatch = false,
 }: {
   label: string;
   placeholder: string;
@@ -1044,6 +1080,7 @@ function SearchableSelect({
   onSelect: (id: string) => void;
   emptyText: string;
   name?: string;
+  clearSelectionWhenNoMatch?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const filtered = options.filter((option) =>
@@ -1054,6 +1091,16 @@ function SearchableSelect({
       .includes(query.trim().toLowerCase()),
   );
   const selected = options.find((option) => option.id === selectedId) ?? filtered[0] ?? options[0];
+
+  useEffect(() => {
+    if (!clearSelectionWhenNoMatch) {
+      return;
+    }
+
+    if (query.trim() && filtered.length === 0 && selectedId) {
+      onSelect("");
+    }
+  }, [clearSelectionWhenNoMatch, filtered.length, onSelect, query, selectedId]);
 
   return (
     <div className="search-select">
