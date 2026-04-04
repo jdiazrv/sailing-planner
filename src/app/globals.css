@@ -2528,12 +2528,42 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
     background 140ms ease;
 }
 
+.admin-card--boat-editor.is-active-editor {
+  border-color: var(--accent-border);
+  background: color-mix(in srgb, var(--surface) 86%, var(--accent-soft) 14%);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent),
+    var(--shadow);
+}
+
 .admin-card--boat-editor:focus-within {
   border-color: var(--accent-border);
-  background: color-mix(in srgb, var(--surface) 90%, var(--accent-soft) 10%);
+  background: color-mix(in srgb, var(--surface) 82%, var(--accent-soft) 18%);
   box-shadow:
     0 0 0 2px color-mix(in srgb, var(--accent) 24%, transparent),
     var(--shadow);
+}
+
+.admin-changes-bar {
+  position: sticky;
+  bottom: 0.85rem;
+  z-index: 25;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 14px;
+  border: 1px solid var(--accent-border);
+  background: color-mix(in srgb, var(--surface-strong) 84%, var(--accent-soft) 16%);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent),
+    var(--shadow);
+}
+
+.admin-changes-bar .muted {
+  margin: 0;
 }
 
 .admin-boat-summary {

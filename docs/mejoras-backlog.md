@@ -185,6 +185,7 @@ Este archivo se usa para registrar propuestas de mejora funcional, UX y tecnica 
 - Historial:
   - 2026-04-04: reportada por usuario durante revision de panel de barcos.
   - 2026-04-04: implantada en `BoatsAdmin` con deteccion de dirty state por formulario y boton de guardado deshabilitado sin cambios.
+  - 2026-04-04: evolucionada a barra global de cambios (Guardar/Descartar) para un unico barco activo con cambios pendientes.
 
 ## M-008 - Reubicar accion anadir barco fuera del card de busqueda
 
@@ -225,3 +226,4 @@ Este archivo se usa para registrar propuestas de mejora funcional, UX y tecnica 
 - Historial:
   - 2026-04-04: reportada por usuario durante sesion de edicion de barcos.
   - 2026-04-04: implantada con estado visual de tarjeta activa (`:focus-within`) para resaltar el barco completo en edicion.
+  - 2026-04-04: reforzada con estado `is-active-editor` persistente (fondo + marco) aunque se pierda foco de campo.

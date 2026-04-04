@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -103,6 +103,8 @@ export function BoatsAdmin({
   const [search, setSearch] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [selectedBoatId, setSelectedBoatId] = useState("");
+  const [activeEditorId, setActiveEditorId] = useState<string | null>(null);
+  const [dirtyEditors, setDirtyEditors] = useState<Record<string, boolean>>({});
   const filteredBoats = useMemo(
     () =>
       boats.filter((boat) =>
@@ -122,6 +124,68 @@ export function BoatsAdmin({
     sortedBoats.find((boat) => boat.id === selectedBoatId) ??
     boats.find((boat) => boat.id === selectedBoatId) ??
     null;
+  const visibleEditorIds = useMemo(() => {
+    const ids: string[] = [];
+    if (isCreating) {
+      ids.push("new");
+    }
+
+    if (useCompactSelector) {
+      if (selectedBoat?.id) {
+        ids.push(selectedBoat.id);
+      }
+      return ids;
+    }
+
+    filteredBoats.forEach((boat) => ids.push(boat.id));
+    return ids;
+  }, [filteredBoats, isCreating, selectedBoat?.id, useCompactSelector]);
+
+  useEffect(() => {
+    if (!visibleEditorIds.length) {
+      setActiveEditorId(null);
+      return;
+    }
+
+    if (!activeEditorId || !visibleEditorIds.includes(activeEditorId)) {
+      setActiveEditorId(visibleEditorIds[0]);
+    }
+  }, [activeEditorId, visibleEditorIds]);
+
+  const hasActiveDirty = activeEditorId ? Boolean(dirtyEditors[activeEditorId]) : false;
+  const activeFormId = activeEditorId ? `boat-editor-form-${activeEditorId}` : null;
+  const activeEditorLabel = useMemo(() => {
+    if (!activeEditorId) {
+      return "";
+    }
+
+    if (activeEditorId === "new") {
+      return locale === "es" ? "Añadir barco" : "Add boat";
+    }
+
+    const byId = boats.find((boat) => boat.id === activeEditorId);
+    return byId?.name ?? activeEditorId;
+  }, [activeEditorId, boats, locale]);
+
+  const handleDirtyChange = useCallback((editorId: string, isDirty: boolean) => {
+    setDirtyEditors((prev) => {
+      if (isDirty && prev[editorId]) {
+        return prev;
+      }
+
+      if (!isDirty && !prev[editorId]) {
+        return prev;
+      }
+
+      const next = { ...prev };
+      if (isDirty) {
+        next[editorId] = true;
+      } else {
+        delete next[editorId];
+      }
+      return next;
+    });
+  }, []);
 
   const text =
     locale === "es"
@@ -131,6 +195,14 @@ export function BoatsAdmin({
           createActionTitle: "Crear barco",
           createActionBody: "Alta manual de un nuevo barco. Esta accion queda separada de la busqueda para reducir errores de contexto.",
           addBoat: "Añadir barco",
+          pendingChangesTitle: "Cambios pendientes",
+          pendingChangesBody: "{boat} tiene cambios sin guardar.",
+          pendingChangesSwitchConfirm:
+            "Tienes cambios sin guardar en esta ficha. ¿Quieres descartarlos para cambiar de barco?",
+          pendingChangesLeaveConfirm:
+            "Tienes cambios sin guardar en esta ficha. ¿Quieres descartarlos y salir de este panel?",
+          saveChanges: "Guardar cambios",
+          discardChanges: "Descartar",
           search: "Buscar barco",
           searchHelp:
             "Busca por nombre del barco, propietario o correo del propietario para abrir una sola ficha.",
@@ -144,6 +216,14 @@ export function BoatsAdmin({
           createActionTitle: "Create boat",
           createActionBody: "Manual creation for a new boat. This action is separated from search to reduce context mistakes.",
           addBoat: "Add boat",
+          pendingChangesTitle: "Pending changes",
+          pendingChangesBody: "{boat} has unsaved changes.",
+          pendingChangesSwitchConfirm:
+            "You have unsaved changes in this card. Discard them and switch boats?",
+          pendingChangesLeaveConfirm:
+            "You have unsaved changes in this card. Discard them and leave this panel?",
+          saveChanges: "Save changes",
+          discardChanges: "Discard",
           search: "Search boat",
           searchHelp:
             "Search by boat name, owner or owner email to open a single card.",
@@ -151,6 +231,85 @@ export function BoatsAdmin({
           noBoatSelected:
             "Type to search a boat by name, owner or owner email and open a single card to manage it.",
         };
+
+  const discardEditorDraft = useCallback((editorId: string) => {
+    const form = document.getElementById(`boat-editor-form-${editorId}`);
+    if (form instanceof HTMLFormElement) {
+      form.reset();
+    }
+
+    handleDirtyChange(editorId, false);
+  }, [handleDirtyChange]);
+
+  const requestEditorSwitch = (nextEditorId: string, applySwitch: () => void) => {
+    if (!activeEditorId || activeEditorId === nextEditorId || !dirtyEditors[activeEditorId]) {
+      applySwitch();
+      return;
+    }
+
+    if (!confirm(text.pendingChangesSwitchConfirm)) {
+      return;
+    }
+
+    discardEditorDraft(activeEditorId);
+    applySwitch();
+  };
+
+  useEffect(() => {
+    if (!activeEditorId || !dirtyEditors[activeEditorId]) {
+      return;
+    }
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    const handleDocumentClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      const anchor = target?.closest("a[href]") as HTMLAnchorElement | null;
+      if (!anchor) {
+        return;
+      }
+
+      if (anchor.target === "_blank" || anchor.hasAttribute("download")) {
+        return;
+      }
+
+      const href = anchor.getAttribute("href");
+      if (!href || href.startsWith("#") || href.startsWith("javascript:")) {
+        return;
+      }
+
+      const currentUrl = new URL(window.location.href);
+      const nextUrl = new URL(anchor.href, window.location.href);
+      if (
+        currentUrl.pathname === nextUrl.pathname &&
+        currentUrl.search === nextUrl.search &&
+        currentUrl.hash === nextUrl.hash
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (!confirm(text.pendingChangesLeaveConfirm)) {
+        return;
+      }
+
+      discardEditorDraft(activeEditorId);
+      window.location.href = anchor.href;
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("click", handleDocumentClick, true);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("click", handleDocumentClick, true);
+    };
+  }, [activeEditorId, dirtyEditors, discardEditorDraft, text.pendingChangesLeaveConfirm]);
 
   return (
     <section className="admin-stack">
@@ -161,7 +320,12 @@ export function BoatsAdmin({
         </div>
         <button
           className="primary-button"
-          onClick={() => setIsCreating((value) => !value)}
+          onClick={() => {
+            const nextEditorId = isCreating ? selectedBoat?.id ?? "new" : "new";
+            requestEditorSwitch(nextEditorId, () => {
+              setIsCreating((value) => !value);
+            });
+          }}
           type="button"
         >
           + {text.addBoat}
@@ -196,8 +360,10 @@ export function BoatsAdmin({
                       className={`search-select__option${boat.id === selectedBoatId ? " is-active" : ""}`}
                       key={boat.id}
                       onClick={() => {
-                        setSelectedBoatId(boat.id);
-                        setSearch("");
+                        requestEditorSwitch(boat.id, () => {
+                          setSelectedBoatId(boat.id);
+                          setSearch("");
+                        });
                       }}
                       type="button"
                     >
@@ -220,10 +386,14 @@ export function BoatsAdmin({
       {isCreating ? (
         <BoatEditorCard
           boat={emptyBoatDraft}
+          editorId="new"
+          isActiveEditor={activeEditorId === "new"}
           onCreated={() => {
             setIsCreating(false);
             setSearch("");
           }}
+          onDirtyChange={handleDirtyChange}
+          onSetActiveEditor={setActiveEditorId}
           onDelete={onDelete}
           onSave={onSave}
           title={text.addBoat}
@@ -234,7 +404,11 @@ export function BoatsAdmin({
         selectedBoat ? (
           <BoatEditorCard
             boat={selectedBoat}
+            editorId={selectedBoat.id}
+            isActiveEditor={activeEditorId === selectedBoat.id}
             key={selectedBoat.id}
+            onDirtyChange={handleDirtyChange}
+            onSetActiveEditor={setActiveEditorId}
             onDelete={onDelete}
             onRemoveImage={onRemoveImage}
             onSave={onSave}
@@ -250,7 +424,11 @@ export function BoatsAdmin({
         filteredBoats.map((boat) => (
           <BoatEditorCard
             boat={boat}
+            editorId={boat.id}
+            isActiveEditor={activeEditorId === boat.id}
             key={boat.id}
+            onDirtyChange={handleDirtyChange}
+            onSetActiveEditor={setActiveEditorId}
             onDelete={onDelete}
             onRemoveImage={onRemoveImage}
             onSave={onSave}
@@ -263,22 +441,49 @@ export function BoatsAdmin({
           <p className="muted">{text.noMatches}</p>
         </article>
       )}
+
+      {activeEditorId && hasActiveDirty && activeFormId ? (
+        <div className="admin-changes-bar" role="status">
+          <div>
+            <p className="eyebrow">{text.pendingChangesTitle}</p>
+            <p className="muted">
+              {text.pendingChangesBody.replace("{boat}", activeEditorLabel)}
+            </p>
+          </div>
+          <div className="inline-actions">
+            <button className="primary-button" form={activeFormId} type="submit">
+              {text.saveChanges}
+            </button>
+            <button className="secondary-button" form={activeFormId} type="reset">
+              {text.discardChanges}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
 
 function BoatEditorCard({
   boat,
+  editorId,
+  isActiveEditor,
   title,
   onCreated,
+  onDirtyChange,
+  onSetActiveEditor,
   onSave,
   onUploadImage,
   onRemoveImage,
   onDelete,
 }: {
   boat: BoatEditorValue;
+  editorId: string;
+  isActiveEditor: boolean;
   title: string;
   onCreated?: () => void;
+  onDirtyChange: (editorId: string, isDirty: boolean) => void;
+  onSetActiveEditor: (editorId: string) => void;
   onSave: (fd: FormData) => Promise<void | { id: string }>;
   onUploadImage?: (fd: FormData) => Promise<void>;
   onRemoveImage?: (fd: FormData) => Promise<void>;
@@ -289,6 +494,7 @@ function BoatEditorCard({
   const [isPending, startTransition] = useTransition();
   const [imageFile, setImageFile] = useState<File | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
+  const formId = `boat-editor-form-${editorId}`;
   const initialSnapshot = useMemo(
     () => buildBoatFormSnapshot(boat),
     [
@@ -385,7 +591,8 @@ function BoatEditorCard({
 
   useEffect(() => {
     setIsDirty(false);
-  }, [initialSnapshot]);
+    onDirtyChange(editorId, false);
+  }, [editorId, initialSnapshot, onDirtyChange]);
 
   const updateDirtyState = () => {
     if (!formRef.current) {
@@ -393,7 +600,14 @@ function BoatEditorCard({
     }
 
     const currentSnapshot = readBoatFormSnapshot(formRef.current);
-    setIsDirty(hasSnapshotChanges(currentSnapshot, initialSnapshot));
+    const nextDirty = hasSnapshotChanges(currentSnapshot, initialSnapshot);
+    setIsDirty(nextDirty);
+    onDirtyChange(editorId, nextDirty);
+  };
+
+  const resetDirtyState = () => {
+    setIsDirty(false);
+    onDirtyChange(editorId, false);
   };
 
   const saveBoat = (formData: FormData) => {
@@ -405,7 +619,7 @@ function BoatEditorCard({
             router.prefetch(`/boats/${result.id}/trip`);
             onCreated?.();
           } else {
-            setIsDirty(false);
+            resetDirtyState();
           }
         })
         .catch((error) => {
@@ -477,7 +691,10 @@ function BoatEditorCard({
   };
 
   return (
-    <article className="dashboard-card admin-card admin-card--boat-editor">
+    <article
+      className={`dashboard-card admin-card admin-card--boat-editor${isActiveEditor ? " is-active-editor" : ""}`}
+      onFocusCapture={() => onSetActiveEditor(editorId)}
+    >
       <div className="card-header">
         <div>
           <p className="eyebrow">{boat.id ? text.boat : text.newBoat}</p>
@@ -562,10 +779,16 @@ function BoatEditorCard({
           className="editor-form"
           onChange={updateDirtyState}
           onInput={updateDirtyState}
+          onReset={() => {
+            setTimeout(() => {
+              resetDirtyState();
+            }, 0);
+          }}
           onSubmit={(event) => {
             event.preventDefault();
             saveBoat(new FormData(event.currentTarget));
           }}
+          id={formId}
           ref={formRef}
         >
           {boat.id ? <input name="boat_id" type="hidden" value={boat.id} /> : null}
@@ -607,9 +830,6 @@ function BoatEditorCard({
           </div>
 
           <div className="modal__footer">
-            <button className="primary-button" disabled={isPending || !isDirty} type="submit">
-              {isPending ? text.saving : boat.id ? text.saveBoat : text.createBoat}
-            </button>
             {boat.id ? (
               <button
                 className="link-button link-button--danger"
