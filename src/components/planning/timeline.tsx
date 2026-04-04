@@ -27,6 +27,7 @@ type TimelineProps = {
   onVisitClick?: (visit: VisitView) => void;
   onVisitSelect?: (visit: VisitView) => void;
   onTripSegmentSelect?: (segment: TripSegmentView) => void;
+  onTripSegmentEdit?: (segment: TripSegmentView) => void;
   selectedEntityId?: string | null;
   showVisits?: boolean;
   showAvailability?: boolean;
@@ -139,6 +140,7 @@ export const Timeline = ({
   onVisitClick,
   onVisitSelect,
   onTripSegmentSelect,
+  onTripSegmentEdit,
   selectedEntityId,
   showVisits = true,
   showAvailability = true,
@@ -172,6 +174,8 @@ export const Timeline = ({
   const [internalZoom, setInternalZoom] = useState(1);
   const [tooltip, setTooltip] = useState<TimelineTooltipState>(null);
   const tooltipTimeoutRef = useRef<number | null>(null);
+  const longPressTimeoutRef = useRef<number | null>(null);
+  const longPressEntityRef = useRef<string | null>(null);
   const zoom = controlledZoom ?? internalZoom;
 
   const handleZoomChange = (nextZoom: number) => {
@@ -253,6 +257,39 @@ export const Timeline = ({
     setTooltip(null);
   };
 
+  const clearLongPress = () => {
+    if (longPressTimeoutRef.current) {
+      window.clearTimeout(longPressTimeoutRef.current);
+      longPressTimeoutRef.current = null;
+    }
+  };
+
+  const beginLongPress = (
+    event: ReactPointerEvent<HTMLButtonElement>,
+    entityId: string,
+    onEdit?: () => void,
+  ) => {
+    if (!onEdit || event.pointerType === "mouse") {
+      return;
+    }
+
+    clearLongPress();
+    longPressTimeoutRef.current = window.setTimeout(() => {
+      longPressEntityRef.current = entityId;
+      onEdit();
+      longPressTimeoutRef.current = null;
+    }, 420);
+  };
+
+  const consumeLongPress = (entityId: string) => {
+    if (longPressEntityRef.current !== entityId) {
+      return false;
+    }
+
+    longPressEntityRef.current = null;
+    return true;
+  };
+
   const hasActiveSelection = selectedEntityId !== null || selectedAvailabilityIndex !== null;
 
   return (
@@ -323,15 +360,29 @@ export const Timeline = ({
                   <button
                     className={`timeline-bar timeline-bar--btn is-${segment.status}${selectedEntityId === segment.id ? " is-selected" : ""}`}
                     key={segment.id}
+                    onDoubleClick={() => onTripSegmentEdit?.(segment)}
+                    onPointerCancel={clearLongPress}
+                    onPointerDown={(event) =>
+                      beginLongPress(event, segment.id, () => onTripSegmentEdit?.(segment))
+                    }
                     onPointerEnter={(event) =>
                       showTooltip(
                         event,
                         `${segment.location_label} · ${t(`status.${segment.status}` as never)} · ${formatShortDate(segment.start_date)} – ${formatShortDate(segment.end_date)}`,
                       )
                     }
-                    onPointerLeave={hideTooltip}
+                    onPointerLeave={() => {
+                      hideTooltip();
+                      clearLongPress();
+                    }}
                     onPointerMove={moveTooltip}
-                    onClick={() => onTripSegmentSelect?.(segment)}
+                    onPointerUp={clearLongPress}
+                    onClick={() => {
+                      if (consumeLongPress(segment.id)) {
+                        return;
+                      }
+                      onTripSegmentSelect?.(segment);
+                    }}
                     style={toBarStyle(season, segment.start_date, segment.end_date)}
                     type="button"
                   >
@@ -364,15 +415,27 @@ export const Timeline = ({
                             aria-expanded={expandedVisitId === visit.id}
                             aria-label={`${t("planning.visit")}: ${visit.visitor_name ?? t("planning.private")}`}
                             className={`timeline-bar timeline-bar--btn is-${visit.status}${expandedVisitId === visit.id || selectedEntityId === visit.id ? " is-selected" : ""}`}
+                            onDoubleClick={() => onVisitClick?.(visit)}
+                            onPointerCancel={clearLongPress}
+                            onPointerDown={(event) =>
+                              beginLongPress(event, visit.id, () => onVisitClick?.(visit))
+                            }
                             onPointerEnter={(event) =>
                               showTooltip(
                                 event,
                                 `${visit.visitor_name ?? t("planning.visit")} · ${t(`status.${visit.status}` as never)} · ${formatShortDate(visit.embark_date)} – ${formatShortDate(visit.disembark_date)}`,
                               )
                             }
-                            onPointerLeave={hideTooltip}
+                            onPointerLeave={() => {
+                              hideTooltip();
+                              clearLongPress();
+                            }}
                             onPointerMove={moveTooltip}
+                            onPointerUp={clearLongPress}
                             onClick={() => {
+                              if (consumeLongPress(visit.id)) {
+                                return;
+                              }
                               toggleVisit(visit.id);
                               onVisitSelect?.(visit);
                             }}

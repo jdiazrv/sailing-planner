@@ -5,6 +5,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "@/components/i18n/provider";
 import { hasGoogleMapsKey, loadGoogleMaps } from "@/lib/google-maps";
 import { recordApiUsage } from "@/lib/api-usage";
+import {
+  loadGreekCoastalZoneGeometry,
+  matchGreekCoastalZone,
+  type CoastalZoneGeometry,
+} from "@/lib/coastal-zones";
 import type { TripSegmentView, VisitView } from "@/lib/planning";
 
 declare global {
@@ -63,6 +68,21 @@ const toPoint = (latitude: number, longitude: number) => {
 
   return { x, y };
 };
+
+const getZonePolygons = (geometry: CoastalZoneGeometry) =>
+  geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
+
+const toSvgPath = (rings: number[][][]) =>
+  rings
+    .map((ring) =>
+      ring
+        .map(([lng, lat], index) => {
+          const point = toPoint(lat, lng);
+          return `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`;
+        })
+        .join(" ") + " Z",
+    )
+    .join(" ");
 
 const getTripMarkerMeta = (locationType: TripSegmentView["location_type"]) => {
   switch (locationType) {
@@ -260,10 +280,51 @@ export const MapPanel = ({
   );
   const routePoints = useMemo(() => buildRoutePoints(tripSegments), [tripSegments]);
   const hasSelection = Boolean(selectedEntityId);
+  const selectedTripSegment = useMemo(
+    () => tripSegments.find((segment) => segment.id === selectedEntityId) ?? null,
+    [selectedEntityId, tripSegments],
+  );
+  const selectedCoastalZone = useMemo(
+    () => matchGreekCoastalZone(selectedTripSegment?.location_label),
+    [selectedTripSegment?.location_label],
+  );
+  const [selectedCoastalGeometry, setSelectedCoastalGeometry] =
+    useState<CoastalZoneGeometry | null>(null);
+  const selectedCoastalZonePolygons = useMemo(
+    () => (selectedCoastalGeometry ? getZonePolygons(selectedCoastalGeometry) : []),
+    [selectedCoastalGeometry],
+  );
 
   useEffect(() => {
     onSelectEntityRef.current = onSelectEntity;
   }, [onSelectEntity]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!selectedCoastalZone) {
+      setSelectedCoastalGeometry(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void loadGreekCoastalZoneGeometry(selectedCoastalZone)
+      .then((geometry) => {
+        if (!cancelled) {
+          setSelectedCoastalGeometry(geometry);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSelectedCoastalGeometry(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCoastalZone]);
 
   useEffect(() => {
     if (!hasGoogleMapsKey || !mapRef.current) {
@@ -337,9 +398,37 @@ export const MapPanel = ({
           map,
           path: routePoints,
           geodesic: true,
-          strokeColor: "#f4c542",
-          strokeOpacity: hasSelection ? 0.32 : 0.85,
-          strokeWeight: hasSelection ? 1.5 : 2,
+          strokeColor: baseMap === "roadmap" ? "#7a5a00" : "#7c5b0a",
+          strokeOpacity: hasSelection ? 0.24 : 0.72,
+          strokeWeight: baseMap === "roadmap" ? 5 : 4,
+        });
+
+        new maps.maps.Polyline({
+          map,
+          path: routePoints,
+          geodesic: true,
+          strokeColor: baseMap === "roadmap" ? "#f0b90b" : "#f4c542",
+          strokeOpacity: hasSelection ? 0.78 : 0.98,
+          strokeWeight: baseMap === "roadmap" ? 2.8 : hasSelection ? 2.2 : 2.6,
+        });
+      }
+
+      if (selectedCoastalGeometry) {
+        getZonePolygons(selectedCoastalGeometry).forEach((polygon) => {
+          new maps.maps.Polygon({
+            map,
+            paths: polygon.map((ring) =>
+              ring.map(([lng, lat]) => ({
+                lat,
+                lng,
+              })),
+            ),
+            strokeColor: "#0a9396",
+            strokeOpacity: 0.95,
+            strokeWeight: 3,
+            fillColor: "#0a9396",
+            fillOpacity: baseMap === "roadmap" ? 0.14 : 0.1,
+          });
         });
       }
 
@@ -474,6 +563,7 @@ export const MapPanel = ({
     hasSelection,
     markers,
     routePoints,
+    selectedCoastalGeometry,
     selectedEntityId,
     showRoute,
     showSeamarks,
@@ -544,6 +634,33 @@ export const MapPanel = ({
       ) : (
         <div className={`map-canvas${hasSelection ? " has-selection" : ""}`}>
           <div className="map-canvas__grid" />
+          {selectedCoastalZonePolygons.length ? (
+            <svg
+              aria-hidden="true"
+              className="map-coastal-zone"
+              style={{
+                inset: 0,
+                pointerEvents: "none",
+                position: "absolute",
+                zIndex: 0,
+              }}
+              viewBox="0 0 100 100"
+            >
+              {selectedCoastalZonePolygons.map((polygon, index) => (
+                <path
+                  d={toSvgPath(polygon)}
+                  fill="rgba(10, 147, 150, 0.14)"
+                  fillRule="evenodd"
+                  key={`${selectedCoastalZone?.id ?? "zone"}-${index}`}
+                  stroke="#0a9396"
+                  strokeLinejoin="round"
+                  strokeOpacity="0.96"
+                  strokeWidth="0.55"
+                  vectorEffect="non-scaling-stroke"
+                />
+              ))}
+            </svg>
+          ) : null}
           {showRoute && routePoints.length > 1 ? (
             <svg
               aria-hidden="true"
@@ -563,12 +680,28 @@ export const MapPanel = ({
                     return `${point.x},${point.y}`;
                   })
                   .join(" ")}
-                stroke="#f4c542"
+                stroke="#7a5a00"
                 strokeDasharray="0"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeOpacity="0.85"
-                strokeWidth="0.4"
+                strokeOpacity="0.6"
+                strokeWidth="0.82"
+                vectorEffect="non-scaling-stroke"
+              />
+              <polyline
+                fill="none"
+                points={routePoints
+                  .map(({ lat, lng }) => {
+                    const point = toPoint(lat, lng);
+                    return `${point.x},${point.y}`;
+                  })
+                  .join(" ")}
+                stroke="#f0b90b"
+                strokeDasharray="0"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeOpacity="0.98"
+                strokeWidth="0.44"
                 vectorEffect="non-scaling-stroke"
               />
             </svg>

@@ -497,16 +497,16 @@ textarea {
   width: min(1480px, calc(100% - 2rem));
   margin: 0 auto;
   padding: 1.2rem 1.25rem 2.5rem;
-  animation: shell-enter 0.18s ease both;
+  animation: shell-fade-in 0.18s ease both;
 }
 
 .shell--guest {
   width: min(1320px, calc(100% - 2.5rem));
 }
 
-@keyframes shell-enter {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: translateY(0); }
+@keyframes shell-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .hero {
@@ -2161,6 +2161,10 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
   background-size: 14% 16%;
 }
 
+.map-coastal-zone {
+  filter: drop-shadow(0 0 10px rgba(10, 147, 150, 0.18));
+}
+
 .map-marker {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -2987,8 +2991,7 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
   margin-bottom: 0.6rem;
 }
 
-.planning-control-bar,
-.planning-selection-panel {
+.planning-control-bar {
   margin-top: 0.9rem;
 }
 
@@ -3055,18 +3058,6 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
 
 .planning-chip.is-locked {
   cursor: default;
-}
-
-.planning-selection-panel {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-}
-
-.planning-selection-panel__actions {
-  display: flex;
-  gap: 0.65rem;
 }
 
 .place-field {
@@ -3842,6 +3833,15 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
   display: grid;
   gap: 1rem;
   padding-top: 0.25rem;
+}
+
+.section-loading__notice {
+  display: grid;
+  justify-items: start;
+}
+
+.section-loading__notice .app-loader {
+  width: min(100%, 34rem);
 }
 
 .section-loading__header {

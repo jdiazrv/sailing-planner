@@ -1,6 +1,9 @@
-export function SectionLoading() {
+import type { ReactNode } from "react";
+
+export function SectionLoading({ notice }: { notice?: ReactNode }) {
   return (
     <section className="section-loading" aria-hidden="true">
+      {notice ? <div className="section-loading__notice">{notice}</div> : null}
       <div className="section-loading__header">
         <div className="section-loading__eyebrow shimmer" />
         <div className="section-loading__title shimmer" />

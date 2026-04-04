@@ -185,16 +185,6 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
     );
   const filteredVisits = visits;
   const availabilityPlaceRows = getAvailabilityPlaceRows(season, filteredSegments, filteredVisits);
-
-  const selectedTrip =
-    filteredSegments.find((segment) => segment.id === selectedEntityId) ??
-    tripSegments.find((segment) => segment.id === selectedEntityId) ??
-    null;
-  const selectedVisit =
-    filteredVisits.find((visit) => visit.id === selectedEntityId) ??
-    visits.find((visit) => visit.id === selectedEntityId) ??
-    null;
-  const selectedItem = selectedTrip ?? selectedVisit;
   const timelineZoom =
     timeScale === "season" ? 1 : timeScale === "month" ? 1.6 : 2.3;
   const showTable = layoutMode !== "map";
@@ -309,40 +299,18 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
         </div>
       </section>
 
-      {selectedItem ? (
-        <section className="dashboard-card planning-selection-panel">
-          <div>
-            <p className="eyebrow">{selectedTrip ? "Tramo activo" : "Visita activa"}</p>
-            <h2>
-              {selectedTrip ? selectedTrip.location_label : selectedVisit?.visitor_name ?? "Visita"}
-            </h2>
-            <p className="muted">
-              {"status" in selectedItem ? selectedItem.status : ""}
-            </p>
-          </div>
-          {canEdit ? (
-            <div className="planning-selection-panel__actions">
-              <button
-                className="secondary-button"
-                onClick={() => {
-                  if (selectedTrip) {
-                    setTimelineEditSegment(selectedTrip);
-                  } else if (selectedVisit) {
-                    setTimelineEditVisit(selectedVisit);
-                  }
-                }}
-                type="button"
-              >
-                {t("common.edit")}
-              </button>
-            </div>
-          ) : null}
-        </section>
-      ) : null}
-
       <section className="workspace-grid workspace-grid--single">
         <div className="workspace-main" data-tour="boat-timeline">
           <Timeline
+            onTripSegmentEdit={
+              canEdit
+                ? (segment) => {
+                    switchView("trip");
+                    setTimelineEditSegment(segment);
+                    setSelectedEntityId(segment.id);
+                  }
+                : undefined
+            }
             onTripSegmentSelect={(segment) => {
               setSelectedEntityId(segment.id);
               switchView("trip");
