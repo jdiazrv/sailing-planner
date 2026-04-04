@@ -165,3 +165,63 @@ Este archivo se usa para registrar propuestas de mejora funcional, UX y tecnica 
   - 2026-04-04: detectada durante medicion controlada posterior al piloto M-004 en admin usuarios.
   - 2026-04-04: mitigacion parcial implantada en cliente (`UsersAdmin`) para no mostrar `NEXT_REDIRECT` como error generico en toast.
   - 2026-04-04: intento de reproduccion en sesion activa (Maria BH) no reproduce redireccion a login tras `Guardar perfil`.
+
+## M-007 - Desactivar guardado de barco sin cambios
+
+- Fecha: 2026-04-04
+- Estado: implantada
+- Fuente: usuario
+- Area: ux
+- Contexto: panel admin de barcos, tarjetas de edicion
+- Problema u oportunidad: el boton de guardar aparece activo aunque no haya cambios en el formulario, generando ruido y posibilidad de acciones inutiles.
+- Propuesta: deshabilitar el boton de guardar mientras el formulario este limpio, habilitandolo solo si hay cambios reales.
+- Riesgo:
+  - Impacto: medio
+  - Probabilidad: alta
+  - Notas: sin control de cambios se inducen guardados redundantes y confusion sobre el estado de edicion.
+- Opinion de Copilot: mejora UX clara y de bajo riesgo si se implementa con deteccion de dirty state por formulario.
+- Recomendacion: implantar ahora
+- Relacionadas: M-004
+- Historial:
+  - 2026-04-04: reportada por usuario durante revision de panel de barcos.
+  - 2026-04-04: implantada en `BoatsAdmin` con deteccion de dirty state por formulario y boton de guardado deshabilitado sin cambios.
+
+## M-008 - Reubicar accion anadir barco fuera del card de busqueda
+
+- Fecha: 2026-04-04
+- Estado: implantada
+- Fuente: usuario
+- Area: ux
+- Contexto: cabecera del card de busqueda en admin de barcos
+- Problema u oportunidad: la accion de anadir barco comparte espacio con la busqueda y pierde sentido contextual dentro del mismo bloque.
+- Propuesta: mover la accion a una zona global mas estable (por ejemplo, menu lateral o bloque de acciones del layout).
+- Riesgo:
+  - Impacto: medio
+  - Probabilidad: media
+  - Notas: riesgo de cambio de habito de uso; requiere validar nuevo punto de entrada para no ocultar la accion.
+- Opinion de Copilot: separa mejor intenciones (buscar vs crear) y mejora claridad de la interfaz.
+- Recomendacion: preparar y luego implantar
+- Relacionadas: ninguna
+- Historial:
+  - 2026-04-04: reportada por usuario en feedback UX de admin barcos.
+  - 2026-04-04: implantada moviendo la accion `Añadir barco` a un bloque de acciones independiente encima del card de busqueda.
+
+## M-009 - Resaltar la tarjeta completa del barco en edicion
+
+- Fecha: 2026-04-04
+- Estado: implantada
+- Fuente: usuario
+- Area: ux
+- Contexto: listado de tarjetas de barcos en modo edicion
+- Problema u oportunidad: actualmente solo se percibe el foco en el campo activo; falta una senal visual fuerte del barco completo que se esta editando.
+- Propuesta: aplicar un estado visual de tarjeta activa (borde, fondo o glow) cuando cualquier campo interno tenga foco.
+- Riesgo:
+  - Impacto: bajo
+  - Probabilidad: media
+  - Notas: debe mantenerse contraste adecuado para accesibilidad y no competir con estados de error.
+- Opinion de Copilot: mejora orientacion espacial en formularios largos y reduce errores de contexto.
+- Recomendacion: implantar ahora
+- Relacionadas: M-007
+- Historial:
+  - 2026-04-04: reportada por usuario durante sesion de edicion de barcos.
+  - 2026-04-04: implantada con estado visual de tarjeta activa (`:focus-within`) para resaltar el barco completo en edicion.

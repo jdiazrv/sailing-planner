@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -46,6 +46,51 @@ const emptyBoatDraft = {
   is_active: true,
 };
 
+type BoatFormSnapshot = {
+  name: string;
+  model: string;
+  year_built: string;
+  home_port: string;
+  description: string;
+  notes: string;
+  is_active: boolean;
+};
+
+const buildBoatFormSnapshot = (boat: BoatEditorValue): BoatFormSnapshot => ({
+  name: String(boat.name ?? ""),
+  model: String(boat.model ?? ""),
+  year_built: String(boat.year_built ?? ""),
+  home_port: String(boat.home_port ?? ""),
+  description: String(boat.description ?? ""),
+  notes: String(boat.notes ?? ""),
+  is_active: Boolean(boat.is_active),
+});
+
+const readBoatFormSnapshot = (form: HTMLFormElement): BoatFormSnapshot => {
+  const getText = (name: keyof Omit<BoatFormSnapshot, "is_active">) =>
+    (form.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement | null)?.value ?? "";
+  const active = form.elements.namedItem("is_active") as HTMLInputElement | null;
+
+  return {
+    name: getText("name"),
+    model: getText("model"),
+    year_built: getText("year_built"),
+    home_port: getText("home_port"),
+    description: getText("description"),
+    notes: getText("notes"),
+    is_active: Boolean(active?.checked),
+  };
+};
+
+const hasSnapshotChanges = (left: BoatFormSnapshot, right: BoatFormSnapshot) =>
+  left.name !== right.name ||
+  left.model !== right.model ||
+  left.year_built !== right.year_built ||
+  left.home_port !== right.home_port ||
+  left.description !== right.description ||
+  left.notes !== right.notes ||
+  left.is_active !== right.is_active;
+
 export function BoatsAdmin({
   boats,
   onSave,
@@ -83,6 +128,8 @@ export function BoatsAdmin({
       ? {
           eyebrow: "Administración de barcos",
           manage: "Gestionar barcos",
+          createActionTitle: "Crear barco",
+          createActionBody: "Alta manual de un nuevo barco. Esta accion queda separada de la busqueda para reducir errores de contexto.",
           addBoat: "Añadir barco",
           search: "Buscar barco",
           searchHelp:
@@ -94,6 +141,8 @@ export function BoatsAdmin({
       : {
           eyebrow: "Boat administration",
           manage: "Manage boats",
+          createActionTitle: "Create boat",
+          createActionBody: "Manual creation for a new boat. This action is separated from search to reduce context mistakes.",
           addBoat: "Add boat",
           search: "Search boat",
           searchHelp:
@@ -105,6 +154,20 @@ export function BoatsAdmin({
 
   return (
     <section className="admin-stack">
+      <article className="dashboard-card admin-card admin-boats-actions">
+        <div>
+          <p className="eyebrow">{text.createActionTitle}</p>
+          <p className="muted">{text.createActionBody}</p>
+        </div>
+        <button
+          className="primary-button"
+          onClick={() => setIsCreating((value) => !value)}
+          type="button"
+        >
+          + {text.addBoat}
+        </button>
+      </article>
+
       <article className="dashboard-card admin-card">
         <div className="card-header">
           <div>
@@ -112,13 +175,6 @@ export function BoatsAdmin({
             <h2>{useCompactSelector ? text.manage : text.search}</h2>
             {useCompactSelector ? <p className="muted">{text.searchHelp}</p> : null}
           </div>
-          <button
-            className="primary-button"
-            onClick={() => setIsCreating((value) => !value)}
-            type="button"
-          >
-            + {text.addBoat}
-          </button>
         </div>
         <div className="form-grid">
           <label className="form-grid__wide">
@@ -232,6 +288,21 @@ function BoatEditorCard({
   const { locale } = useI18n();
   const [isPending, startTransition] = useTransition();
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const initialSnapshot = useMemo(
+    () => buildBoatFormSnapshot(boat),
+    [
+      boat.id,
+      boat.name,
+      boat.model,
+      boat.year_built,
+      boat.home_port,
+      boat.description,
+      boat.notes,
+      boat.is_active,
+    ],
+  );
+  const [isDirty, setIsDirty] = useState(false);
 
   const text =
     locale === "es"
@@ -312,6 +383,19 @@ function BoatEditorCard({
           deleteError: "Could not delete boat",
         };
 
+  useEffect(() => {
+    setIsDirty(false);
+  }, [initialSnapshot]);
+
+  const updateDirtyState = () => {
+    if (!formRef.current) {
+      return;
+    }
+
+    const currentSnapshot = readBoatFormSnapshot(formRef.current);
+    setIsDirty(hasSnapshotChanges(currentSnapshot, initialSnapshot));
+  };
+
   const saveBoat = (formData: FormData) => {
     startTransition(() => {
       void onSave(formData)
@@ -320,6 +404,8 @@ function BoatEditorCard({
           if (!boat.id && result && "id" in result && result.id) {
             router.prefetch(`/boats/${result.id}/trip`);
             onCreated?.();
+          } else {
+            setIsDirty(false);
           }
         })
         .catch((error) => {
@@ -391,7 +477,7 @@ function BoatEditorCard({
   };
 
   return (
-    <article className="dashboard-card admin-card">
+    <article className="dashboard-card admin-card admin-card--boat-editor">
       <div className="card-header">
         <div>
           <p className="eyebrow">{boat.id ? text.boat : text.newBoat}</p>
@@ -474,10 +560,13 @@ function BoatEditorCard({
 
         <form
           className="editor-form"
+          onChange={updateDirtyState}
+          onInput={updateDirtyState}
           onSubmit={(event) => {
             event.preventDefault();
             saveBoat(new FormData(event.currentTarget));
           }}
+          ref={formRef}
         >
           {boat.id ? <input name="boat_id" type="hidden" value={boat.id} /> : null}
 
@@ -518,7 +607,7 @@ function BoatEditorCard({
           </div>
 
           <div className="modal__footer">
-            <button className="primary-button" disabled={isPending} type="submit">
+            <button className="primary-button" disabled={isPending || !isDirty} type="submit">
               {isPending ? text.saving : boat.id ? text.saveBoat : text.createBoat}
             </button>
             {boat.id ? (

@@ -56,6 +56,21 @@ Current assessment:
 - Not currently crashing the route after the transition fix.
 - Still worth investigating for wasted work and possible race conditions.
 
+### Boats admin editing UX signals and action placement
+
+Resolved after user feedback in admin boats panel.
+
+Changes applied:
+
+- Save action now stays disabled while the form has no changes.
+- Add boat trigger moved out of the search card into a separate action block.
+- Boat editor card now gets a full-card active highlight when inner controls are focused.
+
+Primary files adjusted:
+
+- `src/components/admin/boats-admin.tsx`
+- `src/app/globals.css`
+
 ## Low priority
 
 ### Google Maps marker deprecation
