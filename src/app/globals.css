@@ -2521,6 +2521,32 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
   max-width: 64ch;
 }
 
+.admin-boats-table__thumb {
+  width: 64px;
+  height: 42px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+}
+
+.admin-boats-table__thumb--empty {
+  color: var(--muted);
+}
+
+.admin-boats-table__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 920px) {
+  .admin-boats-table {
+    min-width: 920px;
+  }
+}
+
 .admin-card--boat-editor {
   transition:
     border-color 140ms ease,
