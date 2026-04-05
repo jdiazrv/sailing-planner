@@ -75,7 +75,7 @@ export const BoatSelector = ({
   );
   const selectedBoat = boats.find((boat) => boat.boat_id === activeBoatId) ?? null;
   const hasAggregateStats = (boat: BoatSummary) =>
-    boat.trip_segments_count != null ||
+    boat.port_stops_count != null ||
     boat.visits_count != null ||
     boat.active_invites_count != null;
   const hasLastAccess = (boat: BoatSummary) => boat.user_last_access_at != null;
@@ -212,7 +212,7 @@ export const BoatSelector = ({
               ) : null}
               {hasAggregateStats(boat) ? (
                 <div className="boat-card__stats">
-                  <span>{boat.trip_segments_count ?? 0} {t("boatSelector.tripSegmentsStat")}</span>
+                  <span>{boat.port_stops_count ?? 0} {t("boatSelector.tripSegmentsStat")}</span>
                   <span>{boat.visits_count ?? 0} {t("boatSelector.visitsStat")}</span>
                   <span>{boat.active_invites_count ?? 0} {t("boatSelector.invitesStat")}</span>
                 </div>

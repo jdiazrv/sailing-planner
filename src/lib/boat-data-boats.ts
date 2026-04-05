@@ -154,7 +154,7 @@ export const getAccessibleBoats = cache(async () => {
   );
   const boats = baseBoats.map((boat) => ({
     ...boat,
-    trip_segments_count: aggregateData.tripSegmentsCountByBoat.get(boat.boat_id) ?? 0,
+    port_stops_count: aggregateData.tripSegmentsCountByBoat.get(boat.boat_id) ?? 0,
     visits_count: aggregateData.visitsCountByBoat.get(boat.boat_id) ?? 0,
     active_invites_count: aggregateData.activeInvitesCountByBoat.get(boat.boat_id) ?? 0,
     user_last_access_at: aggregateData.userLastAccessByBoat.get(boat.boat_id)?.lastAccessAt ?? null,

@@ -20,7 +20,7 @@ export type BoatSummary = Database["public"]["Views"]["boat_access_overview"]["R
   image_path?: string | null;
   image_url?: string | null;
   is_active?: boolean;
-  trip_segments_count?: number;
+  port_stops_count?: number;
   visits_count?: number;
   active_invites_count?: number;
   user_last_access_at?: string | null;
@@ -30,7 +30,7 @@ export type BoatSummary = Database["public"]["Views"]["boat_access_overview"]["R
 
 export type BoatDetails = BoatRow & {
   image_url?: string | null;
-  trip_segments_count?: number;
+  port_stops_count?: number;
   visits_count?: number;
   active_invites_count?: number;
   user_last_access_at?: string | null;
@@ -54,7 +54,7 @@ export type UserAdminProfile = ProfileRow & {
   permissions: PermissionRow[];
   boats_count?: number;
   seasons_count?: number;
-  trip_segments_count?: number;
+  port_stops_count?: number;
   visits_count?: number;
   invites_generated_count?: number;
   created_users?: CreatedUserSummary[];

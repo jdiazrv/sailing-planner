@@ -31,7 +31,7 @@ export const getAdminBoats = async () => {
   return boatRows.map((boat) => ({
     ...boat,
     image_url: getBoatImageUrl(supabase, boat.image_path, boat.updated_at),
-    trip_segments_count: aggregateData.tripSegmentsCountByBoat.get(boat.id) ?? 0,
+    port_stops_count: aggregateData.tripSegmentsCountByBoat.get(boat.id) ?? 0,
     visits_count: aggregateData.visitsCountByBoat.get(boat.id) ?? 0,
     active_invites_count: aggregateData.activeInvitesCountByBoat.get(boat.id) ?? 0,
     user_last_access_at: aggregateData.userLastAccessByBoat.get(boat.id)?.lastAccessAt ?? null,
@@ -284,7 +284,7 @@ export const getAdminUsers = async () => {
     permissions: permissionsByUser.get(profile.id) ?? [],
     boats_count: boatsByUser.get(profile.id)?.size ?? 0,
     seasons_count: seasonsCountByUser.get(profile.id) ?? 0,
-    trip_segments_count: tripSegmentsCountByUser.get(profile.id) ?? 0,
+    port_stops_count: tripSegmentsCountByUser.get(profile.id) ?? 0,
     visits_count: visitsCountByUser.get(profile.id) ?? 0,
     invites_generated_count: invitesGeneratedCountByUser.get(profile.id) ?? 0,
     created_users: createdUsersByCreator.get(profile.id) ?? [],

@@ -204,7 +204,7 @@ export function BoatsAdmin({
           cmp = (a.editors_count ?? 0) - (b.editors_count ?? 0);
           break;
         case "trips":
-          cmp = (a.trip_segments_count ?? 0) - (b.trip_segments_count ?? 0);
+          cmp = (a.port_stops_count ?? 0) - (b.port_stops_count ?? 0);
           break;
         case "visits":
           cmp = (a.visits_count ?? 0) - (b.visits_count ?? 0);
@@ -382,7 +382,7 @@ export function BoatsAdmin({
                     <td className="admin-boats-table__num">{boat.users_count ?? 0}</td>
                     <td className="admin-boats-table__num">{boat.managers_count ?? 0}</td>
                     <td className="admin-boats-table__num">{boat.editors_count ?? 0}</td>
-                    <td className="admin-boats-table__num">{boat.trip_segments_count ?? 0}</td>
+                    <td className="admin-boats-table__num">{boat.port_stops_count ?? 0}</td>
                     <td className="admin-boats-table__num">{boat.visits_count ?? 0}</td>
                     <td className="meta">{formatLastAccess(boat.user_last_access_at, locale)}</td>
                     <td className="admin-boats-table__num">
@@ -511,7 +511,7 @@ export function BoatsAdmin({
                     <span>{text.tableUsers}: {expandedBoat.users_count ?? 0}</span>
                     <span>{text.tableManagers}: {expandedBoat.managers_count ?? 0}</span>
                     <span>{text.tableEditors}: {expandedBoat.editors_count ?? 0}</span>
-                    <span>{text.tableTrips}: {expandedBoat.trip_segments_count ?? 0}</span>
+                    <span>{text.tableTrips}: {expandedBoat.port_stops_count ?? 0}</span>
                     <span>{text.tableVisits}: {expandedBoat.visits_count ?? 0}</span>
                     <span>{locale === "es" ? "Invitaciones activas" : "Active invites"}: {expandedBoat.active_invites_count ?? 0}</span>
                   </div>

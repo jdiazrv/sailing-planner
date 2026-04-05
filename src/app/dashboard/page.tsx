@@ -1,12 +1,9 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { Suspense } from "react";
 import { redirect } from "next/navigation";
 
 import { BoatSelector } from "@/components/boats/boat-selector";
 import { LastBoatTracker } from "@/components/boats/last-boat-tracker";
-import { DashboardOpenBoatPanel } from "@/components/dashboard/dashboard-open-boat-panel";
-import { DashboardOpenBoatSkeleton } from "@/components/dashboard/dashboard-open-boat-skeleton";
 import { TimelineVisibilityPanel } from "@/components/shared/timeline-visibility-panel";
 import {
   getAccessibleBoats,
@@ -47,6 +44,10 @@ export default async function DashboardPage({
 
   const boats = fullBoats ?? superuserSnapshot?.boats ?? [];
   const requestedBoatId = boat && boats.some((b) => b.boat_id === boat) ? boat : undefined;
+  const cookieBoatId =
+    lastBoatId && boats.some((entry) => entry.boat_id === lastBoatId)
+      ? lastBoatId
+      : undefined;
   const activeBoatsCount = fullBoats
     ? fullBoats.filter((b) => b.is_active !== false).length
     : (superuserSnapshot?.activeBoats ?? 0);
@@ -54,9 +55,16 @@ export default async function DashboardPage({
   const selectedBoatId = viewer.isSuperuser
     ? (
         requestedBoatId ??
+        cookieBoatId ??
         boats[0]?.boat_id
       )
     : boats[0]?.boat_id;
+  const selectedBoat = boats.find((entry) => entry.boat_id === selectedBoatId);
+  const dashboardTitle =
+    selectedBoat?.boat_name ??
+    (viewer.isSuperuser && shouldLoadAllBoats
+      ? t(locale, "dashboard.titleAll")
+      : t(locale, "dashboard.titleOwn"));
 
   if (viewer.onboardingPending && selectedBoatId) {
     const nextParams = new URLSearchParams();
@@ -73,6 +81,11 @@ export default async function DashboardPage({
 
   if (!viewer.isSuperuser && selectedBoatId) {
     redirect(`/boats/${selectedBoatId}`);
+  }
+
+  // Superuser with lastBoatId (no explicit boat requested, not in change mode) → go directly to workspace
+  if (viewer.isSuperuser && cookieBoatId && !boat && !change) {
+    redirect(`/boats/${cookieBoatId}`);
   }
 
   const visibleBoats = viewer.isSuperuser && shouldLoadAllBoats
@@ -93,7 +106,7 @@ export default async function DashboardPage({
       {selectedBoatId ? <LastBoatTracker boatId={selectedBoatId} /> : null}
       <header className="dashboard-header">
         <div>
-          <h1>{viewer.isSuperuser ? t(locale, "dashboard.titleAll") : t(locale, "dashboard.titleOwn")}</h1>
+          <h1>{dashboardTitle}</h1>
           <p className="meta">{releaseLabel}</p>
           {viewer.isSuperuser && (
             <p className="muted">
@@ -140,18 +153,6 @@ export default async function DashboardPage({
         <section className="dashboard-card" style={{ marginTop: "1.5rem" }}>
           <p className="eyebrow">{t(locale, "dashboard.noBoats")}</p>
           <p className="muted">{t(locale, "dashboard.noBoatsBody")}</p>
-        </section>
-      ) : null}
-
-      {selectedBoatId ? (
-        <section style={{ marginTop: "1rem" }}>
-          <Suspense fallback={<DashboardOpenBoatSkeleton />}>
-            <DashboardOpenBoatPanel
-              boatId={selectedBoatId}
-              locale={locale}
-              requestedSeasonId={season}
-            />
-          </Suspense>
         </section>
       ) : null}
 

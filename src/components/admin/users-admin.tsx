@@ -965,7 +965,7 @@ function UserEditorCard({
       label: t("admin.users.invitesGeneratedCount"),
       value: String(user.invites_generated_count ?? 0),
     },
-    { label: t("admin.users.tripsCount"), value: String(user.trip_segments_count ?? 0) },
+    { label: t("admin.users.tripsCount"), value: String(user.port_stops_count ?? 0) },
     { label: t("admin.users.visitsCount"), value: String(user.visits_count ?? 0) },
   ];
   const showActionError = (error: unknown) => {
