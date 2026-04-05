@@ -4250,6 +4250,26 @@ details[open] > .inline-section__summary::before {
   .shared-compare-maps {
     grid-template-columns: 1fr;
   }
+
+  .timeline-card__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .timeline-card__meta {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .panel-toolbar {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .panel-toolbar > .primary-button,
+  .panel-toolbar > .secondary-button {
+    min-height: 2.5rem;
+  }
 }
 
 @media (max-width: 680px) {
@@ -4289,6 +4309,7 @@ details[open] > .inline-section__summary::before {
     align-items: center;
     justify-content: center;
     min-width: 0;
+    min-height: 2.625rem;
     padding: 0.45rem 0.8rem;
     border: 1px solid transparent;
     border-radius: 999px;
@@ -4334,10 +4355,57 @@ details[open] > .inline-section__summary::before {
     display: none;
   }
 
-.data-row--trip,
-.data-row--visits,
-.data-row--blocked {
+  .data-row--trip,
+  .data-row--visits,
+  .data-row--blocked {
     grid-template-columns: 1fr;
+  }
+
+  .data-row {
+    padding: 0.42rem 0.55rem;
+    gap: 0.42rem;
+  }
+
+  .data-row--trip > [data-label],
+  .data-row--visits > [data-label],
+  .data-row--blocked > [data-label] {
+    display: grid;
+    grid-template-columns: minmax(84px, auto) minmax(0, 1fr);
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  .data-row--trip > [data-label]::before,
+  .data-row--visits > [data-label]::before,
+  .data-row--blocked > [data-label]::before {
+    content: attr(data-label);
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    line-height: 1.25;
+  }
+
+  .data-row--trip > [data-label=""]::before,
+  .data-row--visits > [data-label=""]::before,
+  .data-row--blocked > [data-label=""]::before {
+    content: "";
+  }
+
+  .data-row--trip > [data-label=""] {
+    grid-template-columns: 1fr;
+    justify-items: end;
+  }
+
+  .data-row--visits > [data-label=""],
+  .data-row--blocked > [data-label=""] {
+    grid-template-columns: 1fr;
+    justify-items: end;
+  }
+
+  .data-row .table-actions {
+    justify-content: flex-end;
   }
 }
 

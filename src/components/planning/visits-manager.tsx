@@ -101,6 +101,14 @@ export function VisitsManager({
     });
   };
 
+  const visitRowLabels = {
+    visitor: t("planning.visitor"),
+    dates: t("planning.dates"),
+    embarkDisembark: t("planning.embarkDisembark"),
+    status: t("planning.status"),
+    notes: t("planning.notes"),
+  };
+
   return (
     <>
       {canEdit && visits.length > 0 && (
@@ -143,8 +151,8 @@ export function VisitsManager({
                 }
               }}
             >
-              <div>{visit.visitor_name ?? <span className="muted">{t("planning.private")}</span>}</div>
-              <div className="table-stack">
+              <div data-label={visitRowLabels.visitor}>{visit.visitor_name ?? <span className="muted">{t("planning.private")}</span>}</div>
+              <div className="table-stack" data-label={visitRowLabels.dates}>
                 {hasVisitDateRange(visit) ? (
                   <>
                     <span>{formatShortDate(visit.embark_date)}</span>
@@ -154,16 +162,16 @@ export function VisitsManager({
                   <span className="muted">{t("planning.restrictedVisitDates")}</span>
                 )}
               </div>
-              <div className="table-stack">
+              <div className="table-stack" data-label={visitRowLabels.embarkDisembark}>
                 <span>{visit.embark_place_label ?? <span className="muted">—</span>}</span>
                 <span className="muted">{visit.disembark_place_label ?? "—"}</span>
               </div>
-              <div>
+              <div data-label={visitRowLabels.status}>
                 <span className={`status-pill is-${visit.status}`}>{t(`status.${visit.status}` as never)}</span>
               </div>
-              <div className="cell-clamp muted">{visit.public_notes}</div>
+              <div className="cell-clamp muted" data-label={visitRowLabels.notes}>{visit.public_notes}</div>
               {canEdit && (
-                <div className="table-actions">
+                <div className="table-actions" data-label="">
                   <button
                   aria-label={t("common.edit")}
                   className="icon-button"

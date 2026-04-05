@@ -92,6 +92,11 @@ export function BlockedIntervalsManager({
     });
   };
 
+  const blockedRowLabels = {
+    dates: es ? "Fechas" : "Dates",
+    reason: es ? "Motivo" : "Reason",
+  };
+
   return (
     <>
       {canEdit && (
@@ -124,7 +129,7 @@ export function BlockedIntervalsManager({
           </div>
           {intervals.map((interval) => (
             <div className="data-row data-row--blocked" key={interval.id}>
-              <div className="table-stack">
+              <div className="table-stack" data-label={blockedRowLabels.dates}>
                 {hasVisitDateRange(interval) ? (
                   <>
                     <span>{formatShortDate(interval.embark_date)}</span>
@@ -134,11 +139,11 @@ export function BlockedIntervalsManager({
                   <span className="muted">—</span>
                 )}
               </div>
-              <div className="cell-clamp muted">
+              <div className="cell-clamp muted" data-label={blockedRowLabels.reason}>
                 {interval.public_notes || <span className="muted">—</span>}
               </div>
               {canEdit && (
-                <div className="table-actions">
+                <div className="table-actions" data-label="">
                   <button
                     aria-label={t("common.edit")}
                     className="icon-button"

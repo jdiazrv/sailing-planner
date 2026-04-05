@@ -107,6 +107,14 @@ export function TripSegmentsManager({
 
   const statusLabel = (value: string) => t(`status.${value}` as never);
   const locationTypeLabel = (value: string) => t(`planning.${value}` as never);
+  const tripRowLabels = {
+    order: "#",
+    dates: t("planning.dates"),
+    distance: "Millas nauticas",
+    location: t("planning.location"),
+    status: t("planning.status"),
+    notes: t("planning.notes"),
+  };
 
   return (
     <>
@@ -162,28 +170,28 @@ export function TripSegmentsManager({
                   }
                 }}
               >
-                <div>
+                <div data-label={tripRowLabels.order}>
                   <span className="status-pill is-good">{index + 1}</span>
                 </div>
-                <div className="table-stack">
+                <div className="table-stack" data-label={tripRowLabels.dates}>
                   <span>{formatShortDate(segment.start_date)}</span>
                   <span className="muted">{formatShortDate(segment.end_date)}</span>
                 </div>
-                <div className="table-stack">
+                <div className="table-stack" data-label={tripRowLabels.distance}>
                   <span>{distanceFromPrevious == null ? "" : `${Math.round(distanceFromPrevious)} nm`}</span>
                 </div>
-                <div className="table-stack">
+                <div className="table-stack" data-label={tripRowLabels.location}>
                   <span>{segment.location_label}</span>
                   <span className="muted">{locationTypeLabel(segment.location_type)}</span>
                 </div>
-                <div>
+                <div data-label={tripRowLabels.status}>
                   <span className={`status-pill is-${segment.status}`}>
                     {statusLabel(segment.status)}
                   </span>
                 </div>
-                <div className="cell-clamp muted">{segment.public_notes}</div>
+                <div className="cell-clamp muted" data-label={tripRowLabels.notes}>{segment.public_notes}</div>
                 {canEdit && (
-                  <div className="table-actions">
+                  <div className="table-actions" data-label="">
                     <button
                       aria-label={t("common.edit")}
                       className="icon-button"
