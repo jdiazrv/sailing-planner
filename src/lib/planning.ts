@@ -7,8 +7,8 @@ export type PermissionRow = Database["public"]["Tables"]["user_boat_permissions"
 export type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 export type SeasonAccessLinkRow = Database["public"]["Tables"]["season_access_links"]["Row"];
 
-export type TripSegmentView =
-  Database["public"]["Functions"]["get_season_trip_segments"]["Returns"][number];
+export type PortStopView =
+  Database["public"]["Functions"]["get_season_port_stops"]["Returns"][number];
 export type VisitView =
   Database["public"]["Functions"]["get_season_visits"]["Returns"][number];
 
@@ -121,7 +121,7 @@ export const hasVisitDateRange = (
 } => Boolean(visit.embark_date && visit.disembark_date);
 
 const isRangeFullyCovered = (
-  segments: TripSegmentView[],
+  segments: PortStopView[],
   start: string,
   end: string,
 ) => {

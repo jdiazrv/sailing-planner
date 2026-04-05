@@ -227,3 +227,22 @@ Este archivo se usa para registrar propuestas de mejora funcional, UX y tecnica 
   - 2026-04-04: reportada por usuario durante sesion de edicion de barcos.
   - 2026-04-04: implantada con estado visual de tarjeta activa (`:focus-within`) para resaltar el barco completo en edicion.
   - 2026-04-04: reforzada con estado `is-active-editor` persistente (fondo + marco) aunque se pierda foco de campo.
+
+## M-010 - Unificar terminologia nautica de "tramo" a "escala"
+
+- Fecha: 2026-04-05
+- Estado: propuesta
+- Fuente: usuario
+- Area: ux
+- Contexto: terminologia visible en toda la app (planificacion, botones, labels, tour guiado, docs y help text)
+- Problema u oportunidad: el termino `tramo` se esta usando para un bloque temporal en lugar de representar solo navegacion entre puntos, lo que genera confusion conceptual. Se fija `escala` como termino oficial para ese bloque temporal.
+- Propuesta: sustituir de forma global y consistente referencias de `tramo` por `escala` donde corresponda al bloque temporal, evitando coexistencia de ambos terminos para el mismo concepto.
+- Riesgo:
+  - Impacto: alto
+  - Probabilidad: alta
+  - Notas: cambio transversal con riesgo de inconsistencias parciales si no se migra de forma integral (UI, i18n, tour, README, mensajes, tests y copys residuales).
+- Opinion de Copilot: decision correcta a nivel de dominio; debe ejecutarse como migracion terminologica completa y no por cambios aislados para evitar deuda de lenguaje y confusion de usuario.
+- Recomendacion: preparar y luego implantar
+- Relacionadas: ninguna
+- Historial:
+  - 2026-04-05: decision conceptual del usuario: termino oficial `escala`; pendiente plan de sustitucion global.

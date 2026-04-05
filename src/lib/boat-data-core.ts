@@ -194,7 +194,7 @@ export const getBoatAggregateData = async (
 
   if (seasonIds.length) {
     const [{ data: tripRows }, { data: visitRows }] = await Promise.all([
-      db.from("trip_segments").select("season_id").in("season_id", seasonIds),
+      db.from("port_stops").select("season_id").in("season_id", seasonIds),
       db.from("visits").select("season_id").in("season_id", seasonIds),
     ]);
 

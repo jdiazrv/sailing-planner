@@ -1,6 +1,6 @@
 # Sailing Planner
 
-Sailing Planner is a Next.js + TypeScript app for managing one or more boats, their seasons, trip segments, visits, guest access links and cross-boat timeline visibility. The current codebase is already beyond the original starter stage and includes:
+Sailing Planner is a Next.js + TypeScript app for managing one or more boats, their seasons, port stops, visits, guest access links and cross-boat timeline visibility. The current codebase is already beyond the original starter stage and includes:
 
 - multi-boat dashboard and boat switching
 - boat-scoped trip and visit workspaces
@@ -18,7 +18,7 @@ Major release highlights:
 
 - Timeline improvements in `Plan de viaje` rows:
   - trip labels no longer show the leading `?` glyph
-  - trip bars now render explicit vertical separators so adjacent segments are visually distinct
+  - trip bars now render explicit vertical separators so adjacent port stops are visually distinct
 - Shared timeline comparison now renders `trip plan only` lanes (no people/blocked/availability rows in compare view)
 - User admin and invite flow updates:
   - manager role parity for user-management access checks
@@ -52,7 +52,7 @@ The repository currently implements these major flows:
 The schema is centered around boats:
 
 - one `boat` can have multiple `seasons`
-- one `season` can have multiple `trip_segments`
+- one `season` can have multiple `port_stops`
 - one `season` can have multiple `visits`
 - boat access is granted with `user_boat_permissions`
 - platform-wide access is granted with `profiles.is_superuser`
@@ -61,7 +61,7 @@ The schema is centered around boats:
 
 Private note visibility is enforced with separate tables rather than inline fields:
 
-- `trip_segment_private_notes`
+- `port_stop_private_notes`
 - `visit_private_notes`
 
 This allows Supabase RLS to protect private information cleanly.
@@ -85,7 +85,7 @@ Important runtime pieces:
 
 ## Map curation
 
-The planning map can optionally highlight the exact silhouette of islands when a trip segment location matches a curated coastal dataset.
+The planning map can optionally highlight the exact silhouette of islands when a port stop location matches a curated coastal dataset.
 
 Current implementation for Greece:
 

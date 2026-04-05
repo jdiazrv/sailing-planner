@@ -113,7 +113,7 @@ const loadSeasonWorkspaceData = async (
 
   const includeVisits = options?.includeVisits ?? true;
   const [tripResult, visitResult] = await Promise.all([
-    db.rpc("get_season_trip_segments", {
+    db.rpc("get_season_port_stops", {
       p_season_id: selectedSeason.id,
     }),
     includeVisits
@@ -523,7 +523,7 @@ export const getSeasonGuestWorkspace = async (
   const [{ data: tripData, error: tripError }, { data: visitsData, error: visitsError }] =
     await Promise.all([
       db
-        .from("trip_segments")
+        .from("port_stops")
         .select(
           "id, season_id, sort_order, start_date, end_date, location_label, location_type, place_source, external_place_id, latitude, longitude, status, public_notes, created_at, updated_at",
         )

@@ -172,7 +172,7 @@ export const getAdminUsers = async () => {
         { data: invitesData, error: invitesError },
       ] = await Promise.all([
         latestSeasonIds.length
-          ? db.from("trip_segments").select("season_id").in("season_id", latestSeasonIds)
+          ? db.from("port_stops").select("season_id").in("season_id", latestSeasonIds)
           : Promise.resolve({ data: [], error: null }),
         latestSeasonIds.length
           ? db.from("visits").select("season_id").in("season_id", latestSeasonIds)

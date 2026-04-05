@@ -134,7 +134,7 @@ export const getSharedTimelineWorkspace = async (
         ownerDisplayName: ownerUserId
           ? profileNameById.get(ownerUserId) ?? null
           : null,
-        tripSegments: [] as TripSegmentView[],
+        tripSegments: [] as PortStopView[],
       } satisfies SharedTimelineBoat;
     });
 
@@ -145,7 +145,7 @@ export const getSharedTimelineWorkspace = async (
 
     if (selectedBoat?.season) {
       const { data: tripData, error: tripError } = await db.rpc(
-        "get_season_trip_segments",
+        "get_season_port_stops",
         {
           p_season_id: selectedBoat.season.id,
         },
@@ -155,7 +155,7 @@ export const getSharedTimelineWorkspace = async (
         throw new Error(tripError.message);
       }
 
-      selectedBoat.tripSegments = (tripData ?? []) as TripSegmentView[];
+      selectedBoat.tripSegments = (tripData ?? []) as PortStopView[];
     }
 
     return {
@@ -252,7 +252,7 @@ export const getSharedTimelineWorkspace = async (
 
   if (selectedBoat?.season) {
     const { data: tripData, error: tripError } = await sharedDb
-      .from("trip_segments")
+      .from("port_stops")
       .select(
         "id, season_id, sort_order, start_date, end_date, location_label, location_type, place_source, external_place_id, latitude, longitude, status, public_notes, created_at, updated_at",
       )
@@ -268,7 +268,7 @@ export const getSharedTimelineWorkspace = async (
     }
 
     selectedBoat.tripSegments = ((tripData ?? []) as Array<
-      Omit<TripSegmentView, "private_notes">
+      Omit<PortStopView, "private_notes">
     >).map((segment) => ({
       ...segment,
       private_notes: null,
