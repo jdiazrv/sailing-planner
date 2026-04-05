@@ -227,11 +227,11 @@ export function TripSegmentsManager({
       ) : (
         <GuidedEmptyState
           icon="🗺️"
-          title={canEdit ? "Aún no hay tramos de viaje" : "No hay tramos planificados"}
+          title={canEdit ? "Aún no hay escalas de viaje" : "No hay escalas planificadas"}
           body={
             canEdit
-              ? "Los tramos definen las zonas de navegacion de la temporada: fechas, lugar, estado y millas. Añade el primero para que aparezca en el timeline y en el mapa."
-              : "Todavia no se han añadido tramos de viaje para esta temporada."
+              ? "Las escalas definen las zonas de navegacion de la temporada: fechas, lugar, estado y millas. Añade la primera para que aparezca en el timeline y en el mapa."
+              : "Todavia no se han añadido escalas de viaje para esta temporada."
           }
           action={
             canEdit

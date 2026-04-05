@@ -97,7 +97,7 @@ export function GuestOnboardingTour({
           {
             target: '[data-tour="boat-timeline"]',
             title: "Timeline de la temporada",
-            body: "El timeline muestra el plan completo de la temporada: tramos del viaje, visitas de invitados y disponibilidad del barco. Es de solo lectura para tu perfil.",
+            body: "El timeline muestra el plan completo de la temporada: escalas del viaje, visitas de invitados y disponibilidad del barco. Es de solo lectura para tu perfil.",
           },
           {
             target: '[data-tour="planning-control-bar"]',
@@ -106,14 +106,14 @@ export function GuestOnboardingTour({
           },
           {
             target: '[data-tour="boat-detail"]',
-            title: "Tramos del viaje",
-            body: "Aqui puedes consultar todos los tramos planificados con sus fechas, lugares y estado. Esta informacion es de solo consulta para tu perfil.",
+            title: "Escalas del viaje",
+            body: "Aqui puedes consultar todas las escalas planificadas con sus fechas, lugares y estado. Esta informacion es de solo consulta para tu perfil.",
             requiredView: "trip",
           },
           {
             target: '[data-tour="boat-map"]',
             title: "Mapa del recorrido",
-            body: "El mapa situa visualmente el recorrido y los puntos clave de la temporada. Puedes seleccionar un tramo para ver su ubicacion destacada.",
+            body: "El mapa situa visualmente el recorrido y los puntos clave de la temporada. Puedes seleccionar una escala para ver su ubicacion destacada.",
             requiredView: "trip",
           },
           ...(canViewVisits
@@ -136,7 +136,7 @@ export function GuestOnboardingTour({
           title: "Timeline de la temporada",
           body: hasSegments
             ? "El timeline muestra el plan completo. Las barras del viaje estan en la fila superior. Debajo aparecen las visitas agrupadas por persona, la disponibilidad calculada y los periodos bloqueados."
-            : "El timeline es el corazon del panel. Cuando añadas tramos y visitas, aqui veras una vision completa de la temporada de un vistazo.",
+            : "El timeline es el corazon del panel. Cuando añadas escalas y visitas, aqui veras una vision completa de la temporada de un vistazo.",
         },
         {
           target: '[data-tour="planning-control-bar"]',
@@ -150,16 +150,16 @@ export function GuestOnboardingTour({
         },
         {
           target: '[data-tour="boat-detail"]',
-          title: "Tramos del viaje",
+          title: "Escalas del viaje",
           body: canEditBoat
-            ? "Aqui creas y editas los tramos: zona de navegacion, fechas, estado y ubicaciones. Cada tramo que añadas aparecera inmediatamente en el timeline."
-            : "Aqui consultas el detalle de los tramos planificados con fechas, lugares y estado de cada uno.",
+            ? "Aqui creas y editas las escalas: zona de navegacion, fechas, estado y ubicaciones. Cada escala que añadas aparecera inmediatamente en el timeline."
+            : "Aqui consultas el detalle de las escalas planificadas con fechas, lugares y estado de cada una.",
           requiredView: "trip",
         },
         {
           target: '[data-tour="boat-map"]',
           title: "Mapa del recorrido",
-          body: "El mapa situa visualmente todos los tramos y visitas. Selecciona cualquier elemento del timeline o la tabla para verlo destacado en el mapa.",
+          body: "El mapa situa visualmente todas las escalas y visitas. Selecciona cualquier elemento del timeline o la tabla para verlo destacado en el mapa.",
           requiredView: "trip",
         },
         ...(canViewVisits
@@ -177,9 +177,9 @@ export function GuestOnboardingTour({
             ]
           : []),
         {
-          target: '[data-tour="availability-section"]',
+          target: '[data-tour="availability-card"]',
           title: "Disponibilidad y bloqueos",
-          body: "Bajo la tabla principal encontraras la disponibilidad calculada automaticamente (periodos libres segun los tramos y visitas) y la seccion de fechas bloqueadas, donde puedes cerrar periodos por mantenimiento o cualquier otra razon.",
+          body: "Bajo la tabla principal encontraras la disponibilidad calculada automaticamente (periodos libres segun las escalas y visitas) y la seccion de fechas bloqueadas, donde puedes cerrar periodos por mantenimiento o cualquier otra razon.",
           requiredView: "trip",
         },
         ...(canShare
@@ -210,28 +210,28 @@ export function GuestOnboardingTour({
       {
         target: '[data-tour="guest-header"]',
         title: "Bienvenido al panel compartido",
-        body: "Esta vista es de solo lectura. Puedes seguir el plan completo de la temporada sin modificar ningun dato. Navega libremente por los tramos, el mapa y las visitas.",
+        body: "Esta vista es de solo lectura. Puedes seguir el plan completo de la temporada sin modificar ningun dato. Navega libremente por las escalas, el mapa y las visitas.",
       },
       {
         target: '[data-tour="boat-nav"]',
         title: "Navegacion del panel",
-        body: "Usa estas pestanas para moverte entre la vista de tramos del viaje y las visitas de la temporada. Todo lo que ves es de consulta.",
+        body: "Usa estas pestanas para moverte entre la vista de escalas del viaje y las visitas de la temporada. Todo lo que ves es de consulta.",
       },
       {
         target: '[data-tour="boat-timeline"]',
         title: "Timeline de la temporada",
-        body: "El timeline muestra el plan completo de un vistazo. Pasa el cursor sobre las barras para ver detalles de fechas, lugares y estado de cada elemento.",
+        body: "El timeline te da una vision completa de la temporada con escalas, visitas y disponibilidad en formato cronologico.",
       },
       {
         target: '[data-tour="boat-detail"]',
-        title: "Detalle de tramos",
-        body: "Aqui ves el listado estructurado de todos los tramos del viaje con sus fechas, lugares y estado. Es una vista de consulta.",
+        title: "Detalle de escalas",
+        body: "Aqui ves el listado estructurado de todas las escalas del viaje con sus fechas, lugares y estado. Es una vista de consulta.",
         requiredView: "trip",
       },
       {
         target: '[data-tour="boat-map"]',
         title: "Mapa del recorrido",
-        body: "El mapa situa visualmente el recorrido y los puntos clave de la temporada. Selecciona un tramo en la tabla para verlo destacado.",
+        body: "El mapa situa visualmente el recorrido y los puntos clave de la temporada. Selecciona una escala en la tabla para verla destacada.",
         requiredView: "trip",
       },
       ...(canViewVisits

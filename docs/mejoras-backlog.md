@@ -231,7 +231,7 @@ Este archivo se usa para registrar propuestas de mejora funcional, UX y tecnica 
 ## M-010 - Unificar terminologia nautica de "tramo" a "escala"
 
 - Fecha: 2026-04-05
-- Estado: propuesta
+- Estado: implantada
 - Fuente: usuario
 - Area: ux
 - Contexto: terminologia visible en toda la app (planificacion, botones, labels, tour guiado, docs y help text)
@@ -246,3 +246,46 @@ Este archivo se usa para registrar propuestas de mejora funcional, UX y tecnica 
 - Relacionadas: ninguna
 - Historial:
   - 2026-04-05: decision conceptual del usuario: termino oficial `escala`; pendiente plan de sustitucion global.
+  - 2026-04-05: implantacion parcial ejecutada en i18n, tipos y partes del flujo de planificacion.
+  - 2026-04-05: detectados residuos de copy `tramo/tramos` en guest tour, guest page y textos auxiliares; pendiente cierre completo.
+  - 2026-04-05: cierre completo de copy visible en app (`tramo/tramos` -> `escala/escalas`) y verificacion por busqueda en `src` sin resultados residuales.
+
+## M-011 - Alinear naming de datos entre `trip_segments` y `port_stops`
+
+- Fecha: 2026-04-05
+- Estado: implantada
+- Fuente: copilot
+- Area: arquitectura
+- Contexto: server actions y acceso a datos tras migracion terminologica
+- Problema u oportunidad: coexistencia de referencias a `trip_segments` y `port_stops` en distintas capas, con riesgo de inconsistencia y fallos segun el estado de migraciones aplicadas.
+- Propuesta: completar migracion tecnica en capa de datos y acciones para usar un unico naming persistente (`port_stops`) o introducir una estrategia de compatibilidad temporal explicita.
+- Riesgo:
+  - Impacto: alto
+  - Probabilidad: media
+  - Notas: puede romper operaciones de escritura/reordenacion en entornos donde la tabla legacy ya no exista.
+- Opinion de Copilot: deuda prioritaria porque afecta robustez funcional, no solo nomenclatura.
+- Recomendacion: implantar ahora
+- Relacionadas: M-010
+- Historial:
+  - 2026-04-05: detectada en revision post-build al encontrar acciones contra `trip_segments` tras renombre de esquema.
+  - 2026-04-05: acciones de escritura/reordenacion y tablas de notas privadas alineadas a `port_stops` y `port_stop_private_notes`.
+
+## M-012 - Sincronizar tipos generados de Supabase con migraciones activas
+
+- Fecha: 2026-04-05
+- Estado: implantada
+- Fuente: copilot
+- Area: DX
+- Contexto: `src/types/database.ts` frente a funciones/tablas renombradas en migraciones
+- Problema u oportunidad: tipos generados mantienen nombres legacy de funciones y tablas, forzando aliases manuales y reduciendo seguridad de tipos.
+- Propuesta: regenerar tipos de base de datos y ajustar referencias para que el contrato tipado coincida con el esquema/migraciones vigentes.
+- Riesgo:
+  - Impacto: medio
+  - Probabilidad: alta
+  - Notas: aumenta deuda silenciosa y coste de mantenimiento en futuras refactorizaciones.
+- Opinion de Copilot: mejora de bajo coste relativo y alto retorno en estabilidad del desarrollo.
+- Recomendacion: preparar y luego implantar
+- Relacionadas: M-011
+- Historial:
+  - 2026-04-05: propuesta creada tras detectar divergencia entre RPC tipado y RPC usado en runtime.
+  - 2026-04-05: `src/types/database.ts` y referencias tipadas alineadas a `get_season_port_stops`, `port_stops` y `port_stop_private_notes`.

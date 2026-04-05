@@ -89,7 +89,7 @@ export function BoatsAdmin({
           tableManagersAbbr: "Gest",
           tableEditors: "Editores",
           tableEditorsAbbr: "Ed",
-          tableTrips: "Tramos",
+          tableTrips: "Escalas",
           tableTripsAbbr: "Tr",
           tableVisits: "Visitas",
           tableVisitsAbbr: "Vis",
@@ -104,7 +104,7 @@ export function BoatsAdmin({
           edit: "Editar",
           delete: "Borrar",
           deleteConfirm:
-            "¿Borrar el barco \"{name}\"? Esto también elimina sus temporadas, tramos, visitas, permisos y los lectores, editores o gestores asignados solo a este barco.",
+            "¿Borrar el barco \"{name}\"? Esto también elimina sus temporadas, escalas, visitas, permisos y los lectores, editores o gestores asignados solo a este barco.",
           deleted: "Barco borrado",
           deleteError: "No se pudo borrar el barco",
           createTitle: "Crear barco",

@@ -201,7 +201,7 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
         ? "Mostrar visitas"
         : "Show visits"
       : locale === "es"
-        ? "Mostrar tramos"
+        ? "Mostrar escalas"
         : "Show trip segments";
   const viewPrefetchParams = new URLSearchParams();
   viewPrefetchParams.set("view", nextView);
@@ -403,7 +403,7 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
                     <p className="eyebrow">{t("planning.tripSegments")}</p>
                     <h2>{t("planning.routeBlocks")} - {season.name}</h2>
                   </div>
-                  <span className="muted">{filteredSegments.length} tramos visibles</span>
+                  <span className="muted">{filteredSegments.length} escalas visibles</span>
                 </div>
 
                 <TripSegmentsManager

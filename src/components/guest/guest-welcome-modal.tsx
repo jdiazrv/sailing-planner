@@ -48,8 +48,8 @@ export function GuestWelcomeModal({
         ) : null}
         <p className="guest-welcome-modal__body">
           {canViewVisits
-            ? "Puede alternar entre la vista de tramos y visitas, y usar el timeline para entender de un vistazo el recorrido completo de la navegacion."
-            : "Puede seguir la vista de tramos y usar el timeline para entender de un vistazo el recorrido completo de la navegacion."}
+            ? "Puede alternar entre la vista de escalas y visitas, y usar el timeline para entender de un vistazo el recorrido completo de la navegacion."
+            : "Puede seguir la vista de escalas y usar el timeline para entender de un vistazo el recorrido completo de la navegacion."}
         </p>
         <div className="modal__footer">
           <button className="primary-button" onClick={handleClose} type="button">

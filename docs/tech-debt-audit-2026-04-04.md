@@ -6,7 +6,7 @@ This file tracks live technical-debt findings observed while navigating the app 
 
 - Scope: live navigation audit on localhost while the app is running in dev mode.
 - Goal: collect actionable debt items without overloading chat context.
-- Last updated: 2026-04-04 after correcting the actionable issues listed below.
+- Last updated: 2026-04-05 after syncing findings with the latest terminology and build pass.
 
 ## High priority
 
@@ -19,13 +19,23 @@ Observed during the latest manual validation pass after the UX fixes were deploy
 Remaining issues:
 
 - Sidebar labels in iPad render with a gray tone that makes them look disabled even though the menu is interactive.
-- Google login still fails during OAuth start with:
-  - `Invalid URL: base="sailing-planner.netlify.app" path="/auth/callback"`
 
 Current assessment:
 
 - The sidebar issue appears visual/contrast-related rather than functional.
-- The Google OAuth issue indicates that some runtime configuration still points to the old Netlify domain or lacks the updated public origin in the hosted environment.
+
+### 2026-04-05 - Terminology and data-layer consistency audit
+
+Observed after the latest build/type fixes and terminology migration follow-up.
+
+Remaining issues:
+
+- No open code-level inconsistencies remain in this scope after the local fix pass.
+
+Current assessment:
+
+- Data-layer naming now aligned in actions, typed contracts and RPC references.
+- User-facing terminology is aligned to `escala/escalas` in the audited app surfaces.
 
 ### 2026-04-05 - Timeline, invite and boat-settings regressions (iPad + desktop)
 
@@ -152,24 +162,6 @@ Primary files to investigate:
 - `src/components/ui/theme-switcher.tsx`
 - `src/app/globals.css`
 
-### Google OAuth redirect builder fails with invalid base URL
-
-Observed in login flow when entering email and then choosing Google sign-in.
-
-Error text:
-
-- `Invalid URL: base="sailing-planner.netlify.app" path="/auth/callback"`
-
-Current assessment:
-
-- Base URL is missing protocol (`https://`), causing URL construction to fail.
-- This blocks Google OAuth sign-in until env/URL normalization is corrected.
-
-Primary files to investigate:
-
-- `src/components/auth/auth-form.tsx`
-- `src/lib/env.ts`
-
 ## Low priority
 
 ### Google Maps marker deprecation
@@ -248,6 +240,37 @@ Affected area adjusted:
 
 - `src/app/admin/actions.ts`
 
+### Google OAuth invalid base URL in login flow
+
+Resolved after origin normalization and callback URL hardening.
+
+Observed historical error:
+
+- `Invalid URL: base="sailing-planner.netlify.app" path="/auth/callback"`
+
+Current status:
+
+- No longer considered an open debt item in codebase.
+- Keep monitoring hosted env variables for drift between deployments.
+
+### 2026-04-05 - Verified debt closures in local workspace
+
+Closed with code/build/search verification:
+
+- Legacy writes to `trip_segments` in boat actions migrated to `port_stops`.
+- Legacy private notes table references migrated to `port_stop_private_notes` and `port_stop_id`.
+- DB type contract aligned to `port_stops`, `port_stop_private_notes` and `get_season_port_stops`.
+- Spanish copy migration `tramo/tramos` -> `escala/escalas` completed in app sources.
+
+Validation evidence:
+
+- `npm run build` successful (compile, lint and types).
+- Source search in `src/**` without residual matches for:
+  - `trip_segments` (table/function/type access patterns),
+  - `trip_segment_private_notes`,
+  - `get_season_trip_segments`,
+  - `tramo` / `tramos`.
+
 ## Notes for continuing the audit
 
 - Keep app navigation broad: dashboard, admin, shared, boat plan, visits, guest/share flows.
@@ -257,6 +280,8 @@ Affected area adjusted:
   - exact error text
   - browser event pattern
   - likely triggering interaction
+- Use manual closure checklist:
+  - `docs/local-debt-validation-checklist-2026-04-05.md`
 
 ## Audit checkpoints
 

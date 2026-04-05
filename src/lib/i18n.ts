@@ -254,7 +254,7 @@ const dictionary = {
     "planning.mapReady": "Mapa listo",
     "planning.googleBlocked": "Google Maps está bloqueado para esta clave o dominio. Se muestra el mapa alternativo.",
     "planning.googleUnavailable": "No se pudo cargar Google Maps. Se muestra el mapa alternativo.",
-    "planning.mapEmpty": "Añade latitud y longitud en tramos o visitas para verlos en el mapa.",
+    "planning.mapEmpty": "Añade latitud y longitud en escalas o visitas para verlos en el mapa.",
     "planning.mapCaptionFallback": "Añade `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` para renderizar aquí el mapa real de Google.",
     "planning.mapBase": "Base",
     "planning.mapRoadmap": "Mapa",

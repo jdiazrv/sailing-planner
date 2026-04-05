@@ -89,8 +89,8 @@ export function SeasonAccessPanel({
           enteredNo: "No",
           creator: "Creado por",
           visibility: "Visibilidad",
-          tripOnly: "Solo tramos",
-          tripAndVisits: "Tramos y visitas",
+          tripOnly: "Solo escalas",
+          tripAndVisits: "Escalas y visitas",
           includeVisits: "Permitir ver visitas",
           visibilityHint:
             "Si activas las visitas, la persona invitada también verá fechas y lugares de embarque y desembarque.",

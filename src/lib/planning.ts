@@ -8,7 +8,7 @@ export type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 export type SeasonAccessLinkRow = Database["public"]["Tables"]["season_access_links"]["Row"];
 
 export type PortStopView =
-  Database["public"]["Functions"]["get_season_trip_segments"]["Returns"][number];
+  Database["public"]["Functions"]["get_season_port_stops"]["Returns"][number];
 export type VisitView =
   Database["public"]["Functions"]["get_season_visits"]["Returns"][number];
 

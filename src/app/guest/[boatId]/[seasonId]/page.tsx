@@ -59,7 +59,7 @@ export default async function GuestSeasonPage({
       <section className="guest-banner">
         <strong>Estas viendo el plan de temporada de {workspace.boat.name}</strong>
         <span className="muted">
-          Explore tramos, timeline y, si el enlace lo permite, tambien las visitas previstas.
+          Explora escalas, timeline y, si el enlace lo permite, tambien las visitas previstas.
         </span>
       </section>
 
@@ -78,7 +78,7 @@ export default async function GuestSeasonPage({
           className={currentView === "trip" ? "is-active" : undefined}
           href={`/guest/${boatId}/${workspace.selectedSeason?.id ?? ""}?view=trip`}
         >
-          Tramos
+          Escalas
         </Link>
         {canViewVisits ? (
           <Link
@@ -101,7 +101,7 @@ export default async function GuestSeasonPage({
             <div className="card-header">
               <div>
                 <p className="eyebrow">Plan</p>
-                <h2>Tramos de viaje</h2>
+                <h2>Escalas de viaje</h2>
               </div>
             </div>
 

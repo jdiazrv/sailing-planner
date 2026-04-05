@@ -241,9 +241,9 @@ export async function saveTripSegment(formData: FormData) {
       throwIfError(error);
     } else {
       const { error } = await db
-        .from("trip_segment_private_notes")
+        .from("port_stop_private_notes")
         .delete()
-        .eq("trip_segment_id", resolvedId);
+        .eq("port_stop_id", resolvedId);
       throwIfError(error);
     }
   }
@@ -259,7 +259,7 @@ export async function moveTripSegment(formData: FormData) {
   const direction = formData.get("direction")?.toString();
 
   const { data: segments, error } = await db
-    .from("trip_segments")
+    .from("port_stops")
     .select("id, sort_order")
     .eq("season_id", seasonId)
     .order("sort_order", { ascending: true })
@@ -280,19 +280,19 @@ export async function moveTripSegment(formData: FormData) {
   const target = ordered[targetIndex];
 
   const { error: firstError } = await db
-    .from("trip_segments")
+    .from("port_stops")
     .update({ sort_order: -1 })
     .eq("id", current.id);
   throwIfError(firstError);
 
   const { error: secondError } = await db
-    .from("trip_segments")
+    .from("port_stops")
     .update({ sort_order: current.sort_order })
     .eq("id", target.id);
   throwIfError(secondError);
 
   const { error: thirdError } = await db
-    .from("trip_segments")
+    .from("port_stops")
     .update({ sort_order: target.sort_order })
     .eq("id", current.id);
   throwIfError(thirdError);

@@ -207,7 +207,7 @@ export interface Database {
         };
         Update: Partial<Database["public"]["Tables"]["season_access_links"]["Insert"]>;
       };
-      trip_segments: {
+      port_stops: {
         Row: {
           id: string;
           season_id: string;
@@ -242,22 +242,22 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
-        Update: Partial<Database["public"]["Tables"]["trip_segments"]["Insert"]>;
+        Update: Partial<Database["public"]["Tables"]["port_stops"]["Insert"]>;
       };
-      trip_segment_private_notes: {
+      port_stop_private_notes: {
         Row: {
-          trip_segment_id: string;
+          port_stop_id: string;
           private_notes: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: {
-          trip_segment_id: string;
+          port_stop_id: string;
           private_notes?: string | null;
           created_at?: string;
           updated_at?: string;
         };
-        Update: Partial<Database["public"]["Tables"]["trip_segment_private_notes"]["Insert"]>;
+        Update: Partial<Database["public"]["Tables"]["port_stop_private_notes"]["Insert"]>;
       };
       visits: {
         Row: {
@@ -334,7 +334,7 @@ export interface Database {
       };
     };
     Functions: {
-      get_season_trip_segments: {
+      get_season_port_stops: {
         Args: {
           p_season_id: string;
         };

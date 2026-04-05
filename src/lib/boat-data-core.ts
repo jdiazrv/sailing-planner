@@ -198,7 +198,7 @@ export const getBoatAggregateData = async (
       db.from("visits").select("season_id").in("season_id", seasonIds),
     ]);
 
-    ((tripRows ?? []) as Pick<Database["public"]["Tables"]["trip_segments"]["Row"], "season_id">[])
+    ((tripRows ?? []) as Pick<Database["public"]["Tables"]["port_stops"]["Row"], "season_id">[])
       .forEach((row) => {
         const boatId = seasonById.get(row.season_id);
         if (!boatId) return;
