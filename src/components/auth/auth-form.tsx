@@ -34,6 +34,8 @@ export const AuthForm = ({
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = getSafeNextPath(searchParams.get("next"));
+  const oauthError = searchParams.get("oauth_error");
+  const oauthErrorDescription = searchParams.get("oauth_error_description");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -42,6 +44,12 @@ export const AuthForm = ({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingIntent, setLoadingIntent] = useState<LoadingIntent>(null);
+
+  const oauthErrorMessage = oauthError
+    ? locale === "es"
+      ? `Error de acceso con Google (${oauthError})${oauthErrorDescription ? `: ${oauthErrorDescription}` : ""}`
+      : `Google login error (${oauthError})${oauthErrorDescription ? `: ${oauthErrorDescription}` : ""}`
+    : null;
 
   const handlePasswordLogin = async () => {
     const supabase = createClient();
@@ -345,7 +353,9 @@ export const AuthForm = ({
         </div>
       ) : null}
 
-      {error ? <p className="feedback feedback--error">{error}</p> : null}
+      {error || oauthErrorMessage ? (
+        <p className="feedback feedback--error">{error ?? oauthErrorMessage}</p>
+      ) : null}
       {message ? <p className="feedback feedback--success">{message}</p> : null}
 
       {mode === "password" ? (
