@@ -246,7 +246,11 @@ export async function deleteBoat(formData: FormData) {
 
       usersToDelete = nonSuperuserIds.filter((userId) => {
         const boatIds = permissionsByUser.get(userId);
-        return Boolean(boatIds) && boatIds.size === 1 && boatIds.has(boatId);
+        if (!boatIds) {
+          return false;
+        }
+
+        return boatIds.size === 1 && boatIds.has(boatId);
       });
     }
   }

@@ -403,6 +403,7 @@ export function BoatsAdmin({
                         </button>
 
                         <BoatSettingsDialog
+                          boatId={boat.id}
                           boat={boat}
                           onRemoveImage={onRemoveImage}
                           onSave={async (fd) => {

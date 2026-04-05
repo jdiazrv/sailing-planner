@@ -153,6 +153,7 @@ export function UsersAdmin({
   canInviteUsers,
   isSuperuser,
   viewerUserId,
+  viewerEmail,
   initialSelectedUserId,
   initialSection,
   personalMode = false,
@@ -201,7 +202,7 @@ export function UsersAdmin({
 
   const filteredUsers = useMemo(() => {
     const q = userSearch.trim().toLowerCase();
-    let list = q
+    const list = q
       ? sortedUsers.filter((u) => {
           const boatNames = u.permissions
             .map((p) => boats.find((b) => b.id === p.boat_id)?.name ?? "")

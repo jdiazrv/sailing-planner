@@ -17,8 +17,11 @@ export function IconLoadingPresentation({
 
 export function AppLoading({
   title = "Cargando",
+  subtitle,
 }: {
   title?: string;
+  subtitle?: string;
 }) {
-  return <IconLoadingPresentation label={title} />;
+  const label = subtitle ? `${title}. ${subtitle}` : title;
+  return <IconLoadingPresentation label={label} />;
 }

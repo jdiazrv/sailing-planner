@@ -35,8 +35,10 @@ type TimelineProps = {
   onZoomChange?: (zoom: number) => void;
   visitsCollapsed?: boolean;
   availabilityCollapsed?: boolean;
+  blockedCollapsed?: boolean;
   onToggleVisitsCollapsed?: () => void;
   onToggleAvailabilityCollapsed?: () => void;
+  onToggleBlockedCollapsed?: () => void;
   onlyShowTripPlan?: boolean;
 };
 
@@ -149,8 +151,10 @@ export const Timeline = ({
   onZoomChange,
   visitsCollapsed = false,
   availabilityCollapsed = false,
+  blockedCollapsed: _blockedCollapsed = false,
   onToggleVisitsCollapsed,
   onToggleAvailabilityCollapsed,
+  onToggleBlockedCollapsed: _onToggleBlockedCollapsed,
   onlyShowTripPlan = false,
 }: TimelineProps) => {
   const { t } = useI18n();
