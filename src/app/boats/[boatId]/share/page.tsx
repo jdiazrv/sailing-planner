@@ -31,7 +31,11 @@ export default async function BoatSharePage({
   const { season: requestedSeasonId, setup } = await searchParams;
   const workspace = await getBoatShareWorkspace(boatId, requestedSeasonId);
   const canEdit =
-    workspace.viewer.isSuperuser || Boolean(workspace.permission?.can_edit);
+    workspace.viewer.isSuperuser ||
+    Boolean(
+      workspace.permission?.can_edit ||
+      workspace.permission?.permission_level === "manager",
+    );
   const canManageUsers =
     workspace.viewer.isSuperuser ||
     Boolean(

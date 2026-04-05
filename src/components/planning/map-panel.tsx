@@ -245,6 +245,13 @@ export const MapPanel = ({
   const { t } = useI18n();
   const mapRef = useRef<HTMLDivElement | null>(null);
   const onSelectEntityRef = useRef(onSelectEntity);
+  // Refs for the Google Maps instances — kept stable across re-renders for imperative updates.
+  const mapsApiRef = useRef<typeof google | null>(null);
+  const googleMapRef = useRef<google.maps.Map | null>(null);
+  const googleMarkersRef = useRef<google.maps.Marker[]>([]);
+  const routePolylinesRef = useRef<google.maps.Polyline[]>([]);
+  const coastalPolygonsRef = useRef<google.maps.Polygon[]>([]);
+  const tRef = useRef(t);
   const [mapReady, setMapReady] = useState(false);
   const [googleAvailable, setGoogleAvailable] = useState(hasGoogleMapsKey);
   const [mapMessage, setMapMessage] = useState(t("planning.loadingMap"));
@@ -360,6 +367,10 @@ export const MapPanel = ({
   }, [onSelectEntity]);
 
   useEffect(() => {
+    tRef.current = t;
+  }, [t]);
+
+  useEffect(() => {
     let cancelled = false;
 
     if (!selectedCoastalZone) {
@@ -386,6 +397,7 @@ export const MapPanel = ({
     };
   }, [selectedCoastalZone]);
 
+  // Effect: Initialise the Google Map ONCE per mount — records exactly one billable API call.
   useEffect(() => {
     if (!hasGoogleMapsKey || !mapRef.current) {
       setGoogleAvailable(false);
@@ -399,7 +411,7 @@ export const MapPanel = ({
       if (!detached) {
         setGoogleAvailable(false);
         setMapReady(false);
-        setMapMessage(t("planning.googleBlocked"));
+        setMapMessage(tRef.current("planning.googleBlocked"));
       }
     };
 
@@ -409,19 +421,14 @@ export const MapPanel = ({
         if (!detached) {
           setGoogleAvailable(false);
           setMapReady(false);
-          setMapMessage(t("planning.googleUnavailable"));
+          setMapMessage(tRef.current("planning.googleUnavailable"));
         }
         return;
       }
 
-      const primaryPoint = markers[0];
-      const center = primaryPoint
-        ? { lat: primaryPoint.latitude, lng: primaryPoint.longitude }
-        : { lat: 37.9, lng: 18.0 };
-
       const map = new maps.maps.Map(mapRef.current, {
-        center,
-        zoom: markers.length > 1 ? 5 : 6,
+        center: { lat: 37.9, lng: 18.0 },
+        zoom: 6,
         mapTypeControl: false,
         mapTypeId: baseMap,
         streetViewControl: false,
@@ -429,141 +436,13 @@ export const MapPanel = ({
         gestureHandling: "greedy",
       });
 
-      if (showSeamarks) {
-        map.overlayMapTypes.clear();
-        map.overlayMapTypes.push(
-          new maps.maps.ImageMapType({
-            getTileUrl(coord, zoom) {
-              return `https://tiles.openseamap.org/seamark/${zoom}/${coord.x}/${coord.y}.png`;
-            },
-            tileSize: new maps.maps.Size(256, 256),
-            name: "OpenSeaMap",
-            opacity: 0.8,
-          }),
-        );
-      } else {
-        map.overlayMapTypes.clear();
-      }
-
-      const bounds = new maps.maps.LatLngBounds();
-      markers.forEach((marker) => {
-        bounds.extend({ lat: marker.latitude, lng: marker.longitude });
-      });
-
-      if (showRoute && routePoints.length > 1) {
-        new maps.maps.Polyline({
-          map,
-          path: routePoints,
-          geodesic: true,
-          strokeColor: baseMap === "roadmap" ? "#7a5a00" : "#7c5b0a",
-          strokeOpacity: hasSelection ? 0.24 : 0.72,
-          strokeWeight: baseMap === "roadmap" ? 5 : 4,
-        });
-
-        new maps.maps.Polyline({
-          map,
-          path: routePoints,
-          geodesic: true,
-          strokeColor: baseMap === "roadmap" ? "#f0b90b" : "#f4c542",
-          strokeOpacity: hasSelection ? 0.78 : 0.98,
-          strokeWeight: baseMap === "roadmap" ? 2.8 : hasSelection ? 2.2 : 2.6,
-        });
-      }
-
-      if (selectedCoastalGeometry) {
-        getZonePolygons(selectedCoastalGeometry).forEach((polygon) => {
-          new maps.maps.Polygon({
-            map,
-            paths: polygon.map((ring) =>
-              ring.map(([lng, lat]) => ({
-                lat,
-                lng,
-              })),
-            ),
-            strokeColor: "#0a9396",
-            strokeOpacity: 0.95,
-            strokeWeight: 3,
-            fillColor: "#0a9396",
-            fillOpacity: baseMap === "roadmap" ? 0.14 : 0.1,
-          });
-        });
-      }
-
-      if (!bounds.isEmpty()) {
-        map.fitBounds(bounds, 48);
-      }
-
-      const selectedMarkers = markers.filter(
-        (marker) => marker.entityId === selectedEntityId,
-      );
-
-      markers.forEach((marker) => {
-        const selected = marker.entityId === selectedEntityId;
-        const markerView = new maps.maps.Marker({
-          clickable: Boolean(onSelectEntityRef.current),
-          map,
-          position: { lat: marker.latitude, lng: marker.longitude },
-          title: marker.label,
-          label: marker.glyph
-            ? marker.tone === "trip" && marker.order
-              ? {
-                  text: String(marker.order),
-                  color: "#ffffff",
-                  fontSize: "9px",
-                  fontWeight: "700",
-                }
-              : {
-                  text: marker.glyph,
-                  color: "#ffffff",
-                  fontSize: "10px",
-                  fontWeight: "700",
-                }
-            : marker.order
-              ? {
-                  text: String(marker.order),
-                  color: "#ffffff",
-                  fontSize: "9px",
-                  fontWeight: "700",
-                }
-              : undefined,
-          icon: {
-            path: maps.maps.SymbolPath.CIRCLE,
-            scale: selected ? 9 : hasSelection ? 5.8 : 7,
-            fillColor: marker.color,
-            fillOpacity: selected ? 1 : hasSelection ? 0.38 : 1,
-            strokeColor: selected ? "#17211f" : "#ffffff",
-            strokeWeight: selected ? 3 : 2,
-          },
-        });
-
-        if (onSelectEntityRef.current) {
-          markerView.addListener("click", () => {
-            onSelectEntityRef.current?.({
-              entityId: marker.entityId,
-              tone: marker.tone,
-            });
-          });
-        }
-      });
-
-      if (selectedMarkers.length === 1) {
-        map.panTo({
-          lat: selectedMarkers[0].latitude,
-          lng: selectedMarkers[0].longitude,
-        });
-        map.setZoom(7);
-      } else if (selectedMarkers.length > 1) {
-        const selectedBounds = new maps.maps.LatLngBounds();
-        selectedMarkers.forEach((marker) => {
-          selectedBounds.extend({ lat: marker.latitude, lng: marker.longitude });
-        });
-        map.fitBounds(selectedBounds, 96);
-      }
+      mapsApiRef.current = maps;
+      googleMapRef.current = map;
 
       setGoogleAvailable(true);
       setMapReady(true);
-      setMapMessage(t("planning.mapReady"));
-      // Record one Dynamic Maps load event for billing tracking.
+      setMapMessage(tRef.current("planning.mapReady"));
+      // One Dynamic Maps load per mount — the only billable call in this file.
       void recordApiUsage("google_maps", "dynamic_maps");
     })();
 
@@ -571,18 +450,175 @@ export const MapPanel = ({
       detached = true;
       window.gm_authFailure = previousAuthFailure;
     };
-  }, [
-    baseMap,
-    hasSelection,
-    markers,
-    routePoints,
-    selectedCoastalGeometry,
-    selectedCoastalZone,
-    selectedEntityId,
-    showRoute,
-    showSeamarks,
-    t,
-  ]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Map is created once. Initial baseMap is captured from state at mount time.
+
+  // Effect: Update map type and seamarks imperatively — no new Map instance created.
+  useEffect(() => {
+    const map = googleMapRef.current;
+    const maps = mapsApiRef.current;
+    if (!map || !maps || !mapReady) return;
+
+    map.setMapTypeId(baseMap);
+    map.overlayMapTypes.clear();
+    if (showSeamarks) {
+      map.overlayMapTypes.push(
+        new maps.maps.ImageMapType({
+          getTileUrl(coord, zoom) {
+            return `https://tiles.openseamap.org/seamark/${zoom}/${coord.x}/${coord.y}.png`;
+          },
+          tileSize: new maps.maps.Size(256, 256),
+          name: "OpenSeaMap",
+          opacity: 0.8,
+        }),
+      );
+    }
+  }, [baseMap, mapReady, showSeamarks]);
+
+  // Effect: Keep the local coastal GeoJSON highlight in sync with the current selection.
+  useEffect(() => {
+    const map = googleMapRef.current;
+    const maps = mapsApiRef.current;
+    if (!map || !maps || !mapReady) return;
+
+    coastalPolygonsRef.current.forEach((polygon) => polygon.setMap(null));
+    coastalPolygonsRef.current = [];
+
+    if (!selectedCoastalGeometry) {
+      return;
+    }
+
+    getZonePolygons(selectedCoastalGeometry).forEach((polygon) => {
+      coastalPolygonsRef.current.push(
+        new maps.maps.Polygon({
+          map,
+          paths: polygon.map((ring) =>
+            ring.map(([lng, lat]) => ({ lat, lng })),
+          ),
+          strokeColor: "#0a9396",
+          strokeOpacity: 0.95,
+          strokeWeight: 3,
+          fillColor: "#0a9396",
+          fillOpacity: baseMap === "roadmap" ? 0.14 : 0.1,
+        }),
+      );
+    });
+  }, [baseMap, mapReady, selectedCoastalGeometry]);
+
+  // Effect: Update markers and route polylines imperatively.
+  useEffect(() => {
+    const map = googleMapRef.current;
+    const maps = mapsApiRef.current;
+    if (!map || !maps || !mapReady) return;
+
+    // Clear previous overlays.
+    googleMarkersRef.current.forEach((m) => m.setMap(null));
+    googleMarkersRef.current = [];
+    routePolylinesRef.current.forEach((p) => p.setMap(null));
+    routePolylinesRef.current = [];
+
+    // Route polylines.
+    if (showRoute && routePoints.length > 1) {
+      routePolylinesRef.current.push(
+        new maps.maps.Polyline({
+          map,
+          path: routePoints,
+          geodesic: true,
+          strokeColor: baseMap === "roadmap" ? "#7a5a00" : "#7c5b0a",
+          strokeOpacity: hasSelection ? 0.24 : 0.72,
+          strokeWeight: baseMap === "roadmap" ? 5 : 4,
+        }),
+      );
+      routePolylinesRef.current.push(
+        new maps.maps.Polyline({
+          map,
+          path: routePoints,
+          geodesic: true,
+          strokeColor: baseMap === "roadmap" ? "#f0b90b" : "#f4c542",
+          strokeOpacity: hasSelection ? 0.78 : 0.98,
+          strokeWeight: baseMap === "roadmap" ? 2.8 : hasSelection ? 2.2 : 2.6,
+        }),
+      );
+    }
+
+    // Build bounds and markers.
+    const bounds = new maps.maps.LatLngBounds();
+    markers.forEach((marker) => {
+      bounds.extend({ lat: marker.latitude, lng: marker.longitude });
+    });
+
+    const selectedMarkers = markers.filter(
+      (marker) => marker.entityId === selectedEntityId,
+    );
+
+    markers.forEach((marker) => {
+      const selected = marker.entityId === selectedEntityId;
+      const markerView = new maps.maps.Marker({
+        clickable: Boolean(onSelectEntityRef.current),
+        map,
+        position: { lat: marker.latitude, lng: marker.longitude },
+        title: marker.label,
+        label: marker.glyph
+          ? marker.tone === "trip" && marker.order
+            ? {
+                text: String(marker.order),
+                color: "#ffffff",
+                fontSize: "9px",
+                fontWeight: "700",
+              }
+            : {
+                text: marker.glyph,
+                color: "#ffffff",
+                fontSize: "10px",
+                fontWeight: "700",
+              }
+          : marker.order
+            ? {
+                text: String(marker.order),
+                color: "#ffffff",
+                fontSize: "9px",
+                fontWeight: "700",
+              }
+            : undefined,
+        icon: {
+          path: maps.maps.SymbolPath.CIRCLE,
+          scale: selected ? 9 : hasSelection ? 5.8 : 7,
+          fillColor: marker.color,
+          fillOpacity: selected ? 1 : hasSelection ? 0.38 : 1,
+          strokeColor: selected ? "#17211f" : "#ffffff",
+          strokeWeight: selected ? 3 : 2,
+        },
+      });
+
+      if (onSelectEntityRef.current) {
+        markerView.addListener("click", () => {
+          onSelectEntityRef.current?.({
+            entityId: marker.entityId,
+            tone: marker.tone,
+          });
+        });
+      }
+
+      googleMarkersRef.current.push(markerView);
+    });
+
+    // Pan to selection, or fit all markers into view.
+    if (selectedMarkers.length === 1) {
+      map.panTo({
+        lat: selectedMarkers[0].latitude,
+        lng: selectedMarkers[0].longitude,
+      });
+      map.setZoom(7);
+    } else if (selectedMarkers.length > 1) {
+      const selectedBounds = new maps.maps.LatLngBounds();
+      selectedMarkers.forEach((marker) => {
+        selectedBounds.extend({ lat: marker.latitude, lng: marker.longitude });
+      });
+      map.fitBounds(selectedBounds, 96);
+    } else if (!bounds.isEmpty()) {
+      map.fitBounds(bounds, 48);
+    }
+  }, [baseMap, hasSelection, mapReady, markers, routePoints, selectedEntityId, showRoute]);
 
   return (
     <article

@@ -302,7 +302,7 @@ export function UsersAdmin({
               onClick={() => { setShowCreateForm((v) => !v); setShowInviteForm(false); }}
               type="button"
             >
-              {locale === "es" ? "+ Crear usuario" : "+ Create user"}
+              {locale === "es" ? "+ Alta manual" : "+ Manual registration"}
             </button>
             {canInviteUsers ? (
               <button
@@ -310,7 +310,7 @@ export function UsersAdmin({
                 onClick={() => { setShowInviteForm((v) => !v); setShowCreateForm(false); }}
                 type="button"
               >
-                {locale === "es" ? "Enviar invitación" : "Send invitation"}
+                {locale === "es" ? "Alta por invitación" : "Invitation registration"}
               </button>
             ) : null}
           </div>
@@ -319,6 +319,12 @@ export function UsersAdmin({
 
       {!personalMode && showCreateForm ? (
         <article className="dashboard-card admin-card">
+          <div className="card-header">
+            <div>
+              <p className="eyebrow">{locale === "es" ? "Alta manual" : "Manual registration"}</p>
+              <h2>{locale === "es" ? "Crear usuario con contraseña" : "Create user with password"}</h2>
+            </div>
+          </div>
           <form
             className="editor-form"
             onSubmit={(event) => {
@@ -459,6 +465,12 @@ export function UsersAdmin({
 
       {!personalMode && showInviteForm && canInviteUsers ? (
         <article className="dashboard-card admin-card">
+          <div className="card-header">
+            <div>
+              <p className="eyebrow">{locale === "es" ? "Alta por invitación" : "Invitation registration"}</p>
+              <h2>{locale === "es" ? "Enviar invitación de acceso" : "Send access invitation"}</h2>
+            </div>
+          </div>
           <InviteUserForm
             allowManagerRole={canAssignManagerRole}
             boats={boats}
@@ -640,7 +652,7 @@ function InviteUserForm({
           privateNotes: "Ver notas privadas",
           ownVisits: "Solo sus visitas",
           manageUsers: "Gestionar usuarios del barco",
-          send: "Enviar invitación",
+          send: "Enviar alta por invitación",
           presetHint:
             "Al cambiar el nivel se aplican derechos recomendados, pero luego puedes retocarlos.",
           viewerHelp: "Solo puede consultar el plan y la informacion permitida.",
@@ -661,7 +673,7 @@ function InviteUserForm({
           privateNotes: "View private notes",
           ownVisits: "Only own visits",
           manageUsers: "Manage boat users",
-          send: "Send invitation",
+          send: "Send invitation registration",
           presetHint:
             "Changing the level applies recommended rights, and you can still tweak them after.",
           viewerHelp: "Can only review the plan and allowed information.",

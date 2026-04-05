@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useCallback, useContext, useMemo } from "react";
 
 import {
   type Locale,
@@ -40,8 +40,10 @@ export const useI18n = () => {
     throw new Error("useI18n must be used inside I18nProvider.");
   }
 
-  return {
-    locale: context.locale,
-    t: (key: TranslationKey) => context.dictionary[key] ?? key,
-  };
+  const t = useCallback(
+    (key: TranslationKey) => context.dictionary[key] ?? key,
+    [context.dictionary],
+  );
+
+  return { locale: context.locale, t };
 };

@@ -17,6 +17,10 @@ export function SetPasswordForm() {
   const [isReady, setIsReady] = useState(false);
   const failedMessage =
     locale === "es" ? "No se pudo guardar la contraseña." : "Could not save the password.";
+  const invalidInviteMessage =
+    locale === "es"
+      ? "Esta invitacion ya no es valida o el usuario ya no existe. Solicita una nueva invitacion."
+      : "This invitation is no longer valid or the user no longer exists. Request a new invitation.";
 
   useEffect(() => {
     const supabase = createClient();
@@ -34,12 +38,20 @@ export function SetPasswordForm() {
           refresh_token: refreshToken || "",
         });
         if (sessionError) {
-          setError(sessionError.message || failedMessage);
+          setError(
+            sessionError.message.includes("user_not_found")
+              ? invalidInviteMessage
+              : sessionError.message || failedMessage,
+          );
+          setIsReady(true);
+          return;
         }
       } else if (code) {
         const { error: codeError } = await supabase.auth.exchangeCodeForSession(code);
         if (codeError) {
           setError(codeError.message || failedMessage);
+          setIsReady(true);
+          return;
         }
       }
 
@@ -57,7 +69,7 @@ export function SetPasswordForm() {
 
       setIsReady(true);
     })();
-  }, [failedMessage, locale]);
+  }, [failedMessage, invalidInviteMessage, locale]);
 
   const text =
     locale === "es"

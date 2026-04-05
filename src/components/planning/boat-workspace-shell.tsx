@@ -492,6 +492,8 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
               />
             </details>
           </article>
+
+          {conflicts.length > 0 ? <WarningsCard conflicts={conflicts} /> : null}
         </div>
         ) : null}
 
@@ -510,10 +512,6 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
             tripSegments={filteredSegments}
             visits={filteredVisits}
           />
-
-          {currentView === "visits" && conflicts.length > 0 ? (
-            <WarningsCard conflicts={conflicts} />
-          ) : null}
         </aside>
         ) : null}
       </section>

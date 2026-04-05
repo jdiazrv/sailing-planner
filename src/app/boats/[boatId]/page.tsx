@@ -34,7 +34,11 @@ export default async function BoatWorkspacePage({
     await searchParams;
   const workspace = await getBoatWorkspace(boatId, requestedSeasonId);
   const canEdit =
-    workspace.viewer.isSuperuser || Boolean(workspace.permission?.can_edit);
+    workspace.viewer.isSuperuser ||
+    Boolean(
+      workspace.permission?.can_edit ||
+      workspace.permission?.permission_level === "manager",
+    );
   const canManageUsers =
     workspace.viewer.isSuperuser ||
     Boolean(
@@ -43,6 +47,13 @@ export default async function BoatWorkspacePage({
     );
   const canShare = canEdit || canManageUsers;
   const currentView = view === "visits" ? "visits" : "trip";
+  const effectiveOnboardingStep = workspace.viewer.onboardingPending
+    ? workspace.selectedSeason
+      ? workspace.viewer.onboardingStep === "create_season" || !workspace.viewer.onboardingStep
+        ? "full_tour"
+        : workspace.viewer.onboardingStep
+      : workspace.viewer.onboardingStep ?? "welcome"
+    : workspace.viewer.onboardingStep;
 
   return (
     <>
@@ -55,7 +66,7 @@ export default async function BoatWorkspacePage({
           canViewVisits
           hasSegments={workspace.tripSegments.length > 0}
           hasVisits={workspace.visits.filter((v) => v.status !== "blocked").length > 0}
-          onboardingStep={workspace.viewer.onboardingStep}
+          onboardingStep={effectiveOnboardingStep}
           viewerId={`${workspace.viewer.profile?.id ?? boatId}:${workspace.selectedSeason?.id ?? "no-season"}`}
         />
       ) : null}

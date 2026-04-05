@@ -25,7 +25,12 @@ export default async function BoatLayout({
   const locale = await getRequestLocale();
   const snapshot = await getBoatLayoutSnapshot(boatId);
   const isSuperuser = snapshot.viewer.isSuperuser;
-  const canEditBoat = isSuperuser || Boolean(snapshot.permission?.can_edit);
+  const canEditBoat =
+    isSuperuser ||
+    Boolean(
+      snapshot.permission?.can_edit ||
+      snapshot.permission?.permission_level === "manager",
+    );
   const canManageUsers =
     isSuperuser ||
     Boolean(

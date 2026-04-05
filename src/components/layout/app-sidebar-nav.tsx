@@ -301,7 +301,7 @@ export function AppSidebarNav({
         />
 
         <NavItem
-          href="/manual/ayuda-gestor.html"
+          href="/manual"
           label={es ? "Manual" : "Manual"}
           icon={<IconHelp />}
           rel="noreferrer"

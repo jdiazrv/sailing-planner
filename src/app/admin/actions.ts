@@ -355,6 +355,13 @@ export async function saveUserProfile(formData: FormData) {
 
   await assertManageableUser(db, user.id, manageableBoatIds, userId);
 
+  const { data: existingProfile, error: existingProfileError } = await adminDb
+    .from("profiles")
+    .select("onboarding_step")
+    .eq("id", userId)
+    .maybeSingle();
+  throwIfError(existingProfileError);
+
   const profilePayload = {
     display_name: asOptionalString(formData.get("display_name")),
     is_superuser: viewer.isSuperuser ? isSuperuser : false,
@@ -362,7 +369,14 @@ export async function saveUserProfile(formData: FormData) {
     preferred_language:
       (formData.get("preferred_language")?.toString() as PreferredLanguage) ??
       "es",
-    ...(viewer.isSuperuser ? { onboarding_pending: onboardingPending } : {}),
+    ...(viewer.isSuperuser
+      ? {
+          onboarding_pending: onboardingPending,
+          onboarding_step: onboardingPending
+            ? existingProfile?.onboarding_step ?? "welcome"
+            : null,
+        }
+      : {}),
   };
 
   const { error } = await adminDb

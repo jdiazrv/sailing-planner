@@ -42,6 +42,10 @@ type ZoneSuggestion = {
 type AutocompleteSuggestion = Suggestion | ZoneSuggestion;
 
 let curatedZoneSuggestionsPromise: Promise<ZoneSuggestion[]> | null = null;
+const googleSuggestionsCache = new Map<string, Suggestion[]>();
+const GOOGLE_SUGGESTIONS_CACHE_LIMIT = 120;
+const isGooglePlacesAutocompleteEnabled =
+  hasGoogleMapsKey && process.env.NEXT_PUBLIC_ENABLE_GOOGLE_PLACES_AUTOCOMPLETE !== "false";
 
 const isPlacePrediction = (
   prediction: google.maps.places.PlacePrediction | null,
@@ -159,13 +163,13 @@ export const PlaceAutocompleteField = ({
 
   const suggestions: AutocompleteSuggestion[] = [
     ...zoneSuggestions,
-    ...googleSuggestions,
+    ...(isGooglePlacesAutocompleteEnabled ? googleSuggestions : []),
   ];
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       setDebouncedInputValue(inputValue);
-    }, 180);
+    }, 360);
 
     return () => window.clearTimeout(timeoutId);
   }, [inputValue]);
@@ -189,13 +193,25 @@ export const PlaceAutocompleteField = ({
   }, [disabled, hasUserInteracted]);
 
   useEffect(() => {
+    if (!isGooglePlacesAutocompleteEnabled) {
+      setGoogleSuggestions([]);
+      sessionRef.current = null;
+      return;
+    }
+
     if (!hasGoogleMapsKey || disabled || !hasUserInteracted || !isFocused) {
       return;
     }
 
     const trimmed = debouncedInputValue.trim();
-    if (trimmed.length < 3) {
+    if (trimmed.length < 4) {
       setGoogleSuggestions([]);
+      return;
+    }
+
+    const cachedSuggestions = googleSuggestionsCache.get(trimmed.toLowerCase());
+    if (cachedSuggestions) {
+      setGoogleSuggestions(cachedSuggestions);
       return;
     }
 
@@ -243,6 +259,14 @@ export const PlaceAutocompleteField = ({
           placePrediction: prediction,
         }));
 
+      const cacheKey = trimmed.toLowerCase();
+      googleSuggestionsCache.set(cacheKey, nextSuggestions);
+      if (googleSuggestionsCache.size > GOOGLE_SUGGESTIONS_CACHE_LIMIT) {
+        const oldestKey = googleSuggestionsCache.keys().next().value;
+        if (typeof oldestKey === "string") {
+          googleSuggestionsCache.delete(oldestKey);
+        }
+      }
       setGoogleSuggestions(nextSuggestions);
     })();
 
@@ -309,6 +333,10 @@ export const PlaceAutocompleteField = ({
       setGoogleSuggestions([]);
       setIsOpen(false);
       inputRef.current?.blur();
+      return;
+    }
+
+    if (!isGooglePlacesAutocompleteEnabled) {
       return;
     }
 

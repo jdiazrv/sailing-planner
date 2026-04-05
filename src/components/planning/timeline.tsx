@@ -401,7 +401,6 @@ export const Timeline = ({
                 <>
                   <TimelineGroup
                     count={visits.length}
-                    description={t("planning.visit")}
                     onToggle={onToggleVisitsCollapsed}
                     open={!visitsCollapsed}
                     toggleLabels={groupLabels}
@@ -459,7 +458,6 @@ export const Timeline = ({
 
               <TimelineGroup
                 count={sortedAvailability.length}
-                description={t("planning.availability")}
                 onToggle={onToggleAvailabilityCollapsed}
                 open={!availabilityCollapsed}
                 toggleLabels={groupLabels}
@@ -611,7 +609,6 @@ const TimelineLane = ({
 
 const TimelineGroup = ({
   title,
-  description,
   count,
   open,
   onToggle,
@@ -619,7 +616,6 @@ const TimelineGroup = ({
   children,
 }: {
   title: string;
-  description: string;
   count: number;
   open: boolean;
   onToggle?: () => void;
@@ -630,7 +626,6 @@ const TimelineGroup = ({
     <div className="timeline__group-header">
       <div>
         <strong>{title}</strong>
-        <span>{description}</span>
       </div>
       <button
         className="timeline__group-toggle"
