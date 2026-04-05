@@ -1092,6 +1092,7 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
 .app-sidebar__logout-button {
   min-height: auto;
   justify-content: flex-start;
+  margin-top: 0.7rem;
 }
 
 .app-sidebar__loading-mark {
@@ -1127,6 +1128,34 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
 
 .app-sidebar .language-switcher {
   padding: 0.1rem 0.4rem;
+}
+
+@media (min-width: 768px) and (hover: none), (min-width: 768px) and (pointer: coarse) {
+  .app-sidebar {
+    width: var(--sidebar-w);
+  }
+
+  body:has(.app-sidebar) .shell {
+    margin-left: var(--sidebar-w);
+    max-width: calc(100vw - var(--sidebar-w));
+  }
+
+  .app-sidebar__section-label,
+  .app-sidebar__label,
+  .app-sidebar__utils {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .app-sidebar__section-label,
+  .app-sidebar__utils {
+    max-height: 12rem;
+  }
+
+  .app-sidebar__section-label {
+    padding-top: 0.7rem;
+    padding-bottom: 0.2rem;
+  }
 }
 
 .auth-card {

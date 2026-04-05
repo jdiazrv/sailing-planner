@@ -277,11 +277,8 @@ export function AppSidebarNav({
             )}
           </>
         )}
-      </nav>
 
-      {/* Footer utilities */}
-      <div className="app-sidebar__footer">
-        {/* Shared timelines */}
+        {/* Shared and account shortcuts */}
         <NavItem
           href="/shared"
           label={es ? "Compartidos" : "Shared"}
@@ -307,7 +304,10 @@ export function AppSidebarNav({
             tourId="sidebar-user-settings"
           />
         ) : null}
+      </nav>
 
+      {/* Footer utilities */}
+      <div className="app-sidebar__footer">
         {/* Theme + Language */}
         <div className="app-sidebar__utils">
           <ThemeSwitcher />
@@ -321,7 +321,6 @@ export function AppSidebarNav({
           </span>
           <span className="app-sidebar__label">{signOutLabel}</span>
         </LogoutButton>
-
       </div>
     </aside>
   );

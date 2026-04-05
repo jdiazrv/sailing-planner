@@ -151,10 +151,8 @@ export const Timeline = ({
   onZoomChange,
   visitsCollapsed = false,
   availabilityCollapsed = false,
-  blockedCollapsed: _blockedCollapsed = false,
   onToggleVisitsCollapsed,
   onToggleAvailabilityCollapsed,
-  onToggleBlockedCollapsed: _onToggleBlockedCollapsed,
   onlyShowTripPlan = false,
 }: TimelineProps) => {
   const { t } = useI18n();

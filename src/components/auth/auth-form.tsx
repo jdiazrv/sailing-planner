@@ -8,8 +8,10 @@ import { buildAuthRedirectUrl } from "@/lib/env";
 import { createClient } from "@/lib/supabase/browser";
 import { useI18n } from "@/components/i18n/provider";
 import { PasswordInput } from "@/components/ui/password-input";
+import { IconLoadingPresentation } from "@/components/ui/app-loading";
 
 type Mode = "password" | "magic-link";
+type LoadingIntent = "password" | "magic-link" | "google" | "reset" | null;
 
 type AuthFormProps = {
   showHeader?: boolean;
@@ -39,6 +41,7 @@ export const AuthForm = ({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingIntent, setLoadingIntent] = useState<LoadingIntent>(null);
 
   const handlePasswordLogin = async () => {
     const supabase = createClient();
@@ -122,11 +125,7 @@ export const AuthForm = ({
 
   const handleGoogleLogin = async () => {
     const supabase = createClient();
-    const requestOrigin =
-      typeof window !== "undefined" ? window.location.origin : undefined;
-    const redirectUrl = new URL(
-      buildAuthRedirectUrl("/auth/callback", { requestOrigin }),
-    );
+    const redirectUrl = new URL(buildAuthRedirectUrl("/auth/callback"));
     redirectUrl.searchParams.set("next", next);
 
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
@@ -152,6 +151,7 @@ export const AuthForm = ({
 
   const handleMagicChoice = async () => {
     setIsLoading(true);
+    setLoadingIntent("magic-link");
     setError(null);
     setMessage(null);
 
@@ -165,12 +165,14 @@ export const AuthForm = ({
       );
     } finally {
       setIsLoading(false);
+      setLoadingIntent(null);
     }
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsLoading(true);
+    setLoadingIntent(null);
     setError(null);
     setMessage(null);
 
@@ -182,8 +184,10 @@ export const AuthForm = ({
           throw new Error(t("auth.passwordRequired"));
         }
 
+        setLoadingIntent("password");
         await handlePasswordLogin();
       } else if (mode === "magic-link") {
+        setLoadingIntent("magic-link");
         await handleMagicLink();
       } else {
         throw new Error(t("auth.loginMode"));
@@ -196,11 +200,13 @@ export const AuthForm = ({
       );
     } finally {
       setIsLoading(false);
+      setLoadingIntent(null);
     }
   };
 
   const handleForgotPassword = async () => {
     setIsLoading(true);
+    setLoadingIntent("reset");
     setError(null);
     setMessage(null);
 
@@ -213,8 +219,17 @@ export const AuthForm = ({
       );
     } finally {
       setIsLoading(false);
+      setLoadingIntent(null);
     }
   };
+
+  if (mode === "password" && isLoading && loadingIntent === "password") {
+    return (
+      <div className={["auth-card", className].filter(Boolean).join(" ")}>
+        <IconLoadingPresentation label={t("auth.working")} />
+      </div>
+    );
+  }
 
   return (
     <form className={["auth-card", className].filter(Boolean).join(" ")} onSubmit={handleSubmit}>
@@ -277,6 +292,7 @@ export const AuthForm = ({
             disabled={isLoading}
             onClick={() => {
               setIsLoading(true);
+              setLoadingIntent("google");
               setError(null);
               setMessage(null);
               void handleGoogleLogin()
@@ -289,6 +305,7 @@ export const AuthForm = ({
                 })
                 .finally(() => {
                   setIsLoading(false);
+                  setLoadingIntent(null);
                 });
             }}
             type="button"

@@ -15,6 +15,8 @@ export function SetPasswordForm() {
   const [message, setMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isReady, setIsReady] = useState(false);
+  const failedMessage =
+    locale === "es" ? "No se pudo guardar la contraseña." : "Could not save the password.";
 
   useEffect(() => {
     const supabase = createClient();
@@ -30,12 +32,12 @@ export function SetPasswordForm() {
           refresh_token: refreshToken,
         });
         if (sessionError) {
-          setError(sessionError.message || text.failed);
+          setError(sessionError.message || failedMessage);
         }
       } else if (code) {
         const { error: codeError } = await supabase.auth.exchangeCodeForSession(code);
         if (codeError) {
-          setError(codeError.message || text.failed);
+          setError(codeError.message || failedMessage);
         }
       }
 
@@ -53,7 +55,7 @@ export function SetPasswordForm() {
 
       setIsReady(true);
     })();
-  }, []);
+  }, [failedMessage, locale]);
 
   const text =
     locale === "es"
