@@ -262,7 +262,7 @@ export function AppSidebarNav({
             )}
             <NavItem
               href="/admin/users"
-              label={es ? "Usuarios" : "Users"}
+              label={es ? "Miembros" : "Members"}
               icon={<IconUsers />}
               active={isActive("/admin/users")}
               tourId="sidebar-users"

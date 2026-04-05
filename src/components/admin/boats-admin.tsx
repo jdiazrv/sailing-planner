@@ -83,7 +83,7 @@ export function BoatsAdmin({
           tableBoat: "Barco",
           tableModel: "Modelo",
           tableHomePort: "Puerto",
-          tableUsers: "Usuarios",
+          tableUsers: "Miembros",
           tableUsersAbbr: "Usr",
           tableManagers: "Gestores",
           tableManagersAbbr: "Gest",

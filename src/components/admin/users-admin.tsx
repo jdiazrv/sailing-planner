@@ -474,7 +474,7 @@ export function UsersAdmin({
       {!personalMode ? (
         <article className="dashboard-card admin-card">
           <label className="admin-users-search">
-            <span className="eyebrow">{locale === "es" ? "Buscar usuarios" : "Search users"}</span>
+            <span className="eyebrow">{locale === "es" ? "Buscar miembros" : "Search members"}</span>
             <input
               onChange={(e) => { setUserSearch(e.target.value); setSelectedUserId(""); }}
               placeholder={locale === "es" ? "Nombre, correo o barco…" : "Name, email or boat…"}
@@ -497,7 +497,7 @@ export function UsersAdmin({
                     <th
                       className={`sortable-th${userSortCol === "boats" ? " is-sorted" : ""}`}
                       onClick={() => handleUserSort("boats")}
-                      title={locale === "es" ? "Ordena ascendente para ver usuarios sin barco primero" : "Sort ascending to see users without a boat first"}
+                      title={locale === "es" ? "Ordena ascendente para ver miembros sin barco primero" : "Sort ascending to see members without a boat first"}
                     >
                       {locale === "es" ? "Barcos" : "Boats"}
                       <span className="sort-icon">{userSortCol === "boats" ? (userSortDir === "asc" ? "↑" : "↓") : "↕"}</span>
@@ -1345,7 +1345,7 @@ function UserEditorCard({
                 </table>
               ) : (
                 <p className="muted" style={{ padding: "0.75rem" }}>
-                  {locale === "es" ? "Este usuario no ha creado usuarios todavía." : "This user has not created users yet."}
+                  {locale === "es" ? "Este miembro no ha creado miembros todavía." : "This member has not created members yet."}
                 </p>
               )}
             </div>

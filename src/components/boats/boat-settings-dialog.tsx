@@ -51,7 +51,7 @@ export function BoatSettingsDialog({
           open: "Configurar barco",
           title: "Configuración del barco",
           subtitle:
-            "Actualiza los datos visibles del barco. El nombre y las notas internas siguen reservados a superusuarios.",
+            "Actualiza los datos visibles del barco. El nombre y las notas internas siguen reservados a Superusers.",
           image: "Imagen del barco",
           upload: "Subir imagen",
           remove: "Quitar imagen",

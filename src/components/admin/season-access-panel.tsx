@@ -57,7 +57,7 @@ export function SeasonAccessPanel({
           eyebrow: "Enlaces de temporada",
           title: "Acceso temporal para invitados",
           body:
-            "Genera varios enlaces de solo lectura para compartir esta temporada con distintos invitados sin crear usuarios nuevos.",
+            "Genera varios enlaces de solo lectura para compartir esta temporada con distintos invitados sin crear miembros nuevos.",
           openActions: "Gestionar enlaces",
           hideActions: "Ocultar",
           generate: "Generar enlace",

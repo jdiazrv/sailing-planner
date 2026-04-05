@@ -34,7 +34,7 @@ begin
   )
   on conflict do nothing;
 
-  insert into public.trip_segments (
+  insert into public.port_stops (
     id,
     season_id,
     start_date,
@@ -70,7 +70,7 @@ begin
     )
   on conflict do nothing;
 
-  insert into public.trip_segment_private_notes (trip_segment_id, private_notes)
+  insert into public.port_stop_private_notes (port_stop_id, private_notes)
   values
     (segment_one_id, 'Owner-only prep notes for the marina leg.'),
     (segment_two_id, 'Protected anchorage-specific logistics.')

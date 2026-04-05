@@ -195,8 +195,8 @@ export function GuestOnboardingTour({
           ? [
               {
                 target: '[data-tour="sidebar-users"]',
-                title: "Gestionar usuarios",
-                body: "En Usuarios creas otras cuentas para el barco y les asignas nivel lector o editor. Desde ahi gestionas sus datos y accesos sin afectar a tus propios permisos.",
+                title: "Gestionar miembros",
+                body: "En Miembros creas otras cuentas para el barco y les asignas nivel lector o editor. Desde ahi gestionas sus datos y accesos sin afectar a tus propios permisos.",
               },
             ]
           : []),
