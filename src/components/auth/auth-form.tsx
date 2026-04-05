@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { recordCurrentUserAccess } from "@/app/actions";
@@ -44,6 +44,20 @@ export const AuthForm = ({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingIntent, setLoadingIntent] = useState<LoadingIntent>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.location.hash) {
+      return;
+    }
+
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const accessToken = hashParams.get("access_token");
+    const type = hashParams.get("type");
+
+    if (accessToken && (type === "signup" || type === "invite")) {
+      window.location.replace(`/auth/set-password${window.location.hash}`);
+    }
+  }, []);
 
   const oauthErrorMessage = oauthError
     ? locale === "es"

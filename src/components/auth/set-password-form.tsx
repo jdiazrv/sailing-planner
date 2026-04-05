@@ -26,10 +26,12 @@ export function SetPasswordForm() {
       const refreshToken = hashParams.get("refresh_token");
       const code = new URLSearchParams(window.location.search).get("code");
 
-      if (accessToken && refreshToken) {
+
+      if (accessToken) {
+        // Permitir establecer sesión aunque no haya refresh_token (flujo de invitación)
         const { error: sessionError } = await supabase.auth.setSession({
           access_token: accessToken,
-          refresh_token: refreshToken,
+          refresh_token: refreshToken || "",
         });
         if (sessionError) {
           setError(sessionError.message || failedMessage);

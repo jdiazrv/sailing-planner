@@ -574,11 +574,10 @@ export async function inviteUserAccount(formData: FormData) {
 
     const requestOrigin = await getRequestOriginFromHeaders();
     const setPasswordUrl = new URL(
-      buildAuthRedirectUrl("/auth/callback", {
+      buildAuthRedirectUrl("/auth/set-password", {
         requestOrigin: resolveAppOrigin({ requestOrigin }),
       }),
     );
-    setPasswordUrl.searchParams.set("next", "/auth/set-password");
     const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
       data: {
         ...(displayName ? { display_name: displayName } : {}),
