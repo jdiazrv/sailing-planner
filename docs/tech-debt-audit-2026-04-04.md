@@ -12,6 +12,53 @@ This file tracks live technical-debt findings observed while navigating the app 
 
 No open high-priority issues remain from the items already corrected in this audit pass.
 
+### 2026-04-05 - Timeline, invite and boat-settings regressions (iPad + desktop)
+
+Observed from user walkthrough in iPad and desktop contexts.
+
+Timeline rendering and controls:
+
+- Visit rows show an incorrect leading `?` before the visit name.
+- Trip and visit rows overflow their visual container and invade the map area.
+- The trip/visit visibility selector is positioned too high in both views.
+- Review copy and placement of the trip/visit toggle controls:
+  - In visits context, consider `Mostrar tramos`.
+  - In trips context, consider `Mostrar visitas`.
+  - Consider moving this control between timeline and the trip/visit card.
+
+Navigation and invite flow:
+
+- Remove duplicated `guest links` button where the sidebar icon already provides access.
+- In invite screen, clicking a boat should select that boat for invite creation and must not navigate back to dashboard/panel.
+
+Season links management completeness:
+
+- Under the season links card, list existing links for the selected boat.
+- Provide actions to revoke and delete generated links.
+- Show invite usage metadata per link:
+  - whether invitee has accessed,
+  - latest access timestamp,
+  - recipient/display name for whom the link was issued.
+
+Boat settings consistency and usability:
+
+- `Save changes` and `Upload image` buttons are still too short in height in one boat-settings surface.
+- `Save changes` vertical alignment is inconsistent relative to `Upload image`; both should align at the bottom consistently.
+- `Upload image` must remain disabled while no image file is selected.
+- Behavior mismatch suggests duplicated boat-settings forms/components:
+  - opening from boats table pencil action shows correct button sizing,
+  - other boat-settings entry point does not.
+
+Performance and data presentation:
+
+- Boats view loading time is still excessively slow and requires profiling.
+- Boat data summary menu/card quality is visually weak and needs redesign.
+- Expand boat summary with richer operational metadata (for example users/managers counts and other relevant context).
+
+Shared timelines feature gap:
+
+- Shared timelines should render both maps, one below the other, instead of a single map context.
+
 ## Medium priority
 
 ### Redundant server data loading on boat routes
@@ -70,6 +117,43 @@ Primary files adjusted:
 
 - `src/components/admin/boats-admin.tsx`
 - `src/app/globals.css`
+
+### Sidebar palette selector does not apply theme on touch/tablet
+
+Observed after recent sidebar behavior adjustments.
+
+Symptoms:
+
+- Sidebar open interaction works as expected.
+- Tapping a color swatch in the palette does not apply the selected theme.
+
+Current assessment:
+
+- Regression affects touch/tablet usage of the theme switcher.
+- Navigation/open behavior should remain as before; only palette application is failing.
+
+Primary files to investigate:
+
+- `src/components/ui/theme-switcher.tsx`
+- `src/app/globals.css`
+
+### Google OAuth redirect builder fails with invalid base URL
+
+Observed in login flow when entering email and then choosing Google sign-in.
+
+Error text:
+
+- `Invalid URL: base="sailing-planner.netlify.app" path="/auth/callback"`
+
+Current assessment:
+
+- Base URL is missing protocol (`https://`), causing URL construction to fail.
+- This blocks Google OAuth sign-in until env/URL normalization is corrected.
+
+Primary files to investigate:
+
+- `src/components/auth/auth-form.tsx`
+- `src/lib/env.ts`
 
 ## Low priority
 

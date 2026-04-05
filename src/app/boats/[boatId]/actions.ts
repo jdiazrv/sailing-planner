@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 
 import {
+  deleteSeasonAccessLink as deleteSeasonAccessLinkInternal,
   generateSeasonAccessLink as generateSeasonAccessLinkInternal,
   purgeRevokedSeasonAccessLinks as purgeRevokedSeasonAccessLinksInternal,
   revokeSeasonAccessLink as revokeSeasonAccessLinkInternal,
@@ -413,6 +414,10 @@ export async function revokeSeasonAccessLink(formData: FormData) {
 
 export async function purgeRevokedSeasonAccessLinks(formData: FormData) {
   return purgeRevokedSeasonAccessLinksInternal(formData);
+}
+
+export async function deleteSeasonAccessLink(formData: FormData) {
+  return deleteSeasonAccessLinkInternal(formData);
 }
 
 export async function saveBoatProfile(formData: FormData) {

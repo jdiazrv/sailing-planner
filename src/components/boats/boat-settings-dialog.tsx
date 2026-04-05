@@ -229,7 +229,7 @@ export function BoatSettingsDialog({
                 />
               )}
 
-              <div className="editor-form editor-form--dense">
+              <div className="editor-form editor-form--dense boat-settings-image-form">
                 <label>
                   <span>{text.image}</span>
                   <input
@@ -241,7 +241,7 @@ export function BoatSettingsDialog({
                 </label>
                 <div className="inline-actions">
                   <button
-                    className="primary-button"
+                    className="primary-button boat-settings__action"
                     disabled={isPending || !imageFile}
                     onClick={uploadImage}
                     type="button"
@@ -263,7 +263,7 @@ export function BoatSettingsDialog({
             </div>
 
             <form
-              className="editor-form"
+              className="editor-form boat-settings-form"
               onSubmit={(event) => {
                 event.preventDefault();
                 handleSave(new FormData(event.currentTarget));
@@ -296,7 +296,7 @@ export function BoatSettingsDialog({
               </div>
 
               <div className="modal__footer">
-                <button className="primary-button" disabled={isPending} type="submit">
+                <button className="primary-button boat-settings__action" disabled={isPending} type="submit">
                   {isPending ? text.saving : text.save}
                 </button>
               </div>

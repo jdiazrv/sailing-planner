@@ -789,6 +789,10 @@ body:has(.auth-layout) .app-chrome__brand .sp-wordmark {
   width: var(--sidebar-w);
 }
 
+.app-sidebar:focus-within {
+  width: var(--sidebar-w);
+}
+
 body[data-tour-sidebar-open="true"] .app-sidebar {
   width: var(--sidebar-w);
 }
@@ -880,12 +884,22 @@ body:has(.app-sidebar) .app-chrome {
   pointer-events: auto;
 }
 
+.app-sidebar:focus-within .app-sidebar__brand-label {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 body[data-tour-sidebar-open="true"] .app-sidebar__brand-label {
   opacity: 1;
   pointer-events: auto;
 }
 
 .app-sidebar:hover .app-sidebar__user-name {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.app-sidebar:focus-within .app-sidebar__user-name {
   opacity: 1;
   pointer-events: auto;
 }
@@ -936,6 +950,14 @@ body[data-tour-sidebar-open="true"] .app-sidebar__user-name {
 }
 
 .app-sidebar:hover .app-sidebar__section-label {
+  opacity: 1;
+  max-height: 2rem;
+  padding-top: 0.7rem;
+  padding-bottom: 0.2rem;
+  pointer-events: auto;
+}
+
+.app-sidebar:focus-within .app-sidebar__section-label {
   opacity: 1;
   max-height: 2rem;
   padding-top: 0.7rem;
@@ -1009,6 +1031,11 @@ body[data-tour-sidebar-open="true"] .app-sidebar__section-label {
   pointer-events: auto;
 }
 
+.app-sidebar:focus-within .app-sidebar__label {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 body[data-tour-sidebar-open="true"] .app-sidebar__label {
   opacity: 1;
   pointer-events: auto;
@@ -1078,6 +1105,12 @@ body[data-tour-sidebar-open="true"] .app-sidebar__label {
   pointer-events: auto;
 }
 
+.app-sidebar:focus-within .app-sidebar__utils {
+  max-height: 6rem;
+  opacity: 1;
+  pointer-events: auto;
+}
+
 body[data-tour-sidebar-open="true"] .app-sidebar__utils {
   max-height: 6rem;
   opacity: 1;
@@ -1128,34 +1161,6 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
 
 .app-sidebar .language-switcher {
   padding: 0.1rem 0.4rem;
-}
-
-@media (min-width: 768px) and (hover: none), (min-width: 768px) and (pointer: coarse) {
-  .app-sidebar {
-    width: var(--sidebar-w);
-  }
-
-  body:has(.app-sidebar) .shell {
-    margin-left: var(--sidebar-w);
-    max-width: calc(100vw - var(--sidebar-w));
-  }
-
-  .app-sidebar__section-label,
-  .app-sidebar__label,
-  .app-sidebar__utils {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  .app-sidebar__section-label,
-  .app-sidebar__utils {
-    max-height: 12rem;
-  }
-
-  .app-sidebar__section-label {
-    padding-top: 0.7rem;
-    padding-bottom: 0.2rem;
-  }
 }
 
 .auth-card {
@@ -1664,6 +1669,14 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
   color: var(--accent);
 }
 
+.workspace-view-switch {
+  margin: 0.35rem 0 0.95rem;
+}
+
+.workspace-view-switch .secondary-button {
+  min-height: 2.6rem;
+}
+
 .workspace-grid {
   display: grid;
   gap: 1rem;
@@ -1689,6 +1702,8 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
 .workspace-grid--trip > .stack:first-child {
   position: relative;
   z-index: 2;
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 .workspace-grid--trip > aside.stack {
@@ -1721,6 +1736,11 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
 
 .workspace-main {
   min-width: 0;
+}
+
+.workspace-main .data-sheet {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
 }
 
 .workspace-main--narrow {
@@ -2601,7 +2621,7 @@ details[open] > .inline-section__summary::before {
 
 .shared-compare-maps {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   margin-top: 1rem;
 }
@@ -3302,11 +3322,41 @@ details[open] > .inline-section__summary::before {
   display: grid;
   gap: 1rem;
   grid-template-columns: minmax(250px, 340px) minmax(0, 1fr);
+  align-items: stretch;
 }
 
 .boat-image-card {
   display: grid;
   gap: 0.8rem;
+  height: 100%;
+}
+
+.boat-settings-image-form {
+  display: grid;
+  gap: 0.8rem;
+  align-content: start;
+}
+
+.boat-settings-form {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.boat-settings-form .form-grid {
+  flex: 1;
+  align-content: start;
+}
+
+.boat-settings-form .modal__footer {
+  margin-top: auto;
+  justify-content: flex-start;
+  padding: 0;
+  border-top: 0;
+}
+
+.boat-settings__action {
+  min-height: 2.7rem;
 }
 
 .empty-state {
@@ -3722,6 +3772,21 @@ details[open] > .inline-section__summary::before {
 .season-access-item__actions {
   display: flex;
   align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.season-access-list--revoked h4 {
+  margin: 0.2rem 0 0.1rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.admin-boat-summary {
+  display: grid;
+  gap: 0.8rem;
 }
 
 .season-access-meta {

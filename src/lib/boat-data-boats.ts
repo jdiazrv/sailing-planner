@@ -442,7 +442,7 @@ export const getBoatWorkspace = cache(async (
   });
   const { supabase, user, viewer } = await requireViewer();
   const db = supabase as any;
-  const boats = await getAccessibleBoats();
+  const boats = await getAccessibleBoatsLite();
   ensureAccessibleBoat(boats, boatId);
 
   const { boatRow, permission, seasons } = await loadBoatContext({

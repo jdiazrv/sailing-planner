@@ -447,9 +447,6 @@ export const Timeline = ({
                             style={toBarStyle(season, visit.embark_date, visit.disembark_date)}
                             type="button"
                           >
-                            <span aria-hidden="true" className="timeline-bar__glyph">
-                              {getStatusGlyph(visit.status)}
-                            </span>
                             <span>{visit.visitor_name ?? t("planning.visit")}</span>
                           </button>
                         ) : (

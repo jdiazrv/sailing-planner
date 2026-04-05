@@ -30,8 +30,10 @@ site_url = "http://localhost:3000"
 additional_redirect_urls = [
   "http://localhost:3000/auth/callback",
   "http://127.0.0.1:3000/auth/callback",
-  "https://sail-planner.netlify.com/auth/callback",
-  "https://sail-planner.netlify.app/auth/callback"
+  "http://localhost:3000/auth/set-password",
+  "http://127.0.0.1:3000/auth/set-password",
+  "https://sailingplanner.com/auth/callback",
+  "https://sailingplanner.com/auth/set-password"
 ]
 jwt_expiry = 3600
 enable_signup = true

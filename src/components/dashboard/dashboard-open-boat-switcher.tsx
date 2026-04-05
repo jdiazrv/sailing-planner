@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 
 import { useI18n } from "@/components/i18n/provider";
@@ -14,7 +13,6 @@ type SeasonRow = Database["public"]["Tables"]["seasons"]["Row"];
 export function DashboardOpenBoatSwitcher({
   boatId,
   canEdit,
-  canShare,
   season,
   tripSegments,
   visits,
@@ -26,7 +24,6 @@ export function DashboardOpenBoatSwitcher({
 }: {
   boatId: string;
   canEdit: boolean;
-  canShare: boolean;
   season: SeasonRow;
   tripSegments: TripSegmentView[];
   visits: VisitView[];
@@ -56,11 +53,6 @@ export function DashboardOpenBoatSwitcher({
         >
           {t("boatNav.visits")}
         </button>
-        {canShare ? (
-          <Link href={`/boats/${boatId}/share`}>
-            {t("boatNav.share")}
-          </Link>
-        ) : null}
       </nav>
 
       {activeTab === "trip" ? (

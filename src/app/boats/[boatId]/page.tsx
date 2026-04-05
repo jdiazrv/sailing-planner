@@ -75,7 +75,6 @@ export default async function BoatWorkspacePage({
         <BoatWorkspaceShell
           boatId={boatId}
           canEdit={canEdit}
-          canShare={canShare}
           initialView={currentView}
           onDeleteTripSegment={deleteTripSegment}
           onDeleteVisit={deleteVisit}

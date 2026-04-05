@@ -502,13 +502,36 @@ export function BoatsAdmin({
                 )}
               </div>
               <div className="editor-form">
-                <p><strong>{expandedBoat.name}</strong></p>
-                <p className="muted">{expandedBoat.description ?? "—"}</p>
-                <p><strong>{text.tableModel}:</strong> {expandedBoat.model ?? "—"}</p>
-                <p><strong>{text.tableHomePort}:</strong> {expandedBoat.home_port ?? "—"}</p>
-                <p><strong>{text.tableUsers}:</strong> {expandedBoat.users_count ?? 0}</p>
-                <p><strong>{text.tableTrips}:</strong> {expandedBoat.trip_segments_count ?? 0}</p>
-                <p><strong>{text.tableVisits}:</strong> {expandedBoat.visits_count ?? 0}</p>
+                <div className="admin-boat-summary">
+                  <div>
+                    <p><strong>{expandedBoat.name}</strong></p>
+                    <p className="muted">{expandedBoat.description ?? "—"}</p>
+                  </div>
+                  <div className="boat-card__stats">
+                    <span>{text.tableUsers}: {expandedBoat.users_count ?? 0}</span>
+                    <span>{text.tableManagers}: {expandedBoat.managers_count ?? 0}</span>
+                    <span>{text.tableEditors}: {expandedBoat.editors_count ?? 0}</span>
+                    <span>{text.tableTrips}: {expandedBoat.trip_segments_count ?? 0}</span>
+                    <span>{text.tableVisits}: {expandedBoat.visits_count ?? 0}</span>
+                    <span>{locale === "es" ? "Invitaciones activas" : "Active invites"}: {expandedBoat.active_invites_count ?? 0}</span>
+                  </div>
+                  <div className="season-access-meta">
+                    <span><strong>{text.tableModel}:</strong> {expandedBoat.model ?? "—"}</span>
+                    <span><strong>{text.tableHomePort}:</strong> {expandedBoat.home_port ?? "—"}</span>
+                    <span>
+                      <strong>{text.tableStatus}:</strong>{" "}
+                      {expandedBoat.is_active ? text.active : text.inactive}
+                    </span>
+                    <span>
+                      <strong>{text.tableLastAccess}:</strong>{" "}
+                      {formatLastAccess(expandedBoat.user_last_access_at, locale)}
+                    </span>
+                    <span>
+                      <strong>{locale === "es" ? "Titular" : "Owner"}:</strong>{" "}
+                      {expandedBoat.user_display_name ?? expandedBoat.user_email ?? "—"}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

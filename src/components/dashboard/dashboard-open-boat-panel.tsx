@@ -34,7 +34,6 @@ export async function DashboardOpenBoatPanel({
   const workspace = await getDashboardBoatWorkspace(boatId, requestedSeasonId);
   const canEdit =
     workspace.viewer.isSuperuser || Boolean(workspace.permission?.can_edit);
-  const canShare = canEdit;
   const conflicts = computeVisitConflicts(
     workspace.selectedSeason,
     workspace.tripSegments,
@@ -109,7 +108,6 @@ export async function DashboardOpenBoatPanel({
           <DashboardOpenBoatSwitcher
             boatId={boatId}
             canEdit={canEdit}
-            canShare={canShare}
             conflicts={conflicts}
             onDeleteTripSegment={deleteTripSegment}
             onDeleteVisit={deleteVisit}

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
@@ -29,7 +28,6 @@ type SeasonRow = Database["public"]["Tables"]["seasons"]["Row"];
 type BoatWorkspaceShellProps = {
   boatId: string;
   canEdit: boolean;
-  canShare: boolean;
   initialView: "trip" | "visits";
   queryFilter?: string;
   season: SeasonRow;
@@ -154,7 +152,6 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
   const {
     boatId,
     canEdit,
-    canShare,
     initialView,
     season,
     seasonId,
@@ -166,7 +163,7 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
     onSaveVisit,
     onDeleteVisit,
   } = props;
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -198,6 +195,14 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
   const showTable = layoutMode !== "map";
   const showMap = layoutMode !== "table";
   const nextView = currentView === "trip" ? "visits" : "trip";
+  const viewToggleLabel =
+    currentView === "trip"
+      ? locale === "es"
+        ? "Mostrar visitas"
+        : "Show visits"
+      : locale === "es"
+        ? "Mostrar tramos"
+        : "Show trip segments";
   const viewPrefetchParams = new URLSearchParams();
   viewPrefetchParams.set("view", nextView);
   viewPrefetchParams.set("season", seasonId);
@@ -249,26 +254,6 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
           "/shared",
         ]}
       />
-      <div className="workspace-selector" data-tour="boat-nav">
-        <button
-          className={currentView === "trip" ? "is-active" : undefined}
-          onClick={() => switchView("trip")}
-          type="button"
-        >
-          {t("boatNav.trip")}
-        </button>
-        <button
-          className={currentView === "visits" ? "is-active" : undefined}
-          onClick={() => switchView("visits")}
-          type="button"
-        >
-          {t("boatNav.visits")}
-        </button>
-        {canShare ? (
-          <Link href={`/boats/${boatId}/share`}>{t("boatNav.share")}</Link>
-        ) : null}
-      </div>
-
       <section className="dashboard-card planning-control-bar" data-tour="planning-control-bar">
         <div className="planning-control-bar__row">
           <label className="planning-control">
@@ -393,6 +378,12 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
           />
         </div>
       </section>
+
+      <div className="workspace-view-switch" data-tour="boat-nav">
+        <button className="secondary-button" onClick={() => switchView(nextView)} type="button">
+          {viewToggleLabel}
+        </button>
+      </div>
 
       <section
         className="workspace-grid workspace-grid--trip"

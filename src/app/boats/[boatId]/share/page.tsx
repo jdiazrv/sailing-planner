@@ -10,6 +10,7 @@ import { getRequestLocale } from "@/lib/i18n-server";
 import { startServerTiming } from "@/lib/server-timing";
 
 import {
+  deleteSeasonAccessLink,
   deleteSeason,
   generateSeasonAccessLink,
   purgeRevokedSeasonAccessLinks,
@@ -72,6 +73,7 @@ export default async function BoatSharePage({
       {workspace.selectedSeason && seasonAccess ? (
         <SeasonAccessPanel
           boatId={boatId}
+          onDelete={deleteSeasonAccessLink}
           links={seasonAccess.links}
           onGenerate={generateSeasonAccessLink}
           onPurgeRevoked={purgeRevokedSeasonAccessLinks}

@@ -11,6 +11,7 @@ type Props = {
   boatId: string;
   seasonId: string;
   links: SeasonAccessLinkSummary[];
+  onDelete: (fd: FormData) => Promise<void>;
   onGenerate: (
     fd: FormData,
   ) => Promise<
@@ -31,6 +32,7 @@ export function SeasonAccessPanel({
   boatId,
   seasonId,
   links,
+  onDelete,
   onGenerate,
   onRevoke,
   onPurgeRevoked,
@@ -43,6 +45,7 @@ export function SeasonAccessPanel({
   const [canViewVisits, setCanViewVisits] = useState(true);
   const [inviteeName, setInviteeName] = useState("");
   const [revokingLinkId, setRevokingLinkId] = useState<string | null>(null);
+  const [deletingLinkId, setDeletingLinkId] = useState<string | null>(null);
   const [isPurgingRevoked, setIsPurgingRevoked] = useState(false);
   const [accessWindow, setAccessWindow] = useState<
     "one_use" | "one_day" | "one_week" | "season_end" | "season_plus_7"
@@ -60,11 +63,14 @@ export function SeasonAccessPanel({
           generate: "Generar enlace",
           generating: "Generando...",
           revoke: "Revocar",
+          delete: "Borrar",
           revoking: "Revocando...",
+          deleting: "Borrando...",
           purgeRevoked: "Purgar revocados",
           purgingRevoked: "Purgando...",
           generated: "Enlace temporal generado.",
           revoked: "Enlace temporal revocado.",
+          deleted: "Enlace eliminado.",
           revokedPurged: "Enlaces revocados eliminados.",
           copy: "Copiar enlace",
           copied: "Enlace copiado",
@@ -78,6 +84,9 @@ export function SeasonAccessPanel({
           createdAt: "Creado",
           lastAccess: "Último acceso",
           accessCount: "Accesos",
+          entered: "Ha entrado",
+          enteredYes: "Sí",
+          enteredNo: "No",
           creator: "Creado por",
           visibility: "Visibilidad",
           tripOnly: "Solo tramos",
@@ -90,6 +99,7 @@ export function SeasonAccessPanel({
           noAccess: "Sin registros",
           latest: "Enlace recién generado",
           linksTitle: "Enlaces generados",
+          revokedLinksTitle: "Enlaces revocados",
           inviteeField: "Invitado",
           activeCount: "activos",
           totalCount: "totales",
@@ -109,11 +119,14 @@ export function SeasonAccessPanel({
           generate: "Generate link",
           generating: "Generating...",
           revoke: "Revoke",
+          delete: "Delete",
           revoking: "Revoking...",
+          deleting: "Deleting...",
           purgeRevoked: "Purge revoked",
           purgingRevoked: "Purging...",
           generated: "Temporary link generated.",
           revoked: "Temporary link revoked.",
+          deleted: "Link deleted.",
           revokedPurged: "Revoked links removed.",
           copy: "Copy link",
           copied: "Link copied",
@@ -127,6 +140,9 @@ export function SeasonAccessPanel({
           createdAt: "Created",
           lastAccess: "Last access",
           accessCount: "Accesses",
+          entered: "Accessed",
+          enteredYes: "Yes",
+          enteredNo: "No",
           creator: "Created by",
           visibility: "Visibility",
           tripOnly: "Trip segments only",
@@ -139,6 +155,7 @@ export function SeasonAccessPanel({
           noAccess: "No records",
           latest: "Latest generated link",
           linksTitle: "Generated links",
+          revokedLinksTitle: "Revoked links",
           inviteeField: "Guest",
           activeCount: "active",
           totalCount: "total",
@@ -237,6 +254,30 @@ export function SeasonAccessPanel({
         })
         .finally(() => {
           setIsPurgingRevoked(false);
+        });
+    });
+  };
+
+  const handleDelete = (linkId: string) => {
+    const formData = new FormData();
+    formData.set("boat_id", boatId);
+    formData.set("link_id", linkId);
+
+    setDeletingLinkId(linkId);
+    startTransition(() => {
+      void onDelete(formData)
+        .then(() => {
+          if (generatedLink?.id === linkId) {
+            setGeneratedLink(null);
+          }
+          toast.success(text.deleted);
+          router.refresh();
+        })
+        .catch((error) => {
+          toast.error(error instanceof Error ? error.message : "Unexpected error");
+        })
+        .finally(() => {
+          setDeletingLinkId((current) => (current === linkId ? null : current));
         });
     });
   };
@@ -403,6 +444,12 @@ export function SeasonAccessPanel({
                           {text.accessCount}: {link.access_count}
                         </span>
                         <span>
+                          {text.entered}:{" "}
+                          {(link.access_count ?? 0) > 0 || Boolean(link.last_access_at)
+                            ? text.enteredYes
+                            : text.enteredNo}
+                        </span>
+                        <span>
                           {text.creator}: {link.creator_name ?? text.noAccess}
                         </span>
                       </div>
@@ -410,11 +457,19 @@ export function SeasonAccessPanel({
                     <div className="season-access-item__actions">
                       <button
                         className="secondary-button secondary-button--danger"
-                        disabled={Boolean(revokingLinkId)}
+                        disabled={Boolean(revokingLinkId) || Boolean(deletingLinkId)}
                         onClick={() => handleRevoke(link.id)}
                         type="button"
                       >
                         {revokingLinkId === link.id ? text.revoking : text.revoke}
+                      </button>
+                      <button
+                        className="secondary-button"
+                        disabled={Boolean(revokingLinkId) || Boolean(deletingLinkId)}
+                        onClick={() => handleDelete(link.id)}
+                        type="button"
+                      >
+                        {deletingLinkId === link.id ? text.deleting : text.delete}
                       </button>
                     </div>
                   </div>
@@ -423,6 +478,47 @@ export function SeasonAccessPanel({
             ) : (
               <p className="muted">{text.empty}</p>
             )}
+
+            {revokedLinks.length ? (
+              <div className="season-access-list season-access-list--revoked">
+                <h4>{text.revokedLinksTitle}</h4>
+                {revokedLinks.map((link) => (
+                  <div className="season-access-item" key={`revoked-${link.id}`}>
+                    <div className="season-access-item__main">
+                      <div className="season-access-item__top">
+                        <div className="season-access-item__identity">
+                          <span className="season-access-item__label">{text.inviteeField}</span>
+                          <strong>{link.invitee_name || text.noAccess}</strong>
+                        </div>
+                        <span className="status-pill is-muted">{text.inactive}</span>
+                      </div>
+                      <div className="season-access-meta">
+                        <span>{text.createdAt}: {renderDate(link.created_at)}</span>
+                        <span>{text.expiresAt}: {renderDate(link.expires_at)}</span>
+                        <span>{text.lastAccess}: {renderDate(link.last_access_at)}</span>
+                        <span>{text.accessCount}: {link.access_count}</span>
+                        <span>
+                          {text.entered}:{" "}
+                          {(link.access_count ?? 0) > 0 || Boolean(link.last_access_at)
+                            ? text.enteredYes
+                            : text.enteredNo}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="season-access-item__actions">
+                      <button
+                        className="secondary-button"
+                        disabled={Boolean(deletingLinkId) || Boolean(revokingLinkId)}
+                        onClick={() => handleDelete(link.id)}
+                        type="button"
+                      >
+                        {deletingLinkId === link.id ? text.deleting : text.delete}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
         </>
       ) : null}

@@ -307,7 +307,7 @@ Set:
 
 - `Site URL`
   Your real public frontend URL
-  Example: `https://your-site.netlify.app`
+  Example: `https://sailingplanner.com`
 
 Add these URLs in `Additional Redirect URLs`:
 
@@ -315,8 +315,8 @@ Add these URLs in `Additional Redirect URLs`:
 - `http://127.0.0.1:3000/auth/callback`
 - `http://localhost:3000/auth/set-password`
 - `http://127.0.0.1:3000/auth/set-password`
-- `https://your-site.netlify.app/auth/callback`
-- `https://your-site.netlify.app/auth/set-password`
+- `https://sailingplanner.com/auth/callback`
+- `https://sailingplanner.com/auth/set-password`
 
 If you use a custom domain, add that domain too:
 
@@ -399,7 +399,7 @@ This project currently assumes a hosted frontend such as Netlify.
 Set these in Netlify or your chosen platform:
 
 - `NEXT_PUBLIC_APP_URL`
-  Example: `https://your-site.netlify.app`
+  Example: `https://sailingplanner.com`
 - `NEXT_PUBLIC_SUPABASE_URL`
   Your Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`

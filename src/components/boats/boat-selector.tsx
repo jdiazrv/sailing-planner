@@ -2,6 +2,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { useI18n } from "@/components/i18n/provider";
@@ -26,6 +27,7 @@ export const BoatSelector = ({
   selectionSubtitle = null,
 }: BoatSelectorProps) => {
   const { locale, t } = useI18n();
+  const pathname = usePathname();
   const [query, setQuery] = useState("");
   const [isMobile, setIsMobile] = useState(false);
   const [isExpanded, setIsExpanded] = useState(
@@ -77,6 +79,17 @@ export const BoatSelector = ({
     boat.visits_count != null ||
     boat.active_invites_count != null;
   const hasLastAccess = (boat: BoatSummary) => boat.user_last_access_at != null;
+  const getBoatHref = (targetBoatId: string) => {
+    if (selectionOnly) {
+      return `/dashboard?boat=${targetBoatId}`;
+    }
+
+    if (pathname.includes("/share")) {
+      return `/boats/${targetBoatId}/share`;
+    }
+
+    return `/boats/${targetBoatId}/trip`;
+  };
 
   const selectionSummary =
     collapsible && selectedBoat ? (
@@ -133,7 +146,7 @@ export const BoatSelector = ({
                     {filteredBoats.map((boat) => (
                       <Link
                         className={`data-row boat-list-row ${boat.boat_id === activeBoatId ? "is-active" : ""}`}
-                        href={selectionOnly ? `/dashboard?boat=${boat.boat_id}` : `/boats/${boat.boat_id}/trip`}
+                        href={getBoatHref(boat.boat_id)}
                         key={boat.boat_id}
                       >
                         <div className="table-stack">
@@ -164,7 +177,7 @@ export const BoatSelector = ({
           {boats.map((boat) => (
             <Link
               className={`boat-card ${boat.boat_id === activeBoatId ? "is-active" : ""}`}
-              href={selectionOnly ? `/dashboard?boat=${boat.boat_id}` : `/boats/${boat.boat_id}/trip`}
+              href={getBoatHref(boat.boat_id)}
               key={boat.boat_id}
             >
               {boat.image_url ? (

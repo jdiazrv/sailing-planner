@@ -30,7 +30,18 @@ export const getEnv = () => ({
   SUPABASE_DB_PASSWORD: process.env.SUPABASE_DB_PASSWORD,
 });
 
-const normalizeOrigin = (value: string) => value.replace(/\/+$/, "");
+const normalizeOrigin = (value: string) => {
+  const trimmed = value.trim().replace(/\/+$/, "");
+  if (!trimmed) {
+    return trimmed;
+  }
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  return `https://${trimmed}`;
+};
 
 const asUrl = (value: string | undefined | null) => {
   try {
