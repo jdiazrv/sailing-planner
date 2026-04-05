@@ -12,6 +12,21 @@ This file tracks live technical-debt findings observed while navigating the app 
 
 No open high-priority issues remain from the items already corrected in this audit pass.
 
+### 2026-04-05 - Post-fix validation findings (iPad)
+
+Observed during the latest manual validation pass after the UX fixes were deployed.
+
+Remaining issues:
+
+- Sidebar labels in iPad render with a gray tone that makes them look disabled even though the menu is interactive.
+- Google login still fails during OAuth start with:
+  - `Invalid URL: base="sailing-planner.netlify.app" path="/auth/callback"`
+
+Current assessment:
+
+- The sidebar issue appears visual/contrast-related rather than functional.
+- The Google OAuth issue indicates that some runtime configuration still points to the old Netlify domain or lacks the updated public origin in the hosted environment.
+
 ### 2026-04-05 - Timeline, invite and boat-settings regressions (iPad + desktop)
 
 Observed from user walkthrough in iPad and desktop contexts.

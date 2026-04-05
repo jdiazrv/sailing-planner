@@ -125,7 +125,11 @@ export const AuthForm = ({
 
   const handleGoogleLogin = async () => {
     const supabase = createClient();
-    const redirectUrl = new URL(buildAuthRedirectUrl("/auth/callback"));
+    const requestOrigin =
+      typeof window !== "undefined" ? window.location.origin : undefined;
+    const redirectUrl = new URL(
+      buildAuthRedirectUrl("/auth/callback", { requestOrigin }),
+    );
     redirectUrl.searchParams.set("next", next);
 
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
