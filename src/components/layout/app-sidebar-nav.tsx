@@ -78,6 +78,14 @@ const IconProfile = () => (
   </svg>
 );
 
+const IconHelp = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9.1 9a3 3 0 1 1 5.8 1c0 2-3 2.2-3 4" />
+    <circle cx="12" cy="17" r=".8" fill="currentColor" stroke="none" />
+    <circle cx="12" cy="12" r="9" />
+  </svg>
+);
+
 const IconSwap = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
     <path d="M7 16V4m0 0L3 8m4-4 4 4" />
@@ -124,12 +132,16 @@ function NavItem({
   icon,
   active,
   tourId,
+  target,
+  rel,
 }: {
   href: string;
   label: string;
   icon: ReactNode;
   active?: boolean;
   tourId?: string;
+  target?: string;
+  rel?: string;
 }) {
   return (
     <Link
@@ -137,6 +149,8 @@ function NavItem({
       data-label={label}
       data-tour={tourId}
       href={href}
+      rel={rel}
+      target={target}
     >
       <span className="app-sidebar__icon">{icon}</span>
       <span className="app-sidebar__label">{label}</span>
@@ -285,6 +299,16 @@ export function AppSidebarNav({
           icon={<IconCompare />}
           active={isActive("/shared")}
         />
+
+        {!isSuperuser ? (
+          <NavItem
+            href="/manual/ayuda-gestor.html"
+            label={es ? "Manual" : "Manual"}
+            icon={<IconHelp />}
+            rel="noreferrer"
+            target="_blank"
+          />
+        ) : null}
 
         {/* Switch boat — superuser */}
         {isSuperuser && boatId && (

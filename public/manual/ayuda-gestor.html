@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sailing Planner · Ayuda para gestores</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --font-display: "Cinzel", "Trajan Pro", serif;
+        --font-body: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+        --background: #0e1520;
+        --surface: rgba(20, 30, 46, 0.92);
+        --surface-raised: rgba(25, 38, 58, 0.8);
+        --surface-strong: #131e2f;
+        --surface-overlay: rgba(255, 255, 255, 0.04);
+        --border: rgba(255, 255, 255, 0.08);
+        --border-strong: rgba(255, 255, 255, 0.14);
+        --ink: #e2e8f0;
+        --ink-medium: rgba(226, 232, 240, 0.52);
+        --muted: #8a9ab0;
+        --accent: #00b4d8;
+        --accent-strong: #48cae4;
+        --accent-soft: rgba(0, 180, 216, 0.14);
+        --accent-border: rgba(0, 180, 216, 0.32);
+        --accent-glow: rgba(0, 180, 216, 0.08);
+        --on-accent: #001824;
+        --shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        --body-bg:
+          radial-gradient(circle at top left, rgba(0, 180, 216, 0.08), transparent 32%),
+          linear-gradient(135deg, #0e1520 0%, #0c1829 48%, #0e1520 100%);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: var(--font-body);
+        color: var(--ink);
+        background: var(--body-bg);
+        line-height: 1.6;
+      }
+
+      .page {
+        width: min(1120px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 40px 0 72px;
+      }
+
+      .hero {
+        display: grid;
+        gap: 18px;
+        padding: 28px;
+        border: 1px solid var(--border-strong);
+        border-radius: 28px;
+        background:
+          linear-gradient(135deg, rgba(0, 180, 216, 0.14), rgba(72, 202, 228, 0.03)),
+          var(--surface);
+        box-shadow: var(--shadow);
+      }
+
+      .eyebrow {
+        margin: 0;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--accent-strong);
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        line-height: 1.15;
+      }
+
+      h1 {
+        font-family: var(--font-display);
+        font-size: clamp(2rem, 4vw, 3.3rem);
+      }
+
+      h2 {
+        font-size: 1.35rem;
+      }
+
+      h3 {
+        font-size: 1rem;
+      }
+
+      p {
+        margin: 0;
+      }
+
+      .lead {
+        max-width: 72ch;
+        color: var(--ink);
+        font-size: 1.05rem;
+      }
+
+      .hero-note {
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        padding: 0.45rem 0.8rem;
+        border: 1px solid var(--accent-border);
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent-strong);
+        font-size: 0.92rem;
+        font-weight: 600;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 280px minmax(0, 1fr);
+        gap: 24px;
+        margin-top: 24px;
+      }
+
+      .toc,
+      .section,
+      .card,
+      .step,
+      .tip {
+        border: 1px solid var(--border);
+        background: var(--surface);
+      }
+
+      .toc {
+        position: sticky;
+        top: 20px;
+        align-self: start;
+        padding: 20px;
+        border-radius: 22px;
+      }
+
+      .toc h2 {
+        margin-bottom: 12px;
+        font-size: 1rem;
+      }
+
+      .toc a {
+        display: block;
+        padding: 0.55rem 0;
+        color: var(--ink);
+        text-decoration: none;
+      }
+
+      .toc a:hover {
+        color: var(--accent-strong);
+      }
+
+      .content {
+        display: grid;
+        gap: 24px;
+      }
+
+      .section {
+        padding: 24px;
+        border-radius: 24px;
+      }
+
+      .section-header {
+        display: grid;
+        gap: 8px;
+        margin-bottom: 18px;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .card {
+        padding: 18px;
+        border-radius: 20px;
+        background: linear-gradient(180deg, var(--surface-raised), var(--surface));
+      }
+
+      .card p,
+      .step p,
+      .tip p {
+        color: var(--muted);
+      }
+
+      .steps {
+        display: grid;
+        gap: 14px;
+      }
+
+      .step {
+        display: grid;
+        grid-template-columns: 44px minmax(0, 1fr);
+        gap: 14px;
+        padding: 16px;
+        border-radius: 20px;
+      }
+
+      .step-index {
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+        color: var(--on-accent);
+        font-weight: 800;
+      }
+
+      .tip-list {
+        display: grid;
+        gap: 14px;
+      }
+
+      .tip {
+        padding: 16px 18px;
+        border-radius: 18px;
+      }
+
+      ul {
+        margin: 10px 0 0;
+        padding-left: 1.15rem;
+      }
+
+      li + li {
+        margin-top: 0.45rem;
+      }
+
+      strong {
+        color: var(--ink);
+      }
+
+      .footer {
+        margin-top: 24px;
+        padding: 18px 22px;
+        border: 1px solid var(--accent-border);
+        border-radius: 20px;
+        background: var(--accent-glow);
+      }
+
+      @media (max-width: 900px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        .toc {
+          position: static;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .page {
+          width: min(100% - 24px, 1120px);
+          padding-top: 20px;
+        }
+
+        .hero,
+        .section {
+          padding: 20px;
+          border-radius: 22px;
+        }
+
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero">
+        <p class="eyebrow">Ayuda para gestores</p>
+        <h1>Sailing Planner en una sola lectura</h1>
+        <p class="lead">
+          Sailing Planner sirve para ordenar la operativa de un barco a lo largo de una temporada.
+          Como gestor, tu trabajo normal consiste en preparar el barco, dibujar el viaje por tramos,
+          registrar visitas, bloquear periodos no disponibles y dar acceso a las personas adecuadas.
+        </p>
+        <div class="hero-note">Esta guía está pensada para gestores y editores operativos, no para superusuarios.</div>
+      </header>
+
+      <div class="layout">
+        <aside class="toc" aria-label="Índice de la ayuda">
+          <h2>En esta página</h2>
+          <a href="#finalidad">Finalidad</a>
+          <a href="#flujo">Proceso normal</a>
+          <a href="#conceptos">Qué significa cada pieza</a>
+          <a href="#accesos">Invitaciones y editores</a>
+          <a href="#buenas-practicas">Buenas prácticas</a>
+        </aside>
+
+        <main class="content">
+          <section class="section" id="finalidad">
+            <div class="section-header">
+              <p class="eyebrow">Finalidad</p>
+              <h2>Qué resuelve la aplicación</h2>
+              <p class="muted">
+                La app centraliza lo que normalmente acaba repartido entre mensajes, hojas sueltas y memoria: el plan del barco,
+                la secuencia del viaje, quién sube y baja, qué días quedan libres y qué periodos no deben tocarse.
+              </p>
+            </div>
+            <div class="grid">
+              <article class="card">
+                <h3>Visión única</h3>
+                <p>Todo sucede alrededor de una temporada activa y un timeline común para que el equipo vea el mismo plan.</p>
+              </article>
+              <article class="card">
+                <h3>Menos fricción</h3>
+                <p>Los tramos, visitas y bloqueos se cruzan entre sí, así que puedes detectar huecos, solapes o ausencia de datos antes de operar.</p>
+              </article>
+            </div>
+          </section>
+
+          <section class="section" id="flujo">
+            <div class="section-header">
+              <p class="eyebrow">Proceso normal</p>
+              <h2>Orden recomendado de trabajo</h2>
+            </div>
+            <div class="steps">
+              <article class="step">
+                <div class="step-index">1</div>
+                <div>
+                  <h3>Configura el barco</h3>
+                  <p>Revisa nombre visible, modelo, año, puerto base e imagen. Esto da contexto al resto del equipo y evita paneles incompletos.</p>
+                </div>
+              </article>
+              <article class="step">
+                <div class="step-index">2</div>
+                <div>
+                  <h3>Crea la temporada</h3>
+                  <p>La temporada define el marco temporal completo. Sin ella no hay timeline ni planificación consistente.</p>
+                </div>
+              </article>
+              <article class="step">
+                <div class="step-index">3</div>
+                <div>
+                  <h3>Añade tramos del viaje</h3>
+                  <p>Cada tramo representa una etapa o escala del recorrido, con fechas, ubicación y estado. Empieza por la estructura general y luego afina.</p>
+                </div>
+              </article>
+              <article class="step">
+                <div class="step-index">4</div>
+                <div>
+                  <h3>Registra visitas</h3>
+                  <p>Anota quién embarca, cuándo sube, cuándo baja y desde dónde. Las visitas completan la lectura operativa de la temporada.</p>
+                </div>
+              </article>
+              <article class="step">
+                <div class="step-index">5</div>
+                <div>
+                  <h3>Bloquea periodos no disponibles</h3>
+                  <p>Usa bloqueos para mantenimiento, limpieza, entregas o días no operables. Así la disponibilidad calculada no da una falsa sensación de hueco libre.</p>
+                </div>
+              </article>
+              <article class="step">
+                <div class="step-index">6</div>
+                <div>
+                  <h3>Comparte con el nivel adecuado</h3>
+                  <p>Invita lectores si solo deben consultar y crea editores cuando deban mantener datos del barco, tramos o visitas.</p>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section class="section" id="conceptos">
+            <div class="section-header">
+              <p class="eyebrow">Conceptos</p>
+              <h2>Qué significa cada pieza</h2>
+            </div>
+            <div class="grid">
+              <article class="card">
+                <h3>Barco</h3>
+                <p>La ficha base del activo. Todo lo demás cuelga de aquí.</p>
+              </article>
+              <article class="card">
+                <h3>Temporada</h3>
+                <p>El periodo de navegación que ordena el timeline completo.</p>
+              </article>
+              <article class="card">
+                <h3>Tramo o escala</h3>
+                <p>Una parte del viaje con fechas, lugar y estado. Sirve para dibujar el recorrido real.</p>
+              </article>
+              <article class="card">
+                <h3>Visita</h3>
+                <p>Una estancia de invitados o tripulación con embarque y desembarque.</p>
+              </article>
+              <article class="card">
+                <h3>Bloqueo</h3>
+                <p>Un periodo no operativo que debe excluirse de la disponibilidad.</p>
+              </article>
+              <article class="card">
+                <h3>Timeline</h3>
+                <p>La vista que une viaje, visitas y disponibilidad para detectar incoherencias rápidamente.</p>
+              </article>
+            </div>
+          </section>
+
+          <section class="section" id="accesos">
+            <div class="section-header">
+              <p class="eyebrow">Accesos</p>
+              <h2>Cuándo usar invitaciones y cuándo crear editores</h2>
+            </div>
+            <div class="tip-list">
+              <article class="tip">
+                <h3>Invitación de lectura</h3>
+                <p>Úsala cuando alguien solo necesita consultar la temporada, entender el plan o seguir visitas sin editar información.</p>
+              </article>
+              <article class="tip">
+                <h3>Editor o gestor operativo</h3>
+                <p>Créalo cuando esa persona vaya a mantener tramos, visitas, bloqueos o configuración del barco de forma recurrente.</p>
+              </article>
+            </div>
+          </section>
+
+          <section class="section" id="buenas-practicas">
+            <div class="section-header">
+              <p class="eyebrow">Buenas prácticas</p>
+              <h2>Cómo mantener el panel limpio y útil</h2>
+            </div>
+            <ul>
+              <li>Primero define la temporada y la estructura general del viaje. Después entra al detalle.</li>
+              <li>Usa nombres de lugares consistentes para que mapa, timeline y visitas se entiendan de un vistazo.</li>
+              <li>Bloquea cuanto antes los periodos no disponibles. Es mejor cerrar un hueco que prometer una disponibilidad irreal.</li>
+              <li>Crea editores solo cuando haya una responsabilidad clara de mantenimiento.</li>
+              <li>Si algo cambia en fechas o ruta, actualiza antes los tramos y después revisa visitas y bloqueos afectados.</li>
+            </ul>
+          </section>
+
+          <div class="footer">
+            Flujo corto para recordar: <strong>barco → temporada → tramos → visitas → bloqueos → accesos</strong>.
+            Si sigues ese orden, el timeline se mantiene coherente y el equipo trabaja sobre una única versión del plan.
+          </div>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>
