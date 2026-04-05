@@ -11,7 +11,7 @@ import {
   type CoastalZoneMatch,
   type CoastalZoneGeometry,
 } from "@/lib/coastal-zones-runtime";
-import type { TripSegmentView, VisitView } from "@/lib/planning";
+import type { PortStopView, VisitView } from "@/lib/planning";
 
 declare global {
   interface Window {
@@ -40,7 +40,7 @@ type MapSelection = {
 };
 
 type MapPanelProps = {
-  tripSegments: TripSegmentView[];
+  tripSegments: PortStopView[];
   visits: VisitView[];
   title?: string;
   tall?: boolean;
@@ -96,7 +96,7 @@ const toSvgPath = (rings: number[][][]) =>
     )
     .join(" ");
 
-const getTripMarkerMeta = (locationType: TripSegmentView["location_type"]) => {
+const getTripMarkerMeta = (locationType: PortStopView["location_type"]) => {
   switch (locationType) {
     case "island":
       return { color: "#4f8f3a", glyph: "I" };
@@ -111,7 +111,7 @@ const getTripMarkerMeta = (locationType: TripSegmentView["location_type"]) => {
   }
 };
 
-const sortTripSegments = (tripSegments: TripSegmentView[]) =>
+const sortTripSegments = (tripSegments: PortStopView[]) =>
   [...tripSegments].sort(
     (a, b) =>
       a.start_date.localeCompare(b.start_date) ||
@@ -119,7 +119,7 @@ const sortTripSegments = (tripSegments: TripSegmentView[]) =>
       (a.sort_order ?? 0) - (b.sort_order ?? 0),
   );
 
-const buildSequenceBySegment = (tripSegments: TripSegmentView[]) => {
+const buildSequenceBySegment = (tripSegments: PortStopView[]) => {
   const sequence = new Map<string, number>();
 
   sortTripSegments(tripSegments).forEach((segment, index) => {
@@ -130,7 +130,7 @@ const buildSequenceBySegment = (tripSegments: TripSegmentView[]) => {
 };
 
 const buildMarkers = (
-  tripSegments: TripSegmentView[],
+  tripSegments: PortStopView[],
   visits: VisitView[],
   sequenceBySegment: Map<string, number>,
   coastalZoneBySegmentId: Map<string, CoastalZoneMatch | null>,
@@ -216,7 +216,7 @@ const buildMarkers = (
   return [...tripMarkers, ...visitMarkers];
 };
 
-const buildRoutePoints = (tripSegments: TripSegmentView[]) =>
+const buildRoutePoints = (tripSegments: PortStopView[]) =>
   sortTripSegments(tripSegments)
     .map((segment) => {
       const latitude = toCoordinate(segment.latitude);

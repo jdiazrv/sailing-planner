@@ -6,14 +6,14 @@ import { useI18n } from "@/components/i18n/provider";
 import { MapPanel } from "@/components/planning/map-panel";
 import { Timeline } from "@/components/planning/timeline";
 import { VisitsManager } from "@/components/planning/visits-manager";
-import type { VisitConflict, TripSegmentView, VisitView } from "@/lib/planning";
+import type { VisitConflict, PortStopView, VisitView } from "@/lib/planning";
 import type { Database } from "@/types/database";
 
 type SeasonRow = Database["public"]["Tables"]["seasons"]["Row"];
 
 type Props = {
   season: SeasonRow | null;
-  tripSegments: TripSegmentView[];
+  tripSegments: PortStopView[];
   visits: VisitView[];
   conflicts: VisitConflict[];
   boatId: string;

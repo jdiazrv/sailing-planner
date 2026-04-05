@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useI18n } from "@/components/i18n/provider";
 import { TripSegmentsManager } from "@/components/planning/trip-segments-manager";
 import { VisitsManager } from "@/components/planning/visits-manager";
-import type { TripSegmentView, VisitConflict, VisitView } from "@/lib/planning";
+import type { PortStopView, VisitConflict, VisitView } from "@/lib/planning";
 import type { Database } from "@/types/database";
 
 type SeasonRow = Database["public"]["Tables"]["seasons"]["Row"];
@@ -25,7 +25,7 @@ export function DashboardOpenBoatSwitcher({
   boatId: string;
   canEdit: boolean;
   season: SeasonRow;
-  tripSegments: TripSegmentView[];
+  tripSegments: PortStopView[];
   visits: VisitView[];
   conflicts: VisitConflict[];
   onSaveTripSegment: (fd: FormData) => Promise<void>;

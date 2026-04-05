@@ -5,7 +5,7 @@ import type {
   ProfileRow,
   SeasonRow,
   SharedTimelineBoat,
-  TripSegmentView,
+  PortStopView,
 } from "@/lib/planning";
 
 import {
@@ -243,7 +243,7 @@ export const getSharedTimelineWorkspace = async (
       },
       season,
       ownerDisplayName: owner?.displayName ?? null,
-      tripSegments: [] as TripSegmentView[],
+      tripSegments: [] as PortStopView[],
     } satisfies SharedTimelineBoat;
   });
 

@@ -16,7 +16,7 @@ import {
   diffDaysInclusive,
   hasVisitDateRange,
   rangeIncludes,
-  type TripSegmentView,
+  type PortStopView,
   type VisitConflict,
   type VisitView,
 } from "@/lib/planning";
@@ -34,7 +34,7 @@ type BoatWorkspaceShellProps = {
   seasonId: string;
   seasonStart: string;
   statusFilter?: string;
-  tripSegments: TripSegmentView[];
+  tripSegments: PortStopView[];
   visits: VisitView[];
   onSaveTripSegment: (fd: FormData) => Promise<void>;
   onDeleteTripSegment: (fd: FormData) => Promise<void>;
@@ -52,7 +52,7 @@ type AvailabilityPlaceRow = {
 
 const getAvailabilityPlaceRows = (
   season: SeasonRow,
-  tripSegments: TripSegmentView[],
+  tripSegments: PortStopView[],
   visits: VisitView[],
 ) => {
   const sortedSegments = [...tripSegments].sort(
@@ -170,7 +170,7 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
   const [currentView, setCurrentView] = useState<"trip" | "visits">(initialView);
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   const [timelineEditVisit, setTimelineEditVisit] = useState<VisitView | null>(null);
-  const [timelineEditSegment, setTimelineEditSegment] = useState<TripSegmentView | null>(null);
+  const [timelineEditSegment, setTimelineEditSegment] = useState<PortStopView | null>(null);
   const [showPeopleLayer, setShowPeopleLayer] = useState(true);
   const [showAvailabilityLayer, setShowAvailabilityLayer] = useState(true);
   const [showBlockedLayer, setShowBlockedLayer] = useState(true);

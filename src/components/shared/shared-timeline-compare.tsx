@@ -5,7 +5,7 @@ import { useState } from "react";
 import { MapPanel } from "@/components/planning/map-panel";
 import { Timeline } from "@/components/planning/timeline";
 import { useI18n } from "@/components/i18n/provider";
-import type { BoatDetails, TripSegmentView } from "@/lib/planning";
+import type { BoatDetails, PortStopView } from "@/lib/planning";
 import type { Database } from "@/types/database";
 
 type SeasonRow = Database["public"]["Tables"]["seasons"]["Row"];
@@ -13,7 +13,7 @@ type SeasonRow = Database["public"]["Tables"]["seasons"]["Row"];
 type TimelineCompareEntry = {
   boat: BoatDetails;
   season: SeasonRow | null;
-  tripSegments: TripSegmentView[];
+  tripSegments: PortStopView[];
   ownerDisplayName?: string | null;
   label: string;
 };

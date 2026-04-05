@@ -8,7 +8,7 @@ export type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 export type SeasonAccessLinkRow = Database["public"]["Tables"]["season_access_links"]["Row"];
 
 export type PortStopView =
-  Database["public"]["Functions"]["get_season_port_stops"]["Returns"][number];
+  Database["public"]["Functions"]["get_season_trip_segments"]["Returns"][number];
 export type VisitView =
   Database["public"]["Functions"]["get_season_visits"]["Returns"][number];
 
@@ -64,7 +64,7 @@ export type SharedTimelineBoat = {
   boat: BoatDetails;
   season: SeasonRow | null;
   ownerDisplayName: string | null;
-  tripSegments: TripSegmentView[];
+  tripSegments: PortStopView[];
 };
 
 export type ViewerContext = {
@@ -85,7 +85,7 @@ export type BoatWorkspace = {
   boats: BoatSummary[];
   seasons: SeasonRow[];
   selectedSeason: SeasonRow | null;
-  tripSegments: TripSegmentView[];
+  tripSegments: PortStopView[];
   visits: VisitView[];
 };
 
@@ -252,7 +252,7 @@ export const getPermissionLabel = (
 
 export const computeAvailability = (
   season: SeasonRow | null,
-  tripSegments: TripSegmentView[],
+  tripSegments: PortStopView[],
   visits: VisitView[],
 ) => {
   if (!season) {
@@ -338,7 +338,7 @@ const getAvailabilityLabel = (status: AvailabilityStatus) => {
 
 export const computeVisitConflicts = (
   season: SeasonRow | null,
-  tripSegments: TripSegmentView[],
+  tripSegments: PortStopView[],
   visits: VisitView[],
 ) => {
   if (!season) {

@@ -7,7 +7,7 @@ export type Json =
   | Json[];
 
 export type PermissionLevel = "viewer" | "editor" | "manager";
-export type TripSegmentStatus =
+export type PortStopStatus =
   | "tentative"
   | "planned"
   | "confirmed"
@@ -220,7 +220,7 @@ export interface Database {
           external_place_id: string | null;
           latitude: number | null;
           longitude: number | null;
-          status: TripSegmentStatus;
+          status: PortStopStatus;
           public_notes: string | null;
           created_at: string;
           updated_at: string;
@@ -237,7 +237,7 @@ export interface Database {
           external_place_id?: string | null;
           latitude?: number | null;
           longitude?: number | null;
-          status?: TripSegmentStatus;
+          status?: PortStopStatus;
           public_notes?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -350,7 +350,7 @@ export interface Database {
           external_place_id: string | null;
           latitude: number | null;
           longitude: number | null;
-          status: TripSegmentStatus;
+          status: PortStopStatus;
           public_notes: string | null;
           private_notes: string | null;
           created_at: string;
@@ -391,7 +391,7 @@ export interface Database {
     };
     Enums: {
       permission_level: PermissionLevel;
-      trip_segment_status: TripSegmentStatus;
+      port_stop_status: PortStopStatus;
       visit_status: VisitStatus;
       location_type: LocationType;
       place_source: PlaceSource;

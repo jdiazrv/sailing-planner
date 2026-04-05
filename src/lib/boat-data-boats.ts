@@ -14,7 +14,7 @@ import type {
   PermissionRow,
   SeasonAccessLinkRow,
   SeasonRow,
-  TripSegmentView,
+  PortStopView,
   VisitView,
 } from "@/lib/planning";
 
@@ -106,7 +106,7 @@ const loadSeasonWorkspaceData = async (
 ) => {
   if (!selectedSeason) {
     return {
-      tripSegments: [] as TripSegmentView[],
+      tripSegments: [] as PortStopView[],
       visits: [] as VisitView[],
     };
   }
@@ -124,7 +124,7 @@ const loadSeasonWorkspaceData = async (
   ]);
 
   return {
-    tripSegments: (tripResult.data ?? []) as TripSegmentView[],
+    tripSegments: (tripResult.data ?? []) as PortStopView[],
     visits: (visitResult.data ?? []) as VisitView[],
   };
 };
@@ -553,7 +553,7 @@ export const getSeasonGuestWorkspace = async (
   const tripSegments = ((tripData ?? []) as any[]).map((segment) => ({
     ...segment,
     private_notes: null,
-  })) as TripSegmentView[];
+  })) as PortStopView[];
 
   const visits = ((visitsData ?? []) as any[]).map((visit) => ({
     ...visit,

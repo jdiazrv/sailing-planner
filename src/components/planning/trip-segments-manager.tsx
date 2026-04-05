@@ -9,17 +9,17 @@ import { Dialog } from "@/components/ui/dialog";
 import { PlaceAutocompleteField } from "@/components/places/place-autocomplete-field";
 import { GuidedEmptyState } from "@/components/planning/guided-empty-state";
 import { formatShortDate, nauticalMilesBetweenPoints } from "@/lib/planning";
-import type { TripSegmentView } from "@/lib/planning";
+import type { PortStopView } from "@/lib/planning";
 
 type Props = {
-  segments: TripSegmentView[];
+  segments: PortStopView[];
   boatId: string;
   seasonId: string;
   seasonStart: string;
   canEdit: boolean;
   selectedSegmentId?: string | null;
-  onSelectSegment?: (segment: TripSegmentView) => void;
-  externalEditSegment?: TripSegmentView | null;
+  onSelectSegment?: (segment: PortStopView) => void;
+  externalEditSegment?: PortStopView | null;
   onExternalEditHandled?: () => void;
   onSave: (fd: FormData) => Promise<void>;
   onDelete: (fd: FormData) => Promise<void>;
@@ -40,8 +40,8 @@ export function TripSegmentsManager({
 }: Props) {
   const { t } = useI18n();
   const [addOpen, setAddOpen] = useState(false);
-  const [editingSegment, setEditingSegment] = useState<TripSegmentView | null>(null);
-  const [segmentToDelete, setSegmentToDelete] = useState<TripSegmentView | null>(null);
+  const [editingSegment, setEditingSegment] = useState<PortStopView | null>(null);
+  const [segmentToDelete, setSegmentToDelete] = useState<PortStopView | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -314,7 +314,7 @@ function TripSegmentForm({
   errorMessage?: string | null;
   seasonId: string;
   seasonStart: string;
-  segment?: TripSegmentView;
+  segment?: PortStopView;
   onSubmit: (fd: FormData) => void;
   isPending: boolean;
 }) {

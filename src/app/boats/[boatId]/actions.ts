@@ -16,7 +16,7 @@ import type {
   Database,
   LocationType,
   PlaceSource,
-  TripSegmentStatus,
+  PortStopStatus,
   VisitStatus,
 } from "@/types/database";
 

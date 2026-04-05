@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 import { useI18n } from "@/components/i18n/provider";
 import { Timeline } from "@/components/planning/timeline";
-import type { TripSegmentView, VisitView } from "@/lib/planning";
+import type { PortStopView, VisitView } from "@/lib/planning";
 import type { Database } from "@/types/database";
 
 type SeasonRow = Database["public"]["Tables"]["seasons"]["Row"];
@@ -26,7 +26,7 @@ export function TripOverview({
   children,
 }: {
   season: SeasonRow | null;
-  tripSegments: TripSegmentView[];
+  tripSegments: PortStopView[];
   visits: VisitView[];
   showVisits?: boolean;
   children?: ReactNode;

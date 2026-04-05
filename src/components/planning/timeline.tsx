@@ -10,7 +10,7 @@ import {
   formatShortDate,
   hasVisitDateRange,
   type AvailabilityBlock,
-  type TripSegmentView,
+  type PortStopView,
   type VisitView,
 } from "@/lib/planning";
 import { getDocumentLocale, getIntlLocale } from "@/lib/i18n";
@@ -20,14 +20,14 @@ type SeasonRow = Database["public"]["Tables"]["seasons"]["Row"];
 
 type TimelineProps = {
   season: SeasonRow | null;
-  tripSegments: TripSegmentView[];
+  tripSegments: PortStopView[];
   visits: VisitView[];
   title: string;
   subtitle: string;
   onVisitClick?: (visit: VisitView) => void;
   onVisitSelect?: (visit: VisitView) => void;
-  onTripSegmentSelect?: (segment: TripSegmentView) => void;
-  onTripSegmentEdit?: (segment: TripSegmentView) => void;
+  onTripSegmentSelect?: (segment: PortStopView) => void;
+  onTripSegmentEdit?: (segment: PortStopView) => void;
   selectedEntityId?: string | null;
   showVisits?: boolean;
   showAvailability?: boolean;
