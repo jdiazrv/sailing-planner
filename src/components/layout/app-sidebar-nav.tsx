@@ -300,15 +300,13 @@ export function AppSidebarNav({
           active={isActive("/shared")}
         />
 
-        {!isSuperuser ? (
-          <NavItem
-            href="/manual/ayuda-gestor.html"
-            label={es ? "Manual" : "Manual"}
-            icon={<IconHelp />}
-            rel="noreferrer"
-            target="_blank"
-          />
-        ) : null}
+        <NavItem
+          href="/manual/ayuda-gestor.html"
+          label={es ? "Manual" : "Manual"}
+          icon={<IconHelp />}
+          rel="noreferrer"
+          target="_blank"
+        />
 
         {/* Switch boat — superuser */}
         {isSuperuser && boatId && (
