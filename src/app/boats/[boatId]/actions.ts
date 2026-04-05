@@ -110,7 +110,7 @@ const requireBoatEditor = async (boatId: string) => {
 
 const getNextTripSortOrder = async (db: any, seasonId: string) => {
   const { data, error } = await db
-    .from("trip_segments")
+    .from("port_stops")
     .select("sort_order")
     .eq("season_id", seasonId)
     .order("sort_order", { ascending: false })
@@ -173,7 +173,7 @@ export async function deleteSeason(formData: FormData) {
   throwIfError(deleteVisitsError);
 
   const { error: deleteSegmentsError } = await db
-    .from("trip_segments")
+    .from("port_stops")
     .delete()
     .eq("season_id", seasonId);
   throwIfError(deleteSegmentsError);
@@ -186,13 +186,13 @@ export async function deleteSeason(formData: FormData) {
 export async function saveTripSegment(formData: FormData) {
   const boatId = formData.get("boat_id")?.toString() ?? "";
   const { db } = await requireBoatEditor(boatId);
-  const segmentId = asOptionalString(formData.get("segment_id"));
+  const portStopId = asOptionalString(formData.get("segment_id"));
   const seasonId = formData.get("season_id")?.toString() ?? "";
   const privateNotes = asOptionalString(formData.get("private_notes"));
 
   const payload = {
     season_id: seasonId,
-    sort_order: segmentId
+    sort_order: portStopId
       ? Number(formData.get("sort_order") ?? 0)
       : await getNextTripSortOrder(db, seasonId),
     start_date: formData.get("start_date")?.toString() ?? "",
@@ -210,21 +210,21 @@ export async function saveTripSegment(formData: FormData) {
       ? Number(formData.get("longitude"))
       : null,
     status:
-      (formData.get("status")?.toString() as TripSegmentStatus) ?? "planned",
+      (formData.get("status")?.toString() as PortStopStatus) ?? "planned",
     public_notes: asOptionalString(formData.get("public_notes")),
   };
 
-  let resolvedId = segmentId;
+  let resolvedId = portStopId;
 
-  if (segmentId) {
+  if (portStopId) {
     const { error } = await db
-      .from("trip_segments")
+      .from("port_stops")
       .update(payload)
-      .eq("id", segmentId);
+      .eq("id", portStopId);
     throwIfError(error);
   } else {
     const { data, error } = await db
-      .from("trip_segments")
+      .from("port_stops")
       .insert(payload)
       .select("id")
       .single();
@@ -234,8 +234,8 @@ export async function saveTripSegment(formData: FormData) {
 
   if (resolvedId) {
     if (privateNotes) {
-      const { error } = await db.from("trip_segment_private_notes").upsert({
-        trip_segment_id: resolvedId,
+      const { error } = await db.from("port_stop_private_notes").upsert({
+        port_stop_id: resolvedId,
         private_notes: privateNotes,
       });
       throwIfError(error);
@@ -303,9 +303,9 @@ export async function moveTripSegment(formData: FormData) {
 export async function deleteTripSegment(formData: FormData) {
   const boatId = formData.get("boat_id")?.toString() ?? "";
   const { db } = await requireBoatEditor(boatId);
-  const segmentId = formData.get("segment_id")?.toString() ?? "";
+  const portStopId = formData.get("segment_id")?.toString() ?? "";
 
-  const { error } = await db.from("trip_segments").delete().eq("id", segmentId);
+  const { error } = await db.from("port_stops").delete().eq("id", portStopId);
   throwIfError(error);
   refreshBoatRoutes(boatId);
 }
