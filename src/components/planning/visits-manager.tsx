@@ -151,7 +151,7 @@ export function VisitsManager({
                 }
               }}
             >
-              <div data-label={visitRowLabels.visitor}>{visit.visitor_name ?? <span className="muted">{t("planning.private")}</span>}</div>
+              <div data-label={visitRowLabels.visitor}>{visit.visitor_name ?? t("planning.visit")}</div>
               <div className="table-stack" data-label={visitRowLabels.dates}>
                 {hasVisitDateRange(visit) ? (
                   <>
@@ -159,7 +159,7 @@ export function VisitsManager({
                     <span className="muted">{formatShortDate(visit.disembark_date)}</span>
                   </>
                 ) : (
-                  <span className="muted">{t("planning.restrictedVisitDates")}</span>
+                  <span className="muted">—</span>
                 )}
               </div>
               <div className="table-stack" data-label={visitRowLabels.embarkDisembark}>
@@ -268,7 +268,7 @@ export function VisitsManager({
           visitToDelete
             ? t("planning.deleteVisitConfirm").replace(
                 "{name}",
-                visitToDelete.visitor_name ?? t("planning.privateVisit"),
+                visitToDelete.visitor_name ?? t("planning.visit"),
               )
             : ""
         }

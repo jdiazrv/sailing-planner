@@ -69,12 +69,12 @@ export function MemberWelcomeModal({
               ? "Este barco ya tiene temporada activa, asi que la guia empezara explicando el timeline, las escalas y las visitas."
               : canEditBoat
                 ? "Lo primero sera abrir el menu de Barco y terminar la configuracion de tu barco."
-                : "Todavia no hay temporada creada para este barco. La guia te mostrara el siguiente paso disponible segun tus permisos."
+                : "Todavia no hay temporada creada para este barco. La guia te llevara al siguiente paso disponible."
             : hasSeason
               ? "This boat already has an active season, so the guide will start by explaining the timeline, trip segments, and visits."
               : canEditBoat
                 ? "First, we will open the Boat menu and finish configuring your boat."
-                : "There is no season yet for this boat. The guide will show the next available step based on your permissions."}
+                : "There is no season yet for this boat. The guide will take you to the next available step."}
         </p>
         <div className="modal__footer">
           <button className="secondary-button" onClick={handleDismissTour} type="button">

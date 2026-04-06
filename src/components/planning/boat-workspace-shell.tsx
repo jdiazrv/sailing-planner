@@ -28,6 +28,7 @@ type SeasonRow = Database["public"]["Tables"]["seasons"]["Row"];
 type BoatWorkspaceShellProps = {
   boatId: string;
   canEdit: boolean;
+  canViewVisits: boolean;
   initialView: "trip" | "visits";
   queryFilter?: string;
   season: SeasonRow;
@@ -152,6 +153,7 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
   const {
     boatId,
     canEdit,
+    canViewVisits,
     initialView,
     season,
     seasonId,
@@ -179,8 +181,12 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
   );
   const [layoutMode, setLayoutMode] = useState<"split" | "table" | "map">("split");
   const [timeScale, setTimeScale] = useState<"season" | "month" | "week">("season");
-  const regularVisits = visits.filter((v) => v.status !== "blocked");
-  const blockedIntervals = visits.filter((v) => v.status === "blocked");
+  const regularVisits = visits.filter(
+    (visit) => visit.status !== "blocked" && hasVisitDateRange(visit),
+  );
+  const blockedIntervals = visits.filter(
+    (visit) => visit.status === "blocked" && hasVisitDateRange(visit),
+  );
   const conflicts = computeVisitConflicts(season, tripSegments, regularVisits);
   const filteredSegments = [...tripSegments]
     .sort(
@@ -292,13 +298,15 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
             >
               Viaje
             </button>
-            <button
-              className={`planning-chip${showPeopleLayer ? " is-active" : ""}`}
-              onClick={() => setShowPeopleLayer((value) => !value)}
-              type="button"
-            >
-              Visitas
-            </button>
+            {canViewVisits ? (
+              <button
+                className={`planning-chip${showPeopleLayer ? " is-active" : ""}`}
+                onClick={() => setShowPeopleLayer((value) => !value)}
+                type="button"
+              >
+                Visitas
+              </button>
+            ) : null}
             <button
               className={`planning-chip${showAvailabilityLayer ? " is-active" : ""}`}
               onClick={() => setShowAvailabilityLayer((value) => !value)}
@@ -349,11 +357,12 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
             season={season}
             selectedEntityId={selectedEntityId}
             showAvailability={showAvailabilityLayer}
-            showVisits={showPeopleLayer}
+            showVisits={canViewVisits && showPeopleLayer}
+            enableVisits={canViewVisits}
             subtitle=""
             title={t("planning.timelineTitle")}
             tripSegments={tripSegments}
-            visits={visits}
+            visits={regularVisits}
             visitsCollapsed={!showPeopleLayer}
             availabilityCollapsed={!showAvailabilityLayer}
             blockedCollapsed={!showBlockedLayer}
@@ -366,9 +375,11 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
       </section>
 
       <div className="workspace-view-switch" data-tour="boat-nav">
-        <button className="secondary-button" onClick={() => switchView(nextView)} type="button">
-          {viewToggleLabel}
-        </button>
+        {canViewVisits ? (
+          <button className="secondary-button" onClick={() => switchView(nextView)} type="button">
+            {viewToggleLabel}
+          </button>
+        ) : null}
         {canEdit ? (
           <button
             className="secondary-button"

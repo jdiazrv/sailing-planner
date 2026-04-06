@@ -30,6 +30,7 @@ type TimelineProps = {
   onTripSegmentEdit?: (segment: PortStopView) => void;
   selectedEntityId?: string | null;
   showVisits?: boolean;
+  enableVisits?: boolean;
   showAvailability?: boolean;
   zoom?: number;
   onZoomChange?: (zoom: number) => void;
@@ -146,6 +147,7 @@ export const Timeline = ({
   onTripSegmentEdit,
   selectedEntityId,
   showVisits = true,
+  enableVisits = true,
   showAvailability = true,
   zoom: controlledZoom,
   onZoomChange,
@@ -397,62 +399,69 @@ export const Timeline = ({
 
               {!onlyShowTripPlan && (
                 <>
-                  <TimelineGroup
-                    count={visits.length}
-                    onToggle={onToggleVisitsCollapsed}
-                    open={!visitsCollapsed}
-                    toggleLabels={groupLabels}
-                    title={t("planning.visitsList")}
-              >
-                {showVisits && !visitsCollapsed && visits.length === 0 ? (
-                  <TimelineLane label={t("planning.visit")}>
-                    <span />
-                  </TimelineLane>
-                ) : null}
-                {showVisits && !visitsCollapsed
-                  ? visits.map((visit) => (
-                      <TimelineLane key={visit.id} label={getShortName(visit.visitor_name)}>
-                        {hasVisitDateRange(visit) ? (
-                          <button
-                            aria-expanded={expandedVisitId === visit.id}
-                            aria-label={`${t("planning.visit")}: ${visit.visitor_name ?? t("planning.private")}`}
-                            className={`timeline-bar timeline-bar--btn is-${visit.status}${expandedVisitId === visit.id || selectedEntityId === visit.id ? " is-selected" : ""}`}
-                            onDoubleClick={() => onVisitClick?.(visit)}
-                            onPointerCancel={clearLongPress}
-                            onPointerDown={(event) =>
-                              beginLongPress(event, visit.id, () => onVisitClick?.(visit))
+                  {enableVisits ? (
+                    <TimelineGroup
+                      count={visits.length}
+                      onToggle={onToggleVisitsCollapsed}
+                      open={!visitsCollapsed}
+                      toggleLabels={groupLabels}
+                      title={t("planning.visitsList")}
+                    >
+                      {showVisits && !visitsCollapsed && visits.length === 0 ? (
+                        <TimelineLane label={t("planning.visit")}>
+                          <span />
+                        </TimelineLane>
+                      ) : null}
+                      {showVisits && !visitsCollapsed
+                        ? visits.map((visit) => {
+                            if (!hasVisitDateRange(visit)) {
+                              return null;
                             }
-                            onPointerEnter={(event) =>
-                              showTooltip(
-                                event,
-                                `${visit.visitor_name ?? t("planning.visit")} · ${t(`status.${visit.status}` as never)} · ${formatShortDate(visit.embark_date)} – ${formatShortDate(visit.disembark_date)}`,
-                              )
-                            }
-                            onPointerLeave={() => {
-                              hideTooltip();
-                              clearLongPress();
-                            }}
-                            onPointerMove={moveTooltip}
-                            onPointerUp={clearLongPress}
-                            onClick={() => {
-                              if (consumeLongPress(visit.id)) {
-                                return;
-                              }
-                              toggleVisit(visit.id);
-                              onVisitSelect?.(visit);
-                            }}
-                            style={toBarStyle(season, visit.embark_date, visit.disembark_date)}
-                            type="button"
-                          >
-                            <span>{visit.visitor_name ?? t("planning.visit")}</span>
-                          </button>
-                        ) : (
-                          <span className="muted">{t("planning.restrictedVisitDates")}</span>
-                        )}
-                      </TimelineLane>
-                    ))
-                  : null}
-              </TimelineGroup>
+
+                            return (
+                              <TimelineLane
+                                key={visit.id}
+                                label={visit.visitor_name ? getShortName(visit.visitor_name) : t("planning.visit")}
+                              >
+                                <button
+                                  aria-expanded={expandedVisitId === visit.id}
+                                  aria-label={`${t("planning.visit")}: ${visit.visitor_name ?? t("planning.visit")}`}
+                                  className={`timeline-bar timeline-bar--btn is-${visit.status}${expandedVisitId === visit.id || selectedEntityId === visit.id ? " is-selected" : ""}`}
+                                  onDoubleClick={() => onVisitClick?.(visit)}
+                                  onPointerCancel={clearLongPress}
+                                  onPointerDown={(event) =>
+                                    beginLongPress(event, visit.id, () => onVisitClick?.(visit))
+                                  }
+                                  onPointerEnter={(event) =>
+                                    showTooltip(
+                                      event,
+                                      `${visit.visitor_name ?? t("planning.visit")} · ${t(`status.${visit.status}` as never)} · ${formatShortDate(visit.embark_date)} – ${formatShortDate(visit.disembark_date)}`,
+                                    )
+                                  }
+                                  onPointerLeave={() => {
+                                    hideTooltip();
+                                    clearLongPress();
+                                  }}
+                                  onPointerMove={moveTooltip}
+                                  onPointerUp={clearLongPress}
+                                  onClick={() => {
+                                    if (consumeLongPress(visit.id)) {
+                                      return;
+                                    }
+                                    toggleVisit(visit.id);
+                                    onVisitSelect?.(visit);
+                                  }}
+                                  style={toBarStyle(season, visit.embark_date, visit.disembark_date)}
+                                  type="button"
+                                >
+                                  <span>{visit.visitor_name ?? t("planning.visit")}</span>
+                                </button>
+                              </TimelineLane>
+                            );
+                          })
+                        : null}
+                    </TimelineGroup>
+                  ) : null}
 
               <TimelineGroup
                 count={sortedAvailability.length}
@@ -503,7 +512,7 @@ export const Timeline = ({
               <span className={`status-pill is-${expandedVisit.status}`}>
                 {t(`status.${expandedVisit.status}` as never)}
               </span>
-              <strong>{expandedVisit.visitor_name ?? t("planning.privateVisit")}</strong>
+              <strong>{expandedVisit.visitor_name ?? t("planning.visit")}</strong>
             </div>
             <div className="visit-detail__actions">
               {onVisitClick && (
@@ -529,11 +538,11 @@ export const Timeline = ({
             </div>
           </div>
           <div className="visit-detail__body">
-            <span>
-              {hasVisitDateRange(expandedVisit)
-                ? `${formatShortDate(expandedVisit.embark_date)} – ${formatShortDate(expandedVisit.disembark_date)}`
-                : t("planning.restrictedVisitDates")}
-            </span>
+            {hasVisitDateRange(expandedVisit) ? (
+              <span>
+                {formatShortDate(expandedVisit.embark_date)} – {formatShortDate(expandedVisit.disembark_date)}
+              </span>
+            ) : null}
             {expandedVisit.embark_place_label && (
               <span>↑ {expandedVisit.embark_place_label}</span>
             )}

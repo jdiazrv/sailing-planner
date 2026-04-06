@@ -46,8 +46,15 @@ export default async function BoatWorkspacePage({
       workspace.permission?.can_manage_boat_users ||
       workspace.permission?.permission_level === "manager",
     );
+  const canViewVisits =
+    canEdit ||
+    workspace.viewer.isSuperuser ||
+    Boolean(
+      workspace.permission?.can_view_all_visits ||
+      workspace.permission?.can_view_only_own_visit,
+    );
   const canShare = canEdit || canManageUsers;
-  const currentView = view === "visits" ? "visits" : "trip";
+  const currentView = canViewVisits && view === "visits" ? "visits" : "trip";
   const effectiveOnboardingStep = resolveEffectiveOnboardingStep({
     onboardingPending: Boolean(workspace.viewer.onboardingPending),
     onboardingStep: workspace.viewer.onboardingStep,
@@ -62,7 +69,7 @@ export default async function BoatWorkspacePage({
           canEditBoat={canEdit}
           canManageUsers={canManageUsers}
           canShare={canShare}
-          canViewVisits
+          canViewVisits={canViewVisits}
           hasSeason={Boolean(workspace.selectedSeason)}
           hasSegments={workspace.tripSegments.length > 0}
           hasVisits={workspace.visits.filter((v) => v.status !== "blocked").length > 0}
@@ -86,6 +93,7 @@ export default async function BoatWorkspacePage({
         <BoatWorkspaceShell
           boatId={boatId}
           canEdit={canEdit}
+          canViewVisits={canViewVisits}
           initialView={currentView}
           onDeleteTripSegment={deleteTripSegment}
           onDeleteVisit={deleteVisit}
