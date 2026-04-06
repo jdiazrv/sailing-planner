@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { GuestOnboardingTour } from "@/components/guest/guest-onboarding-tour";
 import { MemberWelcomeModal } from "@/components/guest/member-welcome-modal";
+import { getStartTourStep } from "@/lib/onboarding";
 import type { OnboardingStep } from "@/types/database";
 
 type MemberFirstAccessProps = {
@@ -15,6 +16,7 @@ type MemberFirstAccessProps = {
   boatName: string;
   onboardingStep?: OnboardingStep | null;
   viewerId: string;
+  hasSeason?: boolean;
   hasSegments?: boolean;
   hasVisits?: boolean;
 };
@@ -27,6 +29,7 @@ export function MemberFirstAccess({
   boatName,
   onboardingStep,
   viewerId,
+  hasSeason = false,
   hasSegments = false,
   hasVisits = false,
 }: MemberFirstAccessProps) {
@@ -52,15 +55,17 @@ export function MemberFirstAccess({
   };
 
   const startTour = async () => {
+    const nextStep = getStartTourStep({ canEditBoat, hasSeason });
+
     await fetch("/api/onboarding/progress", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ step: "configure_boat" }),
+      body: JSON.stringify({ step: nextStep }),
     });
 
-    setCurrentStep("configure_boat");
+    setCurrentStep(nextStep);
   };
 
   const tourEnabled = Boolean(currentStep && currentStep !== "welcome");
@@ -70,6 +75,8 @@ export function MemberFirstAccess({
       {currentStep === "welcome" ? (
         <MemberWelcomeModal
           boatName={boatName}
+          canEditBoat={canEditBoat}
+          hasSeason={hasSeason}
           onDismissTour={() => {
             void dismissTour();
           }}

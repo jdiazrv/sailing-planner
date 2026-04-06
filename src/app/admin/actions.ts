@@ -18,6 +18,7 @@ import {
   hashSeasonAccessToken,
   type SeasonAccessWindow,
 } from "@/lib/season-access";
+import { getStartTourStep } from "@/lib/onboarding";
 import type { PermissionLevel, PreferredLanguage } from "@/types/database";
 
 const asOptionalString = (value: FormDataEntryValue | null) => {
@@ -355,6 +356,43 @@ export async function saveUserProfile(formData: FormData) {
 
   await assertManageableUser(db, user.id, manageableBoatIds, userId);
 
+  const { data: permissionRows, error: permissionRowsError } = await db
+    .from("user_boat_permissions")
+    .select("boat_id, permission_level, can_edit, created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  throwIfError(permissionRowsError);
+
+  const primaryPermission =
+    ((permissionRows ?? []) as Array<{
+      boat_id: string;
+      permission_level: PermissionLevel;
+      can_edit: boolean;
+      created_at: string;
+    }>)[0] ?? null;
+  const primaryBoatId = primaryPermission?.boat_id ?? null;
+
+  let hasSeason = false;
+  if (primaryBoatId) {
+    const { data: seasonRows, error: seasonRowsError } = await db
+      .from("seasons")
+      .select("id")
+      .eq("boat_id", primaryBoatId)
+      .limit(1);
+    throwIfError(seasonRowsError);
+    hasSeason = (seasonRows?.length ?? 0) > 0;
+  }
+
+  const onboardingStep = onboardingPending
+    ? getStartTourStep({
+        hasAssignedBoat: Boolean(primaryBoatId),
+        canEditBoat: Boolean(
+          primaryPermission?.can_edit || primaryPermission?.permission_level === "manager",
+        ),
+        hasSeason,
+      })
+    : null;
+
   const { data: existingProfile, error: existingProfileError } = await adminDb
     .from("profiles")
     .select("onboarding_step")
@@ -372,9 +410,7 @@ export async function saveUserProfile(formData: FormData) {
     ...(viewer.isSuperuser
       ? {
           onboarding_pending: onboardingPending,
-          onboarding_step: onboardingPending
-            ? existingProfile?.onboarding_step ?? "welcome"
-            : null,
+          onboarding_step: onboardingPending ? onboardingStep ?? existingProfile?.onboarding_step ?? "welcome" : null,
         }
       : {}),
   };
@@ -385,7 +421,7 @@ export async function saveUserProfile(formData: FormData) {
     .eq("id", userId);
   throwIfError(error);
 
-  let primaryBoatId: string | null = null;
+  let resolvedPrimaryBoatId: string | null = primaryBoatId;
 
   if (!isSuperuser) {
     const { data: permissions, error: permissionsError } = await db
@@ -397,7 +433,7 @@ export async function saveUserProfile(formData: FormData) {
 
     const permissionRows = (permissions ?? []) as { boat_id: string; created_at: string }[];
     const [firstPermission, ...extraPermissions] = permissionRows;
-    primaryBoatId = firstPermission?.boat_id ?? null;
+    resolvedPrimaryBoatId = firstPermission?.boat_id ?? null;
 
     if (firstPermission && extraPermissions.length > 0) {
       const { error: deleteError } = await db
@@ -409,7 +445,7 @@ export async function saveUserProfile(formData: FormData) {
     }
   }
 
-  refreshAdminRoutes(primaryBoatId);
+  refreshAdminRoutes(resolvedPrimaryBoatId);
 }
 
 export async function saveUserBoatPermission(formData: FormData) {

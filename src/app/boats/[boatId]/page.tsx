@@ -5,6 +5,7 @@ import { SeasonBar } from "@/components/planning/season-bar";
 import { getBoatWorkspace } from "@/lib/boat-data";
 import { t } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n-server";
+import { resolveEffectiveOnboardingStep } from "@/lib/onboarding";
 
 import {
   deleteSeason,
@@ -47,13 +48,11 @@ export default async function BoatWorkspacePage({
     );
   const canShare = canEdit || canManageUsers;
   const currentView = view === "visits" ? "visits" : "trip";
-  const effectiveOnboardingStep = workspace.viewer.onboardingPending
-    ? workspace.selectedSeason
-      ? workspace.viewer.onboardingStep === "create_season" || !workspace.viewer.onboardingStep
-        ? "full_tour"
-        : workspace.viewer.onboardingStep
-      : workspace.viewer.onboardingStep ?? "welcome"
-    : workspace.viewer.onboardingStep;
+  const effectiveOnboardingStep = resolveEffectiveOnboardingStep({
+    onboardingPending: Boolean(workspace.viewer.onboardingPending),
+    onboardingStep: workspace.viewer.onboardingStep,
+    hasSeason: Boolean(workspace.selectedSeason),
+  });
 
   return (
     <>
@@ -64,6 +63,7 @@ export default async function BoatWorkspacePage({
           canManageUsers={canManageUsers}
           canShare={canShare}
           canViewVisits
+          hasSeason={Boolean(workspace.selectedSeason)}
           hasSegments={workspace.tripSegments.length > 0}
           hasVisits={workspace.visits.filter((v) => v.status !== "blocked").length > 0}
           onboardingStep={effectiveOnboardingStep}
