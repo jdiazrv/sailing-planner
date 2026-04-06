@@ -113,11 +113,6 @@ export default async function BoatLayout({
                 {t(locale, "boatLayout.editUsers")}
               </Link>
             )}
-            {isSuperuser && (
-              <Link className="secondary-button sidebar-hidden" href="/dashboard?change=1">
-                {t(locale, "boatLayout.switchBoat")}
-              </Link>
-            )}
             <Link className="secondary-button sidebar-hidden" href="/shared">
               {t(locale, "boatLayout.sharedTimelines")}
             </Link>

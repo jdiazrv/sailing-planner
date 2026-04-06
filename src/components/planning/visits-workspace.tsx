@@ -92,7 +92,9 @@ export function VisitsWorkspace({
       >
         <Timeline
           onVisitClick={canEdit ? setTimelineEditVisit : undefined}
-          onVisitSelect={(visit) => setSelectedEntityId(visit.id)}
+          onVisitSelect={(visit) =>
+            setSelectedEntityId((current) => (current === visit.id ? null : visit.id))
+          }
           season={season}
           selectedEntityId={selectedEntityId}
           subtitle=""

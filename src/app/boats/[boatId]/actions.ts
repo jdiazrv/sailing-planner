@@ -17,6 +17,7 @@ import type {
   LocationType,
   PlaceSource,
   PortStopStatus,
+  VisitPanelDisplayMode,
   VisitStatus,
 } from "@/types/database";
 
@@ -57,12 +58,68 @@ const parseOptionalYear = (value: FormDataEntryValue | null) => {
   return parsed;
 };
 
-const getBoatImageExtension = (file: File) => {
+const getImageExtension = (file: File) => {
   if (file.type === "image/png") return "png";
   if (file.type === "image/webp") return "webp";
   if (file.type === "image/gif") return "gif";
   if (file.type === "image/svg+xml") return "svg";
   return "jpg";
+};
+
+const VISIT_IMAGE_MAX_WIDTH = 150;
+const VISIT_IMAGE_MAX_HEIGHT = 200;
+
+const normalizeVisitUploadImage = async (file: File) => {
+  try {
+    const sharp = (await import("sharp")).default;
+    const inputBuffer = Buffer.from(await file.arrayBuffer());
+    const outputBuffer = await sharp(inputBuffer)
+      .rotate()
+      .resize({
+        width: VISIT_IMAGE_MAX_WIDTH,
+        height: VISIT_IMAGE_MAX_HEIGHT,
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .webp({ quality: 90 })
+      .toBuffer();
+
+    return {
+      body: outputBuffer,
+      contentType: "image/webp",
+      extension: "webp",
+    };
+  } catch {
+    return {
+      body: file,
+      contentType: file.type || undefined,
+      extension: getImageExtension(file),
+    };
+  }
+};
+
+const removeStoragePaths = async (
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  bucket: string,
+  paths: Array<string | null | undefined>,
+) => {
+  const existingPaths = paths.filter(
+    (path): path is string => typeof path === "string" && path.length > 0,
+  );
+
+  if (!existingPaths.length) {
+    return;
+  }
+
+  const { error } = await supabase.storage.from(bucket).remove(existingPaths);
+  throwIfError(error);
+};
+
+const resolveVisitPanelDisplayMode = (
+  value: FormDataEntryValue | null,
+): VisitPanelDisplayMode => {
+  const mode = value?.toString();
+  return mode === "text" || mode === "image" || mode === "both" ? mode : "both";
 };
 
 const throwIfError = (error: { message?: string } | null) => {
@@ -163,14 +220,27 @@ export async function saveSeason(formData: FormData) {
 
 export async function deleteSeason(formData: FormData) {
   const boatId = formData.get("boat_id")?.toString() ?? "";
-  const { db } = await requireBoatEditor(boatId);
+  const { supabase, db } = await requireBoatEditor(boatId);
   const seasonId = formData.get("season_id")?.toString() ?? "";
+
+  const { data: visitImages, error: visitImagesError } = await db
+    .from("visits")
+    .select("image_path")
+    .eq("season_id", seasonId)
+    .not("image_path", "is", null);
+  throwIfError(visitImagesError);
 
   const { error: deleteVisitsError } = await db
     .from("visits")
     .delete()
     .eq("season_id", seasonId);
   throwIfError(deleteVisitsError);
+
+  await removeStoragePaths(
+    supabase,
+    "visit-images",
+    ((visitImages ?? []) as Array<{ image_path: string | null }>).map((visit) => visit.image_path),
+  );
 
   const { error: deleteSegmentsError } = await db
     .from("port_stops")
@@ -319,10 +389,24 @@ export async function saveVisit(formData: FormData) {
   const visitId = asOptionalString(formData.get("visit_id"));
   const seasonId = formData.get("season_id")?.toString() ?? "";
   const privateNotes = asOptionalString(formData.get("private_notes"));
+  const visualMode = formData.get("visit_visual_mode")?.toString() ?? "none";
+  const imageFile = formData.get("image");
+  const clearImage = formData.get("clear_image")?.toString() === "1";
+
+  const { data: existingVisit, error: existingVisitError } = visitId
+    ? await db
+        .from("visits")
+        .select("image_path")
+        .eq("id", visitId)
+        .maybeSingle()
+    : { data: null, error: null };
+  throwIfError(existingVisitError);
 
   const basePayload = {
     season_id: seasonId,
     visitor_name: formData.get("visitor_name")?.toString() ?? "",
+    badge_emoji:
+      visualMode === "emoji" ? asOptionalString(formData.get("badge_emoji")) : null,
     embark_date: formData.get("embark_date")?.toString() ?? "",
     disembark_date: formData.get("disembark_date")?.toString() ?? "",
     embark_place_label: asOptionalString(formData.get("embark_place_label")),
@@ -376,6 +460,40 @@ export async function saveVisit(formData: FormData) {
   }
 
   if (resolvedId) {
+    const hasNewImage = imageFile instanceof File && imageFile.size > 0;
+    const shouldUseImage = visualMode === "image";
+    const shouldRemoveExistingImage =
+      Boolean(existingVisit?.image_path) && (clearImage || hasNewImage || !shouldUseImage);
+
+    if (shouldRemoveExistingImage) {
+      await removeStoragePaths(supabase, "visit-images", [existingVisit?.image_path]);
+    }
+
+    if (shouldUseImage && hasNewImage) {
+      const normalizedImage = await normalizeVisitUploadImage(imageFile);
+      const extension = normalizedImage.extension;
+      const nextPath = `${boatId}/${resolvedId}/badge-${Date.now()}.${extension}`;
+
+      const { error: uploadError } = await supabase.storage.from("visit-images").upload(nextPath, normalizedImage.body, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: normalizedImage.contentType,
+      });
+      throwIfError(uploadError);
+
+      const { error: imageUpdateError } = await db
+        .from("visits")
+        .update({ image_path: nextPath })
+        .eq("id", resolvedId);
+      throwIfError(imageUpdateError);
+    } else if (!shouldUseImage || clearImage) {
+      const { error: imageResetError } = await db
+        .from("visits")
+        .update({ image_path: null })
+        .eq("id", resolvedId);
+      throwIfError(imageResetError);
+    }
+
     if (privateNotes) {
       const { error } = await db.from("visit_private_notes").upsert({
         visit_id: resolvedId,
@@ -396,11 +514,19 @@ export async function saveVisit(formData: FormData) {
 
 export async function deleteVisit(formData: FormData) {
   const boatId = formData.get("boat_id")?.toString() ?? "";
-  const { db } = await requireBoatEditor(boatId);
+  const { supabase, db } = await requireBoatEditor(boatId);
   const visitId = formData.get("visit_id")?.toString() ?? "";
+
+  const { data: visit, error: visitError } = await db
+    .from("visits")
+    .select("image_path")
+    .eq("id", visitId)
+    .maybeSingle();
+  throwIfError(visitError);
 
   const { error } = await db.from("visits").delete().eq("id", visitId);
   throwIfError(error);
+  await removeStoragePaths(supabase, "visit-images", [visit?.image_path]);
   refreshBoatRoutes(boatId);
 }
 
@@ -429,6 +555,9 @@ export async function saveBoatProfile(formData: FormData) {
     year_built: parseOptionalYear(formData.get("year_built")),
     home_port: asOptionalString(formData.get("home_port")),
     description: asOptionalString(formData.get("description")),
+    visit_panel_display_mode: resolveVisitPanelDisplayMode(
+      formData.get("visit_panel_display_mode"),
+    ),
   };
 
   const { error } = await db.from("boats").update(payload).eq("id", boatId);
@@ -451,7 +580,7 @@ export async function uploadBoatProfileImage(formData: FormData) {
     .eq("id", boatId)
     .single();
 
-  const extension = getBoatImageExtension(file);
+  const extension = getImageExtension(file);
   const nextPath = `${boatId}/cover-${Date.now()}.${extension}`;
 
   const { error: uploadError } = await supabase.storage.from("boat-images").upload(nextPath, file, {

@@ -1,7 +1,11 @@
 "use client";
 
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-
+import {
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { useI18n } from "@/components/i18n/provider";
 import {
   computeAvailability,
@@ -11,6 +15,7 @@ import {
   hasVisitDateRange,
   type AvailabilityBlock,
   type PortStopView,
+  type VisitPanelDisplayMode,
   type VisitView,
 } from "@/lib/planning";
 import { getDocumentLocale, getIntlLocale } from "@/lib/i18n";
@@ -41,6 +46,7 @@ type TimelineProps = {
   onToggleAvailabilityCollapsed?: () => void;
   onToggleBlockedCollapsed?: () => void;
   onlyShowTripPlan?: boolean;
+  visitPanelDisplayMode?: VisitPanelDisplayMode;
 };
 
 type TimelineTooltipState = {
@@ -136,6 +142,86 @@ const getStatusGlyph = (status: string) => {
   }
 };
 
+const renderVisitBadge = (
+  visit: VisitView,
+  options?: {
+    interactive?: boolean;
+    onOpenImage?: (visit: VisitView) => void;
+  },
+) => {
+  const className = `timeline-visit-badge is-${visit.status}`;
+
+  if (visit.image_url) {
+    if (options?.interactive && options.onOpenImage) {
+      return (
+        <button
+          aria-label={visit.visitor_name ?? "Visit image"}
+          className={`${className} timeline-visit-badge-button`}
+          onClick={(event: ReactMouseEvent<HTMLButtonElement>) => {
+            event.stopPropagation();
+            options.onOpenImage?.(visit);
+          }}
+          type="button"
+        >
+          <img alt="" src={visit.image_url} />
+        </button>
+      );
+    }
+
+    return (
+      <span className={className} aria-hidden="true">
+        <img alt="" src={visit.image_url} />
+      </span>
+    );
+  }
+
+  if (visit.badge_emoji) {
+    return (
+      <span className={className} aria-hidden="true">
+        <span>{visit.badge_emoji}</span>
+      </span>
+    );
+  }
+
+  return null;
+};
+
+const renderVisitIdentity = (
+  visit: VisitView,
+  fallbackLabel: string,
+  mode: VisitPanelDisplayMode,
+  options?: {
+    interactiveBadge?: boolean;
+    onOpenImage?: (visit: VisitView) => void;
+  },
+) => {
+  const badge = renderVisitBadge(visit, {
+    interactive: options?.interactiveBadge,
+    onOpenImage: options?.onOpenImage,
+  });
+  const label = visit.visitor_name ?? fallbackLabel;
+  const hasBadge = Boolean(badge);
+
+  if (mode === "image") {
+    if (hasBadge) {
+      return <span className="timeline-visit-identity timeline-visit-identity--image-only">{badge}</span>;
+    }
+
+    return <span className="timeline-visit-identity">{label}</span>;
+  }
+
+  if (mode === "both" && hasBadge) {
+    return (
+      <span className="timeline-visit-identity">
+        {badge}
+        <span>{label}</span>
+      </span>
+    );
+  }
+
+  return <span className="timeline-visit-identity">{label}</span>;
+};
+
 export const Timeline = ({
   season,
   tripSegments,
@@ -156,6 +242,7 @@ export const Timeline = ({
   onToggleVisitsCollapsed,
   onToggleAvailabilityCollapsed,
   onlyShowTripPlan = false,
+  visitPanelDisplayMode = "both",
 }: TimelineProps) => {
   const { t } = useI18n();
   const locale = getDocumentLocale();
@@ -177,6 +264,7 @@ export const Timeline = ({
   );
   const [internalZoom, setInternalZoom] = useState(1);
   const [tooltip, setTooltip] = useState<TimelineTooltipState>(null);
+  const [previewVisit, setPreviewVisit] = useState<VisitView | null>(null);
   const tooltipTimeoutRef = useRef<number | null>(null);
   const longPressTimeoutRef = useRef<number | null>(null);
   const longPressEntityRef = useRef<string | null>(null);
@@ -421,7 +509,18 @@ export const Timeline = ({
                             return (
                               <TimelineLane
                                 key={visit.id}
-                                label={visit.visitor_name ? getShortName(visit.visitor_name) : t("planning.visit")}
+                                label={renderVisitIdentity(
+                                  {
+                                    ...visit,
+                                    visitor_name: visit.visitor_name ? getShortName(visit.visitor_name) : visit.visitor_name,
+                                  },
+                                  t("planning.visit"),
+                                  visitPanelDisplayMode,
+                                  {
+                                    interactiveBadge: true,
+                                    onOpenImage: setPreviewVisit,
+                                  },
+                                )}
                               >
                                 <button
                                   aria-expanded={expandedVisitId === visit.id}
@@ -454,7 +553,7 @@ export const Timeline = ({
                                   style={toBarStyle(season, visit.embark_date, visit.disembark_date)}
                                   type="button"
                                 >
-                                  <span>{visit.visitor_name ?? t("planning.visit")}</span>
+                                  {renderVisitIdentity(visit, t("planning.visit"), visitPanelDisplayMode)}
                                 </button>
                               </TimelineLane>
                             );
@@ -484,7 +583,11 @@ export const Timeline = ({
                         }
                         onPointerLeave={hideTooltip}
                         onPointerMove={moveTooltip}
-                        onClick={() => setSelectedAvailabilityIndex(index)}
+                        onClick={() =>
+                          setSelectedAvailabilityIndex((current) =>
+                            current === index ? null : index,
+                          )
+                        }
                         style={toBarStyle(season, block.start, block.end)}
                         type="button"
                       >
@@ -512,7 +615,10 @@ export const Timeline = ({
               <span className={`status-pill is-${expandedVisit.status}`}>
                 {t(`status.${expandedVisit.status}` as never)}
               </span>
-              <strong>{expandedVisit.visitor_name ?? t("planning.visit")}</strong>
+              {renderVisitIdentity(expandedVisit, t("planning.visit"), "both", {
+                interactiveBadge: true,
+                onOpenImage: setPreviewVisit,
+              })}
             </div>
             <div className="visit-detail__actions">
               {onVisitClick && (
@@ -589,6 +695,31 @@ export const Timeline = ({
           {tooltip.content}
         </div>
       ) : null}
+
+      {previewVisit?.image_url ? (
+        <div
+          className="image-preview-overlay"
+          onClick={() => setPreviewVisit(null)}
+          role="presentation"
+        >
+          <div className="image-preview-dialog" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
+            <div className="image-preview-dialog__header">
+              <strong>{previewVisit.visitor_name ?? t("planning.visit")}</strong>
+              <button
+                aria-label="Cerrar"
+                className="modal__close"
+                onClick={() => setPreviewVisit(null)}
+                type="button"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="image-preview-dialog__body">
+              <img alt={previewVisit.visitor_name ?? t("planning.visit")} src={previewVisit.image_url} />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </article>
   );
 };
@@ -599,7 +730,7 @@ const TimelineLane = ({
   availability = false,
   highlight = false,
 }: {
-  label?: string;
+  label?: React.ReactNode;
   children: React.ReactNode;
   availability?: boolean;
   highlight?: boolean;

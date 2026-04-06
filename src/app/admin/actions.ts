@@ -19,7 +19,11 @@ import {
   type SeasonAccessWindow,
 } from "@/lib/season-access";
 import { getStartTourStep } from "@/lib/onboarding";
-import type { PermissionLevel, PreferredLanguage } from "@/types/database";
+import type {
+  PermissionLevel,
+  PreferredLanguage,
+  VisitPanelDisplayMode,
+} from "@/types/database";
 
 const asOptionalString = (value: FormDataEntryValue | null) => {
   const normalized = value?.toString().trim();
@@ -46,6 +50,30 @@ const getBoatImageExtension = (file: File) => {
   if (file.type === "image/gif") return "gif";
   if (file.type === "image/svg+xml") return "svg";
   return "jpg";
+};
+
+const resolveVisitPanelDisplayMode = (
+  value: FormDataEntryValue | null,
+): VisitPanelDisplayMode => {
+  const mode = value?.toString();
+  return mode === "text" || mode === "image" || mode === "both" ? mode : "both";
+};
+
+const removeStoragePaths = async (
+  client: any,
+  bucket: string,
+  paths: Array<string | null | undefined>,
+) => {
+  const existingPaths = paths.filter(
+    (path): path is string => typeof path === "string" && path.length > 0,
+  );
+
+  if (!existingPaths.length) {
+    return;
+  }
+
+  const { error } = await client.storage.from(bucket).remove(existingPaths);
+  throwIfError(error);
 };
 
 const toBoolean = (value: FormDataEntryValue | null) => value?.toString() === "on";
@@ -167,6 +195,9 @@ export async function saveBoat(formData: FormData) {
     year_built: parseOptionalYear(formData.get("year_built")),
     home_port: asOptionalString(formData.get("home_port")),
     notes: asOptionalString(formData.get("notes")),
+    visit_panel_display_mode: resolveVisitPanelDisplayMode(
+      formData.get("visit_panel_display_mode"),
+    ),
     is_active: toBoolean(formData.get("is_active")),
   };
 
@@ -207,6 +238,22 @@ export async function deleteBoat(formData: FormData) {
     .select("image_path")
     .eq("id", boatId)
     .single();
+
+  const { data: seasonRows, error: seasonRowsError } = await db
+    .from("seasons")
+    .select("id")
+    .eq("boat_id", boatId);
+  throwIfError(seasonRowsError);
+
+  const seasonIds = ((seasonRows ?? []) as Array<{ id: string }>).map((season) => season.id);
+  const { data: visitRows, error: visitRowsError } = seasonIds.length
+    ? await db
+        .from("visits")
+        .select("image_path")
+        .in("season_id", seasonIds)
+        .not("image_path", "is", null)
+    : { data: [], error: null };
+  throwIfError(visitRowsError);
 
   const { data: assignedPermissions, error: assignedPermissionsError } = await db
     .from("user_boat_permissions")
@@ -274,6 +321,12 @@ export async function deleteBoat(formData: FormData) {
     const { error } = await supabase.storage.from("boat-images").remove([boat.image_path]);
     throwIfError(error);
   }
+
+  await removeStoragePaths(
+    admin ?? supabase,
+    "visit-images",
+    ((visitRows ?? []) as Array<{ image_path: string | null }>).map((visit) => visit.image_path),
+  );
 
   const { error } = await db.from("boats").delete().eq("id", boatId);
   throwIfError(error);

@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { useI18n } from "@/components/i18n/provider";
@@ -28,6 +28,7 @@ export const BoatSelector = ({
 }: BoatSelectorProps) => {
   const { locale, t } = useI18n();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const [isMobile, setIsMobile] = useState(false);
   const [isExpanded, setIsExpanded] = useState(
@@ -84,11 +85,31 @@ export const BoatSelector = ({
       return `/dashboard?boat=${targetBoatId}`;
     }
 
+    const nextParams = new URLSearchParams(searchParams.toString());
+
     if (pathname.includes("/share")) {
-      return `/boats/${targetBoatId}/share`;
+      const suffix = nextParams.toString();
+      return suffix
+        ? `/boats/${targetBoatId}/share?${suffix}`
+        : `/boats/${targetBoatId}/share`;
     }
 
-    return `/boats/${targetBoatId}/trip`;
+    if (pathname.includes("/summary")) {
+      const suffix = nextParams.toString();
+      return suffix
+        ? `/boats/${targetBoatId}/summary?${suffix}`
+        : `/boats/${targetBoatId}/summary`;
+    }
+
+    const currentView = nextParams.get("view");
+    if (currentView !== "trip" && currentView !== "visits") {
+      nextParams.set("view", "trip");
+    }
+
+    const suffix = nextParams.toString();
+    return suffix
+      ? `/boats/${targetBoatId}?${suffix}`
+      : `/boats/${targetBoatId}`;
   };
 
   const selectionSummary =

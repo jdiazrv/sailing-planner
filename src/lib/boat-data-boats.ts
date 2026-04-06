@@ -22,6 +22,7 @@ import {
   getAccessibleBoatBase,
   getBoatAggregateData,
   getBoatImageUrl,
+  getVisitImageUrl,
   mapBoatRowToSummary,
 } from "@/lib/boat-data-core";
 import { requireViewer } from "@/lib/boat-data-viewer";
@@ -125,7 +126,12 @@ const loadSeasonWorkspaceData = async (
 
   return {
     tripSegments: (tripResult.data ?? []) as PortStopView[],
-    visits: (visitResult.data ?? []) as VisitView[],
+    visits: await Promise.all(
+      ((visitResult.data ?? []) as VisitView[]).map(async (visit) => ({
+        ...visit,
+        image_url: await getVisitImageUrl(visit.image_path),
+      })),
+    ),
   };
 };
 
@@ -534,7 +540,7 @@ export const getSeasonGuestWorkspace = async (
         ? db
             .from("visits")
             .select(
-              "id, season_id, owner_user_id, visitor_name, embark_date, disembark_date, embark_place_label, embark_latitude, embark_longitude, disembark_place_label, disembark_latitude, disembark_longitude, status, public_notes, created_at, updated_at",
+              "id, season_id, owner_user_id, visitor_name, badge_emoji, image_path, embark_date, disembark_date, embark_place_label, embark_latitude, embark_longitude, disembark_place_label, disembark_latitude, disembark_longitude, status, public_notes, created_at, updated_at",
             )
             .eq("season_id", session.season.id)
             .order("embark_date")
@@ -555,11 +561,14 @@ export const getSeasonGuestWorkspace = async (
     private_notes: null,
   })) as PortStopView[];
 
-  const visits = ((visitsData ?? []) as any[]).map((visit) => ({
-    ...visit,
-    private_notes: null,
-    blocks_availability: visit.status === "confirmed",
-  })) as VisitView[];
+  const visits = await Promise.all(
+    ((visitsData ?? []) as any[]).map(async (visit) => ({
+      ...visit,
+      private_notes: null,
+      blocks_availability: visit.status === "confirmed",
+      image_url: await getVisitImageUrl(visit.image_path),
+    })),
+  ) as VisitView[];
 
   return {
     viewer: {

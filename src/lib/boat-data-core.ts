@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/types/database";
 import type {
   BoatRow,
@@ -46,6 +47,29 @@ export const getBoatImageUrl = (
   return updatedAt
     ? `${data.publicUrl}?v=${encodeURIComponent(updatedAt)}`
     : data.publicUrl;
+};
+
+export const getVisitImageUrl = async (
+  imagePath: string | null | undefined,
+) => {
+  if (!imagePath) {
+    return null;
+  }
+
+  const admin = createAdminClient();
+  if (!admin) {
+    return null;
+  }
+
+  const { data, error } = await admin.storage
+    .from("visit-images")
+    .createSignedUrl(imagePath, 60 * 60 * 24 * 7);
+
+  if (error) {
+    return null;
+  }
+
+  return data?.signedUrl ?? null;
 };
 
 export const mapBoatRowToSummary = (

@@ -1,7 +1,7 @@
 "use client";
 
+import { useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { type ReactNode } from "react";
 import Link from "next/link";
 
 import { LogoutButton } from "@/components/auth/logout-button";
@@ -86,13 +86,6 @@ const IconHelp = () => (
   </svg>
 );
 
-const IconSwap = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M7 16V4m0 0L3 8m4-4 4 4" />
-    <path d="M17 8v12m0 0 4-4m-4 4-4-4" />
-  </svg>
-);
-
 const IconLogout = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
     <path d="M16 17l5-5-5-5" />
@@ -131,6 +124,7 @@ function NavItem({
   label,
   icon,
   active,
+  onClick,
   tourId,
   target,
   rel,
@@ -139,6 +133,7 @@ function NavItem({
   label: string;
   icon: ReactNode;
   active?: boolean;
+  onClick?: () => void;
   tourId?: string;
   target?: string;
   rel?: string;
@@ -149,6 +144,7 @@ function NavItem({
       data-label={label}
       data-tour={tourId}
       href={href}
+      onClick={onClick}
       rel={rel}
       target={target}
     >
@@ -199,6 +195,7 @@ export function AppSidebarNav({
   settingsSlot,
 }: AppSidebarNavProps) {
   const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
   const es = locale === "es";
   const signOutLabel = es ? "Salir" : "Sign out";
   const currentUserHref = currentUserId
@@ -208,8 +205,50 @@ export function AppSidebarNav({
   const isActive = (href: string) =>
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
 
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+    }
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileOpen]);
+
   return (
-    <aside className="app-sidebar">
+    <>
+      <button
+        aria-controls="app-sidebar"
+        aria-expanded={mobileOpen}
+        aria-label={es ? "Abrir menú" : "Open menu"}
+        className="app-sidebar-mobile-toggle"
+        onClick={() => setMobileOpen(true)}
+        type="button"
+      >
+        <span />
+        <span />
+        <span />
+      </button>
+
+      {mobileOpen ? (
+        <button
+          aria-label={es ? "Cerrar menú" : "Close menu"}
+          className="app-sidebar-backdrop"
+          onClick={() => setMobileOpen(false)}
+          type="button"
+        />
+      ) : null}
+
+    <aside className={`app-sidebar${mobileOpen ? " is-mobile-open" : ""}`} id="app-sidebar">
       {/* Brand */}
       <Link className="app-sidebar__brand" href="/dashboard">
         <SidebarLogoMark />
@@ -219,6 +258,17 @@ export function AppSidebarNav({
             <span className="app-sidebar__user-name">{userName}</span>
           ) : null}
         </span>
+        <button
+          aria-label={es ? "Cerrar menú" : "Close menu"}
+          className="app-sidebar__close"
+          onClick={(event) => {
+            event.preventDefault();
+            setMobileOpen(false);
+          }}
+          type="button"
+        >
+          ×
+        </button>
       </Link>
 
       {/* Main nav */}
@@ -243,7 +293,15 @@ export function AppSidebarNav({
               label={es ? "Plan" : "Plan"}
               icon={<IconRoute />}
               active={pathname === `/boats/${boatId}`}
+              onClick={() => setMobileOpen(false)}
               tourId="sidebar-plan"
+            />
+            <NavItem
+              href={`/boats/${boatId}/summary`}
+              label={es ? "Resumen" : "Summary"}
+              icon={<IconChart />}
+              active={isActive(`/boats/${boatId}/summary`)}
+              onClick={() => setMobileOpen(false)}
             />
             {canShare && (
               <NavItem
@@ -251,6 +309,7 @@ export function AppSidebarNav({
                 label={es ? "Invitar" : "Invite"}
                 icon={<IconLink />}
                 active={isActive(`/boats/${boatId}/share`)}
+                onClick={() => setMobileOpen(false)}
                 tourId="sidebar-invite"
               />
             )}
@@ -272,6 +331,7 @@ export function AppSidebarNav({
                 label={es ? "Barcos" : "Boats"}
                 icon={<IconBoat />}
                 active={isActive("/admin/boats")}
+                onClick={() => setMobileOpen(false)}
               />
             )}
             <NavItem
@@ -279,6 +339,7 @@ export function AppSidebarNav({
               label={es ? "Miembros" : "Members"}
               icon={<IconUsers />}
               active={isActive("/admin/users")}
+              onClick={() => setMobileOpen(false)}
               tourId="sidebar-users"
             />
             {isSuperuser && (
@@ -287,6 +348,7 @@ export function AppSidebarNav({
                 label={es ? "Métricas" : "Metrics"}
                 icon={<IconChart />}
                 active={isActive("/admin/metrics")}
+                onClick={() => setMobileOpen(false)}
               />
             )}
           </>
@@ -298,24 +360,17 @@ export function AppSidebarNav({
           label={es ? "Compartidos" : "Shared"}
           icon={<IconCompare />}
           active={isActive("/shared")}
+          onClick={() => setMobileOpen(false)}
         />
 
         <NavItem
           href="/manual"
           label={es ? "Manual" : "Manual"}
           icon={<IconHelp />}
+          onClick={() => setMobileOpen(false)}
           rel="noreferrer"
           target="_blank"
         />
-
-        {/* Switch boat — superuser */}
-        {isSuperuser && boatId && (
-          <NavItem
-            href="/dashboard?change=1"
-            label={es ? "Cambiar" : "Switch"}
-            icon={<IconSwap />}
-          />
-        )}
 
         {currentUserHref && (isSuperuser || canManageUsers) ? (
           <NavItem
@@ -323,6 +378,7 @@ export function AppSidebarNav({
             label={es ? "Mi cuenta" : "My account"}
             icon={<IconProfile />}
             active={pathname === "/admin/users" && currentUserHref.includes("section=security")}
+            onClick={() => setMobileOpen(false)}
             tourId="sidebar-user-settings"
           />
         ) : null}
@@ -345,5 +401,6 @@ export function AppSidebarNav({
         </LogoutButton>
       </div>
     </aside>
+    </>
   );
 }

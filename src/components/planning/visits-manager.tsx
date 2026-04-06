@@ -8,14 +8,86 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog } from "@/components/ui/dialog";
 import { PlaceAutocompleteField } from "@/components/places/place-autocomplete-field";
 import { GuidedEmptyState } from "@/components/planning/guided-empty-state";
-import { formatShortDate, hasVisitDateRange } from "@/lib/planning";
+import {
+  formatShortDate,
+  hasVisitDateRange,
+  type VisitPanelDisplayMode,
+} from "@/lib/planning";
 import type { VisitView } from "@/lib/planning";
+
+const VISIT_IMAGE_MAX_WIDTH = 150;
+const VISIT_IMAGE_MAX_HEIGHT = 200;
+
+const loadImageFromFile = (file: File) =>
+  new Promise<HTMLImageElement>((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Could not load selected image."));
+    };
+
+    image.src = objectUrl;
+  });
+
+const resizeVisitImageForPreview = async (file: File) => {
+  if (!file.type.startsWith("image/")) {
+    return file;
+  }
+
+  const image = await loadImageFromFile(file);
+  const width = image.naturalWidth || image.width;
+  const height = image.naturalHeight || image.height;
+  const ratio = Math.min(
+    1,
+    VISIT_IMAGE_MAX_WIDTH / width,
+    VISIT_IMAGE_MAX_HEIGHT / height,
+  );
+
+  if (ratio >= 1) {
+    return file;
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(width * ratio));
+  canvas.height = Math.max(1, Math.round(height * ratio));
+
+  const context = canvas.getContext("2d");
+  if (!context) {
+    return file;
+  }
+
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+  const outputType = file.type === "image/png" ? "image/png" : "image/webp";
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, outputType, 0.9);
+  });
+
+  if (!blob) {
+    return file;
+  }
+
+  const extension = outputType === "image/png" ? "png" : "webp";
+  const baseName = file.name.replace(/\.[^.]+$/, "");
+  return new File([blob], `${baseName}.${extension}`, {
+    type: outputType,
+    lastModified: Date.now(),
+  });
+};
 
 type Props = {
   visits: VisitView[];
   boatId: string;
   seasonId: string;
   seasonStart: string;
+  visitPanelDisplayMode?: VisitPanelDisplayMode;
   canEdit: boolean;
   selectedVisitId?: string | null;
   onSelectVisit?: (visit: VisitView) => void;
@@ -31,6 +103,7 @@ export function VisitsManager({
   boatId,
   seasonId,
   seasonStart,
+  visitPanelDisplayMode = "both",
   canEdit,
   selectedVisitId = null,
   onSelectVisit,
@@ -109,6 +182,34 @@ export function VisitsManager({
     notes: t("planning.notes"),
   };
 
+  const renderVisitIdentity = (visit: VisitView) => {
+    const label = visit.visitor_name ?? t("planning.visit");
+    const badge = visit.image_url ? (
+      <span className="visit-badge visit-badge--small" aria-hidden="true">
+        <img alt="" src={visit.image_url} />
+      </span>
+    ) : visit.badge_emoji ? (
+      <span className="visit-badge visit-badge--small" aria-hidden="true">
+        <span>{visit.badge_emoji}</span>
+      </span>
+    ) : null;
+
+    if (visitPanelDisplayMode === "image") {
+      return badge ?? <span>{label}</span>;
+    }
+
+    if (visitPanelDisplayMode === "both" && badge) {
+      return (
+        <span className="visit-row__identity">
+          {badge}
+          <span>{label}</span>
+        </span>
+      );
+    }
+
+    return <span>{label}</span>;
+  };
+
   return (
     <>
       {canEdit && visits.length > 0 && (
@@ -151,7 +252,7 @@ export function VisitsManager({
                 }
               }}
             >
-              <div data-label={visitRowLabels.visitor}>{visit.visitor_name ?? t("planning.visit")}</div>
+              <div data-label={visitRowLabels.visitor}>{renderVisitIdentity(visit)}</div>
               <div className="table-stack" data-label={visitRowLabels.dates}>
                 {hasVisitDateRange(visit) ? (
                   <>
@@ -300,18 +401,85 @@ function VisitForm({
   onSubmit: (fd: FormData) => void;
   isPending: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const visualText =
+    locale === "es"
+      ? {
+          visualBadge: "Imagen o emoji",
+          visualHelp: "Puedes usar un emoji o subir una imagen vertical, por ejemplo 150x200.",
+          visualNone: "Nada",
+          visualEmoji: "Emoji",
+          visualImage: "Imagen",
+          emojiLabel: "Emoji",
+          emojiPlaceholder: "🌊",
+          imageLabel: "Imagen",
+          imageHelp: "Se guardará en Storage y se reducirá visualmente dentro del panel.",
+          removeImage: "Quitar imagen",
+          currentImage: "Imagen actual",
+          chooseEmoji: "Elige rápido",
+        }
+      : {
+          visualBadge: "Image or emoji",
+          visualHelp: "You can use an emoji or upload a vertical image, for example 150x200.",
+          visualNone: "None",
+          visualEmoji: "Emoji",
+          visualImage: "Image",
+          emojiLabel: "Emoji",
+          emojiPlaceholder: "🌊",
+          imageLabel: "Image",
+          imageHelp: "It will be stored in Storage and visually scaled down inside the panel.",
+          removeImage: "Remove image",
+          currentImage: "Current image",
+          chooseEmoji: "Quick pick",
+        };
+  const initialVisualMode = visit?.image_path
+    ? "image"
+    : visit?.badge_emoji
+      ? "emoji"
+      : "none";
+  const [visualMode, setVisualMode] = useState<"none" | "emoji" | "image">(initialVisualMode);
+  const [badgeEmoji, setBadgeEmoji] = useState(visit?.badge_emoji ?? "");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [clearImage, setClearImage] = useState(false);
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!imageFile) {
+      setLocalPreviewUrl(null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(imageFile);
+    setLocalPreviewUrl(objectUrl);
+
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [imageFile]);
+
+  const currentImageUrl = clearImage ? null : localPreviewUrl ?? visit?.image_url ?? null;
+  const presetEmojis = ["🌊", "⛵", "🧭", "🐬", "☀️", "🏝️"];
+
   return (
     <form
       className="editor-form"
       onSubmit={(e) => {
         e.preventDefault();
-        onSubmit(new FormData(e.currentTarget));
+        const formData = new FormData(e.currentTarget);
+        if (imageFile) {
+          formData.set("image", imageFile);
+        } else if (clearImage || visualMode !== "image") {
+          formData.delete("image");
+        }
+        onSubmit(formData);
       }}
     >
       <input name="boat_id" type="hidden" value={boatId} />
       <input name="season_id" type="hidden" value={seasonId} />
       {visit && <input name="visit_id" type="hidden" value={visit.id} />}
+      <input name="visit_visual_mode" type="hidden" value={visualMode} />
+      <input name="badge_emoji" type="hidden" value={badgeEmoji} />
+      <input name="clear_image" type="hidden" value={clearImage ? "1" : "0"} />
 
       {errorMessage ? <p className="feedback feedback--error">{errorMessage}</p> : null}
 
@@ -379,6 +547,86 @@ function VisitForm({
             <option value="cancelled">{t("status.cancelled")}</option>
           </select>
         </label>
+        <label className="form-grid__wide">
+          <span>{visualText.visualBadge}</span>
+          <select
+            onChange={(event) => setVisualMode(event.target.value as "none" | "emoji" | "image")}
+            value={visualMode}
+          >
+            <option value="none">{visualText.visualNone}</option>
+            <option value="emoji">{visualText.visualEmoji}</option>
+            <option value="image">{visualText.visualImage}</option>
+          </select>
+          <small className="muted">{visualText.visualHelp}</small>
+        </label>
+        {visualMode === "emoji" ? (
+          <div className="form-grid__wide visit-visual-editor">
+            <label>
+              <span>{visualText.emojiLabel}</span>
+              <input
+                maxLength={4}
+                onChange={(event) => setBadgeEmoji(event.target.value)}
+                placeholder={visualText.emojiPlaceholder}
+                value={badgeEmoji}
+              />
+            </label>
+            <div className="visit-emoji-preset-group">
+              <span>{visualText.chooseEmoji}</span>
+              <div className="visit-emoji-presets">
+                {presetEmojis.map((emoji) => (
+                  <button
+                    className={badgeEmoji === emoji ? "is-active" : undefined}
+                    key={emoji}
+                    onClick={() => setBadgeEmoji(emoji)}
+                    type="button"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
+        {visualMode === "image" ? (
+          <div className="form-grid__wide visit-visual-editor">
+            <label>
+              <span>{visualText.imageLabel}</span>
+              <input
+                accept="image/*"
+                name="image"
+                onChange={async (event) => {
+                  const nextFile = event.target.files?.[0] ?? null;
+                  if (!nextFile) {
+                    setImageFile(null);
+                    return;
+                  }
+
+                  const resizedFile = await resizeVisitImageForPreview(nextFile);
+                  setImageFile(resizedFile);
+                  setClearImage(false);
+                }}
+                type="file"
+              />
+              <small className="muted">{visualText.imageHelp}</small>
+            </label>
+            {currentImageUrl ? (
+              <div className="visit-image-preview-card">
+                <span>{visualText.currentImage}</span>
+                <img alt={visit?.visitor_name ?? t("planning.visit")} src={currentImageUrl} />
+                <button
+                  className="link-button link-button--danger"
+                  onClick={() => {
+                    setClearImage(true);
+                    setImageFile(null);
+                  }}
+                  type="button"
+                >
+                  {visualText.removeImage}
+                </button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         <label className="form-grid__wide">
           <span>{t("planning.publicNotes")}</span>
           <textarea

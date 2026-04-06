@@ -105,6 +105,7 @@ export default async function BoatWorkspacePage({
           seasonStart={workspace.selectedSeason.start_date}
           statusFilter={status}
           tripSegments={workspace.tripSegments}
+          visitPanelDisplayMode={workspace.boat.visit_panel_display_mode}
           visits={workspace.visits}
         />
       ) : (

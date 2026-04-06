@@ -33,6 +33,7 @@ export type PlaceSource =
   | "other";
 export type PreferredLanguage = "es" | "en";
 export type SignInMethod = "password" | "magic_link" | "google" | "unknown";
+export type VisitPanelDisplayMode = "text" | "image" | "both";
 export type OnboardingStep =
   | "welcome"
   | "configure_boat"
@@ -58,6 +59,7 @@ export interface Database {
           home_port: string | null;
           notes: string | null;
           image_path: string | null;
+          visit_panel_display_mode: VisitPanelDisplayMode;
           is_active: boolean;
           created_at: string;
           updated_at: string;
@@ -71,6 +73,7 @@ export interface Database {
           home_port?: string | null;
           notes?: string | null;
           image_path?: string | null;
+          visit_panel_display_mode?: VisitPanelDisplayMode;
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -279,6 +282,8 @@ export interface Database {
           disembark_longitude: number | null;
           status: VisitStatus;
           public_notes: string | null;
+          badge_emoji: string | null;
+          image_path: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -301,6 +306,8 @@ export interface Database {
           disembark_longitude?: number | null;
           status?: VisitStatus;
           public_notes?: string | null;
+          badge_emoji?: string | null;
+          image_path?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -366,6 +373,8 @@ export interface Database {
           season_id: string;
           owner_user_id: string | null;
           visitor_name: string | null;
+          badge_emoji: string | null;
+          image_path: string | null;
           embark_date: string | null;
           disembark_date: string | null;
           embark_place_label: string | null;
@@ -393,6 +402,7 @@ export interface Database {
       permission_level: PermissionLevel;
       port_stop_status: PortStopStatus;
       visit_status: VisitStatus;
+      visit_panel_display_mode: VisitPanelDisplayMode;
       location_type: LocationType;
       place_source: PlaceSource;
     };

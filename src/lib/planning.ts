@@ -9,8 +9,12 @@ export type SeasonAccessLinkRow = Database["public"]["Tables"]["season_access_li
 
 export type PortStopView =
   Database["public"]["Functions"]["get_season_port_stops"]["Returns"][number];
+export type VisitPanelDisplayMode =
+  Database["public"]["Enums"]["visit_panel_display_mode"];
 export type VisitView =
-  Database["public"]["Functions"]["get_season_visits"]["Returns"][number];
+  Database["public"]["Functions"]["get_season_visits"]["Returns"][number] & {
+    image_url?: string | null;
+  };
 
 export type BoatSummary = Database["public"]["Views"]["boat_access_overview"]["Row"] & {
   description?: string | null;

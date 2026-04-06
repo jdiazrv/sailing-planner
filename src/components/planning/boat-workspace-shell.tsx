@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
@@ -18,6 +19,7 @@ import {
   rangeIncludes,
   type PortStopView,
   type VisitConflict,
+  type VisitPanelDisplayMode,
   type VisitView,
 } from "@/lib/planning";
 import { getDocumentLocale, getIntlLocale } from "@/lib/i18n";
@@ -37,6 +39,7 @@ type BoatWorkspaceShellProps = {
   statusFilter?: string;
   tripSegments: PortStopView[];
   visits: VisitView[];
+  visitPanelDisplayMode: VisitPanelDisplayMode;
   onSaveTripSegment: (fd: FormData) => Promise<void>;
   onDeleteTripSegment: (fd: FormData) => Promise<void>;
   onSaveVisit: (fd: FormData) => Promise<void>;
@@ -160,6 +163,7 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
     seasonStart,
     tripSegments,
     visits,
+    visitPanelDisplayMode,
     onSaveTripSegment,
     onDeleteTripSegment,
     onSaveVisit,
@@ -212,6 +216,7 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
   const viewPrefetchParams = new URLSearchParams();
   viewPrefetchParams.set("view", nextView);
   viewPrefetchParams.set("season", seasonId);
+  const summaryHref = `/boats/${boatId}/summary?season=${encodeURIComponent(seasonId)}`;
 
   useEffect(() => {
     if (searchParams.get("blocked") === "create") {
@@ -257,6 +262,7 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
           "/dashboard",
           `/boats/${boatId}/share`,
           `/boats/${boatId}?${viewPrefetchParams.toString()}`,
+          summaryHref,
           "/shared",
         ]}
       />
@@ -338,6 +344,10 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
                 : undefined
             }
             onTripSegmentSelect={(segment) => {
+              if (selectedEntityId === segment.id) {
+                setSelectedEntityId(null);
+                return;
+              }
               setSelectedEntityId(segment.id);
               switchView("trip");
             }}
@@ -351,6 +361,10 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
                 : undefined
             }
             onVisitSelect={(visit) => {
+              if (selectedEntityId === visit.id) {
+                setSelectedEntityId(null);
+                return;
+              }
               setSelectedEntityId(visit.id);
               switchView("visits");
             }}
@@ -369,12 +383,16 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
             onToggleVisitsCollapsed={() => setShowPeopleLayer((value) => !value)}
             onToggleAvailabilityCollapsed={() => setShowAvailabilityLayer((value) => !value)}
             onToggleBlockedCollapsed={() => setShowBlockedLayer((value) => !value)}
+            visitPanelDisplayMode={visitPanelDisplayMode}
             zoom={timelineZoom}
           />
         </div>
       </section>
 
       <div className="workspace-view-switch" data-tour="boat-nav">
+        <Link className="secondary-button" href={summaryHref}>
+          {t("summary.open")}
+        </Link>
         {canViewVisits ? (
           <button className="secondary-button" onClick={() => switchView(nextView)} type="button">
             {viewToggleLabel}
@@ -453,6 +471,7 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
                   seasonId={seasonId}
                   seasonStart={seasonStart}
                   selectedVisitId={selectedEntityId}
+                  visitPanelDisplayMode={visitPanelDisplayMode}
                   visits={filteredVisits}
                 />
               </>

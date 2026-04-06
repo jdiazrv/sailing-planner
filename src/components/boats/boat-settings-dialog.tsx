@@ -64,6 +64,11 @@ export function BoatSettingsDialog({
           yearBuilt: "Año de construcción",
           homePort: "Puerto base",
           description: "Descripción",
+          visitPanelMode: "Visual de visitas en panel",
+          visitPanelModeHelp: "Define si el timeline de visitas muestra nombre, imagen/emoji o ambos.",
+          visitPanelText: "Solo texto",
+          visitPanelImage: "Solo imagen",
+          visitPanelBoth: "Texto e imagen",
           save: "Guardar cambios",
           saving: "Guardando...",
           saved: "Barco actualizado",
@@ -88,6 +93,11 @@ export function BoatSettingsDialog({
           yearBuilt: "Year built",
           homePort: "Home port",
           description: "Description",
+          visitPanelMode: "Visit panel visual",
+          visitPanelModeHelp: "Choose whether the visit timeline shows text, image/emoji, or both.",
+          visitPanelText: "Text only",
+          visitPanelImage: "Image only",
+          visitPanelBoth: "Text and image",
           save: "Save changes",
           saving: "Saving...",
           saved: "Boat updated",
@@ -310,6 +320,18 @@ export function BoatSettingsDialog({
                 <label className="form-grid__wide">
                   <span>{text.description}</span>
                   <textarea defaultValue={boat.description ?? ""} name="description" rows={3} />
+                </label>
+                <label className="form-grid__wide">
+                  <span>{text.visitPanelMode}</span>
+                  <select
+                    defaultValue={boat.visit_panel_display_mode ?? "both"}
+                    name="visit_panel_display_mode"
+                  >
+                    <option value="text">{text.visitPanelText}</option>
+                    <option value="image">{text.visitPanelImage}</option>
+                    <option value="both">{text.visitPanelBoth}</option>
+                  </select>
+                  <small className="muted">{text.visitPanelModeHelp}</small>
                 </label>
               </div>
 

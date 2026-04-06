@@ -80,6 +80,9 @@ export default async function GuestSeasonPage({
         >
           Escalas
         </Link>
+        <Link href={`/guest/${boatId}/${workspace.selectedSeason?.id ?? ""}/summary`}>
+          Resumen
+        </Link>
         {canViewVisits ? (
           <Link
             className={currentView === "visits" ? "is-active" : undefined}

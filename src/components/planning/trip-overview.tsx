@@ -51,8 +51,15 @@ export function TripOverview({
       <section className="workspace-grid workspace-grid--single">
         <div className="workspace-main" data-tour="boat-timeline">
           <Timeline
-            onTripSegmentSelect={(segment) => setSelectedEntityId(segment.id)}
-            onVisitSelect={showVisits ? (visit) => setSelectedEntityId(visit.id) : undefined}
+            onTripSegmentSelect={(segment) =>
+              setSelectedEntityId((current) => (current === segment.id ? null : segment.id))
+            }
+            onVisitSelect={
+              showVisits
+                ? (visit) =>
+                    setSelectedEntityId((current) => (current === visit.id ? null : visit.id))
+                : undefined
+            }
             season={season}
             selectedEntityId={selectedEntityId}
             showVisits={showVisits}
