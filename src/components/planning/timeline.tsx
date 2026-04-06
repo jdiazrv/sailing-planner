@@ -160,13 +160,11 @@ export const Timeline = ({
   const groupLabels =
     locale === "es"
       ? {
-          people: "Personas",
           availability: "Disponibilidad",
           show: "Mostrar",
           hide: "Ocultar",
         }
       : {
-          people: "People",
           availability: "Availability",
           show: "Show",
           hide: "Hide",
@@ -404,7 +402,7 @@ export const Timeline = ({
                     onToggle={onToggleVisitsCollapsed}
                     open={!visitsCollapsed}
                     toggleLabels={groupLabels}
-                    title={groupLabels.people}
+                    title={t("planning.visitsList")}
               >
                 {showVisits && !visitsCollapsed && visits.length === 0 ? (
                   <TimelineLane label={t("planning.visit")}>
@@ -464,7 +462,7 @@ export const Timeline = ({
                 title={groupLabels.availability}
               >
                 {showAvailability && !availabilityCollapsed ? (
-                  <TimelineLane availability label={t("planning.availability")}>
+                  <TimelineLane availability>
                     {sortedAvailability.map((block, index) => (
                       <button
                         className={`timeline-bar timeline-bar--btn is-${block.status}${selectedAvailabilityIndex === index ? " is-selected" : ""}`}
@@ -592,13 +590,13 @@ const TimelineLane = ({
   availability = false,
   highlight = false,
 }: {
-  label: string;
+  label?: string;
   children: React.ReactNode;
   availability?: boolean;
   highlight?: boolean;
 }) => (
   <div className="timeline__lane">
-    <div className="timeline__lane-label">{label}</div>
+    <div className="timeline__lane-label">{label ?? ""}</div>
     <div
       className={`timeline__lane-track${availability ? " timeline__lane-track--availability" : ""}${highlight ? " timeline__lane-track--highlight" : ""}`}
     >

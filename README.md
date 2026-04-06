@@ -10,7 +10,20 @@ Sailing Planner is a Next.js + TypeScript app for managing one or more boats, th
 - public/shared timeline comparison between boats
 - local Supabase CLI setup, migrations, seed data and invite email template
 
-Current app version: `0.4.0`
+Current app version: `0.4.1`
+
+## What's New In v0.4.1
+
+Patch release highlights:
+
+- Boat admin editing fixes:
+  - the edit dialog now includes boat name when required by the admin save flow
+  - the boat settings modal is wider and collapses earlier on narrower screens so model and year fields do not overlap
+- Planning workspace polish:
+  - blocked period action moved next to the main view toggle for a clearer entry point
+  - timeline labels no longer duplicate visit and availability wording unnecessarily
+- Auth logout reliability:
+  - logout now clears the Supabase session server-side before redirecting back to login, avoiding the double Google sign-in issue after logout
 
 ## What's New In v0.4.0
 

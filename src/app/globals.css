@@ -3398,6 +3398,16 @@ details[open] > .inline-section__summary::before {
   align-content: start;
 }
 
+@media (max-width: 980px) {
+  .admin-boat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .boat-settings-form .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .boat-settings-form .modal__footer {
   margin-top: auto;
   justify-content: flex-start;
@@ -4198,6 +4208,10 @@ details[open] > .inline-section__summary::before {
   border: 1px solid var(--border);
   border-radius: 18px;
   box-shadow: var(--shadow-strong);
+}
+
+.modal__inner--wide {
+  width: min(860px, calc(100vw - 2rem));
 }
 
 .modal__header {

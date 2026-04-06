@@ -313,20 +313,6 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
             >
               Bloqueado
             </button>
-            {canEdit ? (
-              <button
-                className="secondary-button secondary-button--small"
-                onClick={() => {
-                  const nextParams = new URLSearchParams(searchParams.toString());
-                  nextParams.set("blocked", "create");
-                  router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
-                  setBlockedSectionOpen(true);
-                }}
-                type="button"
-              >
-                + Bloquear período
-              </button>
-            ) : null}
           </div>
         </div>
       </section>
@@ -383,6 +369,20 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
         <button className="secondary-button" onClick={() => switchView(nextView)} type="button">
           {viewToggleLabel}
         </button>
+        {canEdit ? (
+          <button
+            className="secondary-button"
+            onClick={() => {
+              const nextParams = new URLSearchParams(searchParams.toString());
+              nextParams.set("blocked", "create");
+              router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
+              setBlockedSectionOpen(true);
+            }}
+            type="button"
+          >
+            + Bloquear período
+          </button>
+        ) : null}
       </div>
 
       <section

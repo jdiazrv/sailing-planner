@@ -6,11 +6,13 @@ export function Dialog({
   open,
   onClose,
   title,
+  contentClassName,
   children,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
+  contentClassName?: string;
   children: React.ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -32,7 +34,7 @@ export function Dialog({
       aria-modal="true"
       onClose={onClose}
     >
-      <div className="modal__inner">
+      <div className={["modal__inner", contentClassName].filter(Boolean).join(" ")}>
         <div className="modal__header">
           <h3>{title}</h3>
           <button

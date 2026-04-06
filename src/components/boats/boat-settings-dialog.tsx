@@ -15,6 +15,7 @@ type BoatSettingsDialogProps = {
   boatId: string;
   boat: BoatDetails;
   onboardingStep?: OnboardingStep | null;
+  allowNameEdit?: boolean;
   onSave: (fd: FormData) => Promise<void>;
   onUploadImage: (fd: FormData) => Promise<void>;
   onRemoveImage: (fd: FormData) => Promise<void>;
@@ -28,6 +29,7 @@ export function BoatSettingsDialog({
   boatId,
   boat,
   onboardingStep,
+  allowNameEdit = false,
   onSave,
   onUploadImage,
   onRemoveImage,
@@ -50,12 +52,14 @@ export function BoatSettingsDialog({
       ? {
           open: "Configurar barco",
           title: "Configuración del barco",
-          subtitle:
-            "Actualiza los datos visibles del barco. El nombre y las notas internas siguen reservados a Superusers.",
+          subtitle: allowNameEdit
+            ? "Actualiza la ficha del barco."
+            : "Actualiza los datos visibles del barco. El nombre y las notas internas siguen reservados a Superusers.",
           image: "Imagen del barco",
           upload: "Subir imagen",
           remove: "Quitar imagen",
           noImage: "Sin imagen",
+          name: "Nombre",
           model: "Modelo",
           yearBuilt: "Año de construcción",
           homePort: "Puerto base",
@@ -72,12 +76,14 @@ export function BoatSettingsDialog({
       : {
           open: "Boat settings",
           title: "Boat settings",
-          subtitle:
-            "Update the visible boat data. Name and internal notes remain restricted to superusers.",
+          subtitle: allowNameEdit
+            ? "Update the boat record."
+            : "Update the visible boat data. Name and internal notes remain restricted to superusers.",
           image: "Boat image",
           upload: "Upload image",
           remove: "Remove image",
           noImage: "No image",
+          name: "Name",
           model: "Model",
           yearBuilt: "Year built",
           homePort: "Home port",
@@ -214,7 +220,12 @@ export function BoatSettingsDialog({
         )}
       </button>
 
-      <Dialog onClose={handleDialogClose} open={open} title={text.title}>
+      <Dialog
+        contentClassName="modal__inner--wide"
+        onClose={handleDialogClose}
+        open={open}
+        title={text.title}
+      >
         <div className="editor-form">
           <p className="muted">{text.subtitle}</p>
 
@@ -270,8 +281,15 @@ export function BoatSettingsDialog({
               }}
             >
               <input name="boat_id" type="hidden" value={boat.id} />
+              {!allowNameEdit ? <input name="name" type="hidden" value={boat.name} /> : null}
 
               <div className="form-grid">
+                {allowNameEdit ? (
+                  <label className="form-grid__wide">
+                    <span>{text.name}</span>
+                    <input defaultValue={boat.name} name="name" required />
+                  </label>
+                ) : null}
                 <label>
                   <span>{text.model}</span>
                   <input defaultValue={boat.model ?? ""} name="model" />

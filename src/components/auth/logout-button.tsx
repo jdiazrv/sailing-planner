@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { useI18n } from "@/components/i18n/provider";
@@ -15,7 +14,6 @@ export const LogoutButton = ({
   children?: ReactNode;
 }) => {
   const { t } = useI18n();
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogout = async () => {
@@ -23,9 +21,12 @@ export const LogoutButton = ({
 
     try {
       const supabase = createClient();
-      await supabase.auth.signOut();
-      router.replace("/login");
-      router.refresh();
+      await fetch("/auth/signout", {
+        method: "POST",
+        credentials: "same-origin",
+      });
+      await supabase.auth.signOut({ scope: "local" });
+      window.location.replace("/login");
     } finally {
       setIsLoading(false);
     }
