@@ -24,6 +24,9 @@
 # misc
 .DS_Store
 *.pem
+.claude/
+.qwen/
+src/types/database.generated.ts
 
 # debug
 npm-debug.log*
