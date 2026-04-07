@@ -13,6 +13,7 @@ type MemberFirstAccessProps = {
   canManageUsers: boolean;
   canShare: boolean;
   canEditBoat: boolean;
+  isSuperuser: boolean;
   boatName: string;
   onboardingStep?: OnboardingStep | null;
   viewerId: string;
@@ -26,6 +27,7 @@ export function MemberFirstAccess({
   canManageUsers,
   canShare,
   canEditBoat,
+  isSuperuser,
   boatName,
   onboardingStep,
   viewerId,
@@ -90,6 +92,7 @@ export function MemberFirstAccess({
         canEditBoat={canEditBoat}
         canManageUsers={canManageUsers}
         canShare={canShare}
+        isSuperuser={isSuperuser}
         isReadOnly={isReadOnly}
         hasSegments={hasSegments}
         hasVisits={hasVisits}
@@ -97,6 +100,12 @@ export function MemberFirstAccess({
         memberPhase={currentStep}
         onDismiss={() => {
           void dismissTour();
+        }}
+        onComplete={() => {
+          void fetch("/api/onboarding/complete", { method: "POST" }).then(() => {
+            setCurrentStep(null);
+            router.refresh();
+          });
         }}
         resetKey={viewerId}
         variant="member"

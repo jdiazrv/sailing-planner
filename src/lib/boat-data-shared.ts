@@ -251,28 +251,18 @@ export const getSharedTimelineWorkspace = async (
     sharedBoats.find((entry) => entry.boat.id === requestedBoatId) ?? sharedBoats[0] ?? null;
 
   if (selectedBoat?.season) {
-    const { data: tripData, error: tripError } = await sharedDb
-      .from("port_stops")
-      .select(
-        "id, season_id, sort_order, start_date, end_date, location_label, location_type, place_source, external_place_id, latitude, longitude, status, public_notes, created_at, updated_at",
-      )
-      .eq("season_id", selectedBoat.season.id)
-      .order("sort_order", { ascending: true })
-      .order("start_date", { ascending: true })
-      .order("end_date", { ascending: true })
-      .order("created_at", { ascending: true })
-      .order("id", { ascending: true });
+    const { data: tripData, error: tripError } = await sharedDb.rpc(
+      "get_season_port_stops",
+      {
+        p_season_id: selectedBoat.season.id,
+      },
+    );
 
     if (tripError) {
       throw new Error(tripError.message);
     }
 
-    selectedBoat.tripSegments = ((tripData ?? []) as Array<
-      Omit<PortStopView, "private_notes">
-    >).map((segment) => ({
-      ...segment,
-      private_notes: null,
-    }));
+    selectedBoat.tripSegments = (tripData ?? []) as PortStopView[];
   }
 
   return {

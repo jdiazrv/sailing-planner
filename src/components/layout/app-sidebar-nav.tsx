@@ -198,9 +198,7 @@ export function AppSidebarNav({
   const [mobileOpen, setMobileOpen] = useState(false);
   const es = locale === "es";
   const signOutLabel = es ? "Salir" : "Sign out";
-  const currentUserHref = currentUserId
-    ? `/admin/users?user=${encodeURIComponent(currentUserId)}&section=security`
-    : null;
+  const currentUserHref = currentUserId ? "/account" : null;
 
   const isActive = (href: string) =>
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
@@ -302,6 +300,7 @@ export function AppSidebarNav({
               icon={<IconChart />}
               active={isActive(`/boats/${boatId}/summary`)}
               onClick={() => setMobileOpen(false)}
+              tourId="sidebar-summary"
             />
             {canShare && (
               <NavItem
@@ -332,6 +331,7 @@ export function AppSidebarNav({
                 icon={<IconBoat />}
                 active={isActive("/admin/boats")}
                 onClick={() => setMobileOpen(false)}
+                tourId="sidebar-admin-boats"
               />
             )}
             <NavItem
@@ -361,6 +361,7 @@ export function AppSidebarNav({
           icon={<IconCompare />}
           active={isActive("/shared")}
           onClick={() => setMobileOpen(false)}
+          tourId="sidebar-shared"
         />
 
         <NavItem
@@ -370,14 +371,15 @@ export function AppSidebarNav({
           onClick={() => setMobileOpen(false)}
           rel="noreferrer"
           target="_blank"
+          tourId="sidebar-manual"
         />
 
-        {currentUserHref && (isSuperuser || canManageUsers) ? (
+        {currentUserHref ? (
           <NavItem
             href={currentUserHref}
-            label={es ? "Mi cuenta" : "My account"}
+            label={es ? "Configuración" : "Settings"}
             icon={<IconProfile />}
-            active={pathname === "/admin/users" && currentUserHref.includes("section=security")}
+            active={isActive(currentUserHref)}
             onClick={() => setMobileOpen(false)}
             tourId="sidebar-user-settings"
           />

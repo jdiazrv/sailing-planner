@@ -10,7 +10,21 @@ Sailing Planner is a Next.js + TypeScript app for managing one or more boats, th
 - public/shared timeline comparison between boats
 - local Supabase CLI setup, migrations, seed data and invite email template
 
-Current app version: `0.4.1`
+Current app version: `0.4.2`
+
+## What's New In v0.4.2
+
+Patch release highlights:
+
+- Invite flow hardening:
+  - invitation emails now land on a safe acceptance step before password setup
+  - token-hash invite verification reduces failures caused by email scanners and missing reconstructed sessions
+- Planning performance cleanup:
+  - visit image signed URLs are now resolved in batch for workspace and guest loaders
+  - boat workspace loaders now reuse a shared cached base context to reduce repeated work
+- Planning consistency cleanup:
+  - availability derivation now comes from one shared report
+  - shared planning sort/display helpers reduce drift across timeline, summary, export and map
 
 ## What's New In v0.4.1
 
@@ -259,6 +273,10 @@ cp .env.example .env.local
   - Google Maps rendering in the planning screens
   - Google Places autocomplete/search in trip and visit location fields
   Get it from `Google Cloud Console -> APIs & Services -> Credentials -> API keys`.
+- `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`
+  Optional, but required if you want the planning map to use Google Advanced Markers.
+  Without it the app falls back to classic markers automatically.
+  Get it from `Google Cloud Console -> Google Maps Platform -> Map Management`.
 - `SUPABASE_PROJECT_REF`
   Needed for Supabase CLI workflows against the hosted project.
   Get it from the project ref shown in the Supabase dashboard URL or `Project Settings -> General`.
@@ -426,6 +444,9 @@ Optional:
 - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
   Shared key for both the live Google map and the Google place search/autocomplete UI
   Source: `Google Cloud Console -> APIs & Services -> Credentials`
+- `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`
+  Optional map ID to enable Google Advanced Markers in the planning map. If missing, the app uses classic markers.
+  Source: `Google Cloud Console -> Google Maps Platform -> Map Management`
 - `SUPABASE_PROJECT_REF`
   Source: `Supabase Dashboard -> Project Settings -> General`
 - `SUPABASE_DB_PASSWORD`

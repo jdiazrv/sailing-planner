@@ -39,35 +39,45 @@ export default async function BoatLayout({
     );
   const canShare = canEditBoat || canManageUsers;
 
+  const settingsIcon = (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="4" y1="6" x2="20" y2="6" />
+      <circle cx="9" cy="6" r="2" />
+      <line x1="4" y1="12" x2="20" y2="12" />
+      <circle cx="15" cy="12" r="2" />
+      <line x1="4" y1="18" x2="20" y2="18" />
+      <circle cx="11" cy="18" r="2" />
+    </svg>
+  );
+
   const settingsSlot = canEditBoat ? (
-    <BoatSettingsDialog
-      boatId={boatId}
-      boat={snapshot.boat}
-      onboardingStep={snapshot.viewer.onboardingStep}
-      onRemoveImage={removeBoatProfileImage}
-      onSave={saveBoatProfile}
-      onUploadImage={uploadBoatProfileImage}
-      triggerClassName="app-sidebar__item"
-      triggerIcon={
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.75"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M11 3v12" />
-          <path d="M11 4L6.5 13H11" />
-          <path d="M11 6.5L17.2 13H11" />
-          <path d="M4 15.5h14.5" />
-          <path d="M6 18c2.1 1.3 4 1.8 6 1.8s3.9-.5 6-1.8" />
-        </svg>
-      }
-      triggerLabel={t(locale, "boatLayout.boatSettings")}
-    />
+    isSuperuser ? (
+      <Link className="app-sidebar__item" data-tour="sidebar-admin-boats" href="/admin/boats">
+        <span className="app-sidebar__icon">{settingsIcon}</span>
+        <span className="app-sidebar__label">{locale === "es" ? "Configurar barco" : "Boat settings"}</span>
+      </Link>
+    ) : (
+      <BoatSettingsDialog
+        boatId={boatId}
+        boat={snapshot.boat}
+        onboardingStep={snapshot.viewer.onboardingStep}
+        onRemoveImage={removeBoatProfileImage}
+        onSave={saveBoatProfile}
+        onUploadImage={uploadBoatProfileImage}
+        triggerClassName="app-sidebar__item"
+        triggerIcon={settingsIcon}
+        triggerLabel={locale === "es" ? "Configurar barco" : "Boat settings"}
+      />
+    )
   ) : undefined;
 
   return (

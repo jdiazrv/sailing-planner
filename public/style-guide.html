@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="madrugada">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sailing Planner — Guía de estilos</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&display=swap" />
+  <style>
+    /* ── TOKENS (idénticos a globals.css) ── */
+    :root {
+      --font-display: "Cinzel", "Trajan Pro", serif;
+      --font-body: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+      --button-height: 2.5rem;
+      --background: #0e1520;
+      --surface: rgba(20,30,46,0.92);
+      --surface-raised: rgba(25,38,58,0.80);
+      --surface-strong: #131e2f;
+      --surface-overlay: rgba(255,255,255,0.04);
+      --border: rgba(255,255,255,0.08);
+      --border-subtle: rgba(255,255,255,0.04);
+      --border-strong: rgba(255,255,255,0.14);
+      --ink: #e2e8f0;
+      --ink-medium: rgba(226,232,240,0.52);
+      --ink-soft: rgba(226,232,240,0.38);
+      --ink-dim: rgba(226,232,240,0.10);
+      --ink-faint: rgba(226,232,240,0.05);
+      --muted: #8a9ab0;
+      --accent: #00b4d8;
+      --accent-strong: #48cae4;
+      --accent-soft: rgba(0,180,216,0.14);
+      --accent-border: rgba(0,180,216,0.32);
+      --accent-glow: rgba(0,180,216,0.08);
+      --accent-selected: rgba(0,180,216,0.16);
+      --on-accent: #001824;
+      --error: #f87171;
+      --success: #34d399;
+      --feedback-error-bg: rgba(248,113,113,0.12);
+      --feedback-ok-bg: rgba(52,211,153,0.12);
+      --shadow: 0 20px 50px rgba(0,0,0,0.30);
+      --shadow-strong: 0 24px 60px rgba(0,0,0,0.40);
+      --status-ok-bg: rgba(52,211,153,0.14); --status-ok-text: #34d399;
+      --status-plan-bg: rgba(0,180,216,0.16); --status-plan-text: #00b4d8;
+      --status-tentative-bg: rgba(251,191,36,0.16); --status-tentative-text: #fbbf24;
+      --status-cancel-bg: rgba(148,163,184,0.12); --status-cancel-text: #94a3b8;
+      --row-hover-bg: rgba(0,180,216,0.06);
+      --row-hover-border: rgba(0,180,216,0.22);
+      --tooltip-bg: rgba(10,16,26,0.94);
+      --tooltip-text: #e2e8f0;
+    }
+    [data-theme="jade"] {
+      --accent:#00d4aa; --accent-strong:#00f0c0;
+      --accent-soft:rgba(0,212,170,0.14); --accent-border:rgba(0,212,170,0.32);
+      --accent-glow:rgba(0,212,170,0.08); --accent-selected:rgba(0,212,170,0.16);
+      --on-accent:#0a1520;
+      --status-plan-bg:rgba(0,212,170,0.16); --status-plan-text:#00d4aa;
+      --row-hover-bg:rgba(0,212,170,0.06); --row-hover-border:rgba(0,212,170,0.22);
+    }
+    [data-theme="abismo"] {
+      color-scheme:light;
+      --background:#f0f2f5; --surface:rgba(255,255,255,0.92);
+      --surface-raised:rgba(255,255,255,0.85); --surface-strong:#fff;
+      --border:rgba(13,17,23,0.12); --border-subtle:rgba(13,17,23,0.06); --border-strong:rgba(13,17,23,0.22);
+      --ink:#0d1117; --ink-medium:rgba(13,17,23,0.62); --ink-soft:rgba(13,17,23,0.38);
+      --ink-dim:rgba(13,17,23,0.10); --ink-faint:rgba(13,17,23,0.05); --muted:#6b7280;
+      --accent:#0057ff; --accent-strong:#3384ff; --accent-soft:rgba(0,87,255,0.10);
+      --accent-border:rgba(0,87,255,0.28); --accent-glow:rgba(0,87,255,0.08);
+      --accent-selected:rgba(0,87,255,0.12); --on-accent:#fff;
+      --error:#dc2626; --success:#16a34a;
+      --feedback-error-bg:rgba(220,38,38,0.08); --feedback-ok-bg:rgba(22,163,74,0.08);
+      --shadow:0 20px 50px rgba(13,17,23,0.10); --shadow-strong:0 24px 60px rgba(13,17,23,0.18);
+      --status-ok-bg:rgba(22,163,74,0.12); --status-ok-text:#166534;
+      --status-plan-bg:rgba(0,87,255,0.10); --status-plan-text:#0057ff;
+      --status-tentative-bg:rgba(234,179,8,0.16); --status-tentative-text:#854d0e;
+      --status-cancel-bg:rgba(107,114,128,0.14); --status-cancel-text:#4b5563;
+      --row-hover-bg:rgba(0,87,255,0.04); --row-hover-border:rgba(0,87,255,0.22);
+      --tooltip-bg:rgba(13,17,23,0.94); --tooltip-text:#f0f4ff;
+    }
+    [data-theme="poniente"] {
+      color-scheme:light;
+      --background:#faf8f5; --surface:rgba(255,253,249,0.90);
+      --surface-raised:rgba(255,255,255,0.85); --surface-strong:#fff;
+      --border:rgba(26,20,16,0.12); --border-subtle:rgba(26,20,16,0.06); --border-strong:rgba(26,20,16,0.22);
+      --ink:#1a1410; --ink-medium:rgba(26,20,16,0.62); --ink-soft:rgba(26,20,16,0.38);
+      --ink-dim:rgba(26,20,16,0.10); --ink-faint:rgba(26,20,16,0.05); --muted:#78716c;
+      --accent:#e8571a; --accent-strong:#ff7a3d; --accent-soft:rgba(232,87,26,0.12);
+      --accent-border:rgba(232,87,26,0.30); --accent-glow:rgba(232,87,26,0.08);
+      --accent-selected:rgba(232,87,26,0.12); --on-accent:#fff;
+      --error:#dc2626; --success:#16a34a;
+      --feedback-error-bg:rgba(220,38,38,0.08); --feedback-ok-bg:rgba(22,163,74,0.08);
+      --shadow:0 20px 50px rgba(26,20,16,0.10); --shadow-strong:0 24px 60px rgba(26,20,16,0.18);
+      --status-ok-bg:rgba(22,163,74,0.12); --status-ok-text:#166534;
+      --status-plan-bg:rgba(232,87,26,0.10); --status-plan-text:#c2440f;
+      --status-tentative-bg:rgba(234,179,8,0.16); --status-tentative-text:#854d0e;
+      --status-cancel-bg:rgba(120,113,108,0.14); --status-cancel-text:#57534e;
+      --row-hover-bg:rgba(232,87,26,0.04); --row-hover-border:rgba(232,87,26,0.22);
+      --tooltip-bg:rgba(14,26,46,0.94); --tooltip-text:#fff3ee;
+    }
+    [data-theme="bruma"] {
+      color-scheme:light;
+      --background:#f7f8fc; --surface:rgba(255,255,255,0.88);
+      --surface-raised:rgba(255,255,255,0.82); --surface-strong:#fff;
+      --border:rgba(17,24,39,0.12); --border-subtle:rgba(17,24,39,0.06); --border-strong:rgba(17,24,39,0.22);
+      --ink:#111827; --ink-medium:rgba(17,24,39,0.62); --ink-soft:rgba(17,24,39,0.38);
+      --ink-dim:rgba(17,24,39,0.10); --ink-faint:rgba(17,24,39,0.05); --muted:#6b7280;
+      --accent:#6366f1; --accent-strong:#818cf8; --accent-soft:rgba(99,102,241,0.12);
+      --accent-border:rgba(99,102,241,0.30); --accent-glow:rgba(99,102,241,0.08);
+      --accent-selected:rgba(99,102,241,0.12); --on-accent:#fff;
+      --error:#dc2626; --success:#16a34a;
+      --feedback-error-bg:rgba(220,38,38,0.08); --feedback-ok-bg:rgba(22,163,74,0.08);
+      --shadow:0 20px 50px rgba(17,24,39,0.10); --shadow-strong:0 24px 60px rgba(17,24,39,0.18);
+      --status-ok-bg:rgba(22,163,74,0.12); --status-ok-text:#166534;
+      --status-plan-bg:rgba(99,102,241,0.12); --status-plan-text:#6366f1;
+      --status-tentative-bg:rgba(234,179,8,0.16); --status-tentative-text:#854d0e;
+      --status-cancel-bg:rgba(107,114,128,0.14); --status-cancel-text:#4b5563;
+      --row-hover-bg:rgba(99,102,241,0.04); --row-hover-border:rgba(99,102,241,0.22);
+      --tooltip-bg:rgba(17,24,39,0.94); --tooltip-text:#f0f4ff;
+    }
+
+    /* ── BASE ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 14px; }
+    body {
+      font-family: var(--font-body);
+      background: var(--background);
+      color: var(--ink);
+      line-height: 1.6;
+      transition: background 0.25s, color 0.25s;
+    }
+
+    /* ── LAYOUT ── */
+    .sg-shell {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    /* ── HEADER ── */
+    .sg-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 2rem;
+      padding: 2rem 2rem 1.75rem;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: var(--surface);
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow);
+      margin-bottom: 2rem;
+    }
+    .sg-header__copy { flex: 1; }
+    .sg-eyebrow {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      margin-bottom: 0.5rem;
+    }
+    .sg-header h1 {
+      font-family: var(--font-display);
+      font-size: clamp(1.6rem, 4vw, 2.8rem);
+      font-weight: 600;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      color: var(--accent-strong);
+      margin-bottom: 0.75rem;
+    }
+    .sg-header p {
+      font-size: 0.88rem;
+      color: var(--ink-medium);
+      max-width: 42rem;
+      line-height: 1.55;
+    }
+
+    /* theme switcher */
+    .sg-theme-switcher {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.5rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface-raised);
+      flex-shrink: 0;
+    }
+    .sg-theme-switcher span {
+      font-size: 0.65rem;
+      color: var(--ink-soft);
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0 0.3rem;
+    }
+    .sg-theme-btn {
+      width: 1.6rem; height: 1.6rem;
+      border-radius: 999px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: border-color 0.15s, transform 0.12s;
+      position: relative;
+    }
+    .sg-theme-btn:hover { transform: scale(1.12); }
+    .sg-theme-btn.is-active { border-color: var(--ink); }
+
+    /* ── NAV TOC ── */
+    .sg-toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-bottom: 2rem;
+    }
+    .sg-toc a {
+      display: inline-block;
+      padding: 0.3rem 0.75rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface-raised);
+      color: var(--ink-medium);
+      font-size: 0.78rem;
+      text-decoration: none;
+      transition: background 0.12s, color 0.12s, border-color 0.12s;
+    }
+    .sg-toc a:hover {
+      background: var(--accent-soft);
+      border-color: var(--accent-border);
+      color: var(--accent);
+    }
+
+    /* ── SECTION ── */
+    .sg-section {
+      margin-bottom: 3rem;
+      scroll-margin-top: 1.5rem;
+    }
+    .sg-section-header {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.65rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .sg-section-num {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--accent);
+      background: var(--accent-soft);
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+    }
+    .sg-section-title {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+    }
+
+    /* ── GRID DE DEMOS ── */
+    .sg-grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    }
+    .sg-grid--2 { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+    .sg-grid--3 { grid-template-columns: repeat(3, 1fr); }
+    .sg-grid--wide { grid-template-columns: 1fr; }
+
+    /* ── DEMO CARD ── */
+    .sg-card {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--surface);
+      backdrop-filter: blur(18px);
+      overflow: hidden;
+    }
+    .sg-card__preview {
+      padding: 1.5rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      min-height: 80px;
+      background: var(--surface-raised);
+      border-bottom: 1px solid var(--border);
+    }
+    .sg-card__preview--tall { min-height: 120px; }
+    .sg-card__preview--start { justify-content: flex-start; align-items: flex-start; flex-direction: column; }
+    .sg-card__meta {
+      padding: 0.75rem 1rem;
+    }
+    .sg-card__name {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ink);
+      margin-bottom: 0.3rem;
+    }
+    .sg-card__desc {
+      font-size: 0.75rem;
+      color: var(--ink-soft);
+      line-height: 1.4;
+    }
+    .sg-code {
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 0.72rem;
+      color: var(--accent);
+      background: rgba(0,0,0,0.25);
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+    }
+    [data-theme="abismo"] .sg-code,
+    [data-theme="poniente"] .sg-code,
+    [data-theme="bruma"] .sg-code {
+      background: rgba(0,0,0,0.06);
+    }
+
+    /* ── LABEL DE SECCIÓN ── */
+    .sg-sublabel {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      margin: 1.5rem 0 0.65rem;
+    }
+    .sg-sublabel:first-child { margin-top: 0; }
+
+    /* ── TABLE ── */
+    .sg-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    .sg-table th {
+      text-align: left;
+      padding: 0.45rem 0.75rem;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      border-bottom: 1px solid var(--border);
+    }
+    .sg-table td {
+      padding: 0.55rem 0.75rem;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--ink-medium);
+      vertical-align: top;
+    }
+    .sg-table td:first-child { color: var(--ink); font-weight: 500; }
+    .sg-table tr:last-child td { border-bottom: none; }
+    .sg-table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+
+    /* ── SWATCH ── */
+    .sg-swatch {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .sg-swatch__color {
+      height: 56px;
+    }
+    .sg-swatch__label {
+      padding: 0.6rem 0.75rem;
+      background: var(--surface);
+      font-size: 0.72rem;
+      line-height: 1.4;
+    }
+    .sg-swatch__name { font-weight: 700; color: var(--ink); display: block; }
+    .sg-swatch__value { color: var(--ink-soft); font-family: monospace; }
+
+    /* ── RADIUS DEMO ── */
+    .sg-radius-demo {
+      width: 64px; height: 64px;
+      background: var(--accent-soft);
+      border: 2px solid var(--accent-border);
+    }
+
+    /* ── SHADOW DEMO ── */
+    .sg-shadow-demo {
+      width: 100%;
+      height: 48px;
+      border-radius: 12px;
+      background: var(--surface-strong);
+      border: 1px solid var(--border);
+    }
+
+    /* ────────────────────────────────────────
+       COMPONENTES REALES (copiados de globals)
+    ──────────────────────────────────────── */
+
+    /* Buttons */
+    .primary-button, .secondary-button, .link-button, .google-button, .icon-button {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 0.45rem; cursor: pointer; white-space: nowrap;
+      font-family: var(--font-body); font-size: 0.85rem; font-weight: 500;
+      text-decoration: none; border: 1px solid transparent;
+      transition: box-shadow 120ms ease, background 120ms ease, border-color 120ms ease, opacity 120ms ease;
+    }
+    .primary-button {
+      height: var(--button-height); padding: 0 1rem; border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+      color: var(--on-accent);
+    }
+    .primary-button:hover { box-shadow: 0 0 0 1px var(--accent-border); }
+    .primary-button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .secondary-button {
+      height: var(--button-height); padding: 0 1rem; border-radius: 12px;
+      background: var(--surface-raised); border-color: var(--border); color: var(--ink);
+    }
+    .secondary-button:hover { box-shadow: 0 0 0 1px var(--accent-border); border-color: var(--accent-border); }
+    .secondary-button--small { height: 2.15rem; padding: 0 0.85rem; font-size: 0.8rem; }
+
+    .link-button {
+      background: transparent; border: none; color: var(--ink-medium);
+      font-size: 0.82rem; padding: 0.3rem 0; border-radius: 0;
+    }
+    .link-button:hover { color: var(--ink); }
+    .link-button--danger { color: var(--error); }
+    .link-button--danger:hover { color: var(--error); opacity: 0.8; }
+
+    .google-button {
+      height: var(--button-height); padding: 0 1rem; border-radius: 12px;
+      background: #fff; color: #3c4043; border-color: #dadce0;
+      font-size: 0.85rem; font-weight: 500;
+    }
+    .google-button:hover { border-color: #c6c6c6; box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
+    .google-button__icon { width: 16px; height: 16px; }
+
+    .icon-button {
+      width: 2rem; height: 2rem; border-radius: 999px; padding: 0;
+      background: var(--surface-raised); border: 1px solid var(--border);
+      color: var(--ink-medium); font-size: 1rem;
+    }
+    .icon-button:hover { transform: translateY(-1px); background: var(--surface-strong); color: var(--ink); }
+
+    /* Forms */
+    .field { display: flex; flex-direction: column; gap: 0.4rem; width: 100%; }
+    .field > span { font-size: 0.78rem; font-weight: 600; color: var(--ink-soft); letter-spacing: 0.04em; }
+    .field input, .field select, .field textarea {
+      border: 1px solid var(--border); border-radius: 12px;
+      background: var(--surface-raised); color: var(--ink);
+      padding: 0.65rem 0.85rem; font-size: 0.88rem; font-family: var(--font-body);
+      transition: border-color 120ms, box-shadow 120ms; outline: none; width: 100%;
+    }
+    .field input:focus {
+      border-color: var(--accent-border);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+    .feedback { border-radius: 10px; padding: 0.55rem 0.75rem; font-size: 0.83rem; }
+    .feedback--error { color: var(--error); background: var(--feedback-error-bg); }
+    .feedback--success { color: var(--success); background: var(--feedback-ok-bg); }
+
+    /* Badges */
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      padding: 0.25rem 0.6rem; border-radius: 999px;
+      background: var(--accent-soft); color: var(--accent);
+      font-size: 0.78rem; font-weight: 600; letter-spacing: 0.04em;
+    }
+    .status-pill {
+      display: inline-flex; align-items: center;
+      padding: 0.18rem 0.55rem; border-radius: 999px;
+      border: 1px solid var(--border);
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .status-pill.is-confirmed { background: var(--status-ok-bg); color: var(--status-ok-text); border-color: transparent; }
+    .status-pill.is-planned   { background: var(--status-plan-bg); color: var(--status-plan-text); border-color: transparent; }
+    .status-pill.is-tentative { background: var(--status-tentative-bg); color: var(--status-tentative-text); border-color: transparent; }
+    .status-pill.is-cancelled { background: var(--status-cancel-bg); color: var(--status-cancel-text); border-color: transparent; }
+
+    /* Panel */
+    .panel {
+      border: 1px solid var(--border); border-radius: 18px;
+      background: var(--surface); backdrop-filter: blur(18px);
+      box-shadow: var(--shadow); padding: 1.15rem 1.25rem;
+    }
+    .panel h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--ink); }
+    .panel p  { font-size: 0.88rem; color: var(--ink-medium); line-height: 1.55; }
+    .eyebrow {
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--ink-soft); margin-bottom: 0.35rem;
+    }
+
+    /* Data rows */
+    .data-sheet { display: grid; gap: 0.4rem; }
+    .data-row {
+      display: grid; grid-template-columns: 1fr auto;
+      align-items: center; gap: 0.75rem;
+      padding: 0.5rem 0.75rem; border-radius: 12px;
+      border: 1px solid var(--border); background: var(--surface-raised);
+      font-size: 0.82rem; cursor: pointer;
+      transition: transform 120ms, background 120ms, border-color 120ms, box-shadow 120ms;
+    }
+    .data-row:hover {
+      transform: translateY(-1px);
+      background: var(--row-hover-bg); border-color: var(--row-hover-border);
+      box-shadow: var(--shadow);
+    }
+    .data-row.is-selected {
+      border-color: var(--accent); background: var(--accent-selected);
+      box-shadow: inset 3px 0 0 var(--accent);
+    }
+    .data-row__main { font-weight: 600; color: var(--ink); }
+    .data-row__meta { font-size: 0.75rem; color: var(--ink-soft); margin-top: 0.1rem; }
+    .data-row__aside { font-size: 0.75rem; color: var(--ink-soft); text-align: right; }
+
+    /* Segmented control */
+    .segmented-control {
+      display: inline-grid; gap: 0.3rem;
+      padding: 0.28rem; background: var(--surface-raised);
+      border-radius: 12px; border: 1px solid var(--border);
+    }
+    .segmented-control button {
+      padding: 0.45rem 0.9rem; border-radius: 8px;
+      background: transparent; border: 1px solid transparent;
+      color: var(--ink-soft); font-size: 0.82rem; font-weight: 500;
+      cursor: pointer; font-family: var(--font-body);
+      transition: background 120ms, color 120ms, border-color 120ms;
+    }
+    .segmented-control button.is-active {
+      background: var(--accent-soft); border-color: var(--accent-border);
+      color: var(--accent); font-weight: 600;
+    }
+
+    /* Timeline */
+    .timeline-card {
+      border: 1px solid var(--border); border-radius: 18px;
+      background: var(--surface); box-shadow: var(--shadow); padding: 1rem;
+    }
+    .timeline-scale {
+      display: grid; gap: 0;
+      font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--ink-soft);
+      margin-bottom: 0.5rem; padding-left: 96px;
+    }
+    .timeline-scale span { text-align: center; padding-bottom: 0.35rem; border-bottom: 1px solid var(--border); }
+    .timeline-lane {
+      display: grid; grid-template-columns: 92px 1fr;
+      gap: 0.6rem; align-items: center; margin-bottom: 0.4rem;
+    }
+    .timeline-lane__label { font-size: 0.78rem; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .timeline-lane__sub { font-size: 0.68rem; color: var(--ink-soft); }
+    .timeline-track {
+      position: relative; height: 1.75rem;
+      border: 1px dashed var(--border); background: var(--surface-raised);
+      border-radius: 4px; overflow: hidden;
+    }
+    .timeline-bar {
+      position: absolute; top: 3px; bottom: 3px;
+      border-radius: 0; border: 1px solid var(--accent-border);
+      background: var(--accent-soft); color: var(--accent);
+      display: flex; align-items: center; padding: 0 0.5rem;
+      font-size: 0.68rem; font-weight: 600; white-space: nowrap; overflow: hidden;
+      transition: transform 140ms, box-shadow 140ms;
+      cursor: pointer;
+    }
+    .timeline-bar:hover { transform: translateY(-1px); box-shadow: var(--shadow); z-index: 2; }
+    .timeline-bar.is-confirmed,
+    .timeline-bar.is-occupied {
+      background: var(--status-ok-bg);
+      color: var(--status-ok-text);
+      border-color: transparent;
+    }
+    .timeline-bar.is-planned,
+    .timeline-bar.is-available {
+      background: var(--status-plan-bg);
+      color: var(--status-plan-text);
+      border-color: transparent;
+    }
+    .timeline-bar.is-tentative {
+      background: var(--status-tentative-bg);
+      color: var(--status-tentative-text);
+      border-color: transparent;
+    }
+    .timeline-bar.is-cancelled,
+    .timeline-bar.is-undefined,
+    .timeline-bar.is-completed,
+    .timeline-bar.is-active {
+      background: var(--status-cancel-bg);
+      color: var(--status-cancel-text);
+      border-color: transparent;
+    }
+    .timeline-bar.is-blocked {
+      background: repeating-linear-gradient(
+        45deg,
+        color-mix(in srgb, var(--status-cancel-bg) 80%, var(--surface)),
+        color-mix(in srgb, var(--status-cancel-bg) 80%, var(--surface)) 5px,
+        color-mix(in srgb, var(--status-cancel-bg) 40%, var(--surface)) 5px,
+        color-mix(in srgb, var(--status-cancel-bg) 40%, var(--surface)) 10px
+      );
+      color: var(--status-cancel-text);
+      border-color: color-mix(in srgb, var(--status-cancel-bg) 60%, var(--border));
+    }
+    .timeline-bar.is-cancelled,
+    .timeline-bar.is-undefined {
+      border-style: dashed;
+    }
+    .timeline-bar--visit {
+      background: rgba(248,113,113,0.15); border-color: rgba(248,113,113,0.35); color: #f87171;
+    }
+    .shared-compare-controls-demo {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.85rem;
+    }
+    .shared-compare-controls-demo .segmented-control {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      min-width: min(100%, 320px);
+    }
+
+    /* Modal demo */
+    .modal-demo {
+      border: 1px solid var(--border); border-radius: 18px;
+      background: var(--surface-strong); box-shadow: var(--shadow-strong);
+      overflow: hidden; width: 100%;
+    }
+    .modal-demo__header {
+      padding: 0.75rem 1rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--surface-strong);
+    }
+    .modal-demo__header h4 { font-size: 0.92rem; font-weight: 600; color: var(--ink); }
+    .modal-demo__body { padding: 1.15rem; }
+    .modal-demo__footer {
+      padding: 0.65rem 1rem; border-top: 1px solid var(--border);
+      display: flex; justify-content: flex-end; gap: 0.5rem;
+    }
+
+    /* Sidebar demo */
+    .sidebar-demo {
+      display: flex; height: 220px;
+      border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+    }
+    .sidebar-demo__nav {
+      width: 52px; background: var(--surface);
+      border-right: 1px solid var(--border-subtle);
+      display: flex; flex-direction: column; gap: 0.15rem;
+      padding: 0.5rem 0.3rem; overflow: hidden;
+      transition: width 200ms ease;
+    }
+    .sidebar-demo:hover .sidebar-demo__nav { width: 180px; }
+    .sidebar-demo__item {
+      display: flex; align-items: center; gap: 0.65rem;
+      padding: 0.45rem 0.5rem; border-radius: 8px;
+      color: var(--ink-medium); font-size: 0.83rem; font-weight: 500;
+      white-space: nowrap; cursor: pointer;
+      transition: background 0.12s, color 0.12s;
+    }
+    .sidebar-demo__item:hover { background: var(--surface-raised); color: var(--ink); }
+    .sidebar-demo__item.is-active { background: var(--accent-soft); color: var(--accent); }
+    .sidebar-demo__icon { width: 18px; height: 18px; flex-shrink: 0; opacity: 0.8; }
+    .sidebar-demo__content {
+      flex: 1; padding: 1rem; background: var(--background);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--ink-soft); font-size: 0.82rem;
+    }
+
+    /* Typography specimens */
+    .sg-type-specimen { display: grid; gap: 0.5rem; }
+    .sg-type-row {
+      display: grid; grid-template-columns: 140px 1fr auto;
+      align-items: baseline; gap: 1rem; padding: 0.6rem 0;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .sg-type-row:last-child { border-bottom: none; }
+    .sg-type-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+    .sg-type-meta { font-size: 0.68rem; color: var(--ink-soft); text-align: right; white-space: nowrap; }
+
+    /* Misc utils */
+    .sg-divider { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+    .text-muted { color: var(--ink-soft); font-size: 0.82rem; }
+
+    @media (max-width: 760px) {
+      .sg-grid--3 { grid-template-columns: 1fr; }
+      .sg-header { flex-direction: column; }
+      .sg-type-row { grid-template-columns: 1fr; }
+      .sg-type-meta { text-align: left; }
+    }
+  </style>
+</head>
+<body>
+<div class="sg-shell">
+
+  <!-- HEADER -->
+  <header class="sg-header">
+    <div class="sg-header__copy">
+      <p class="sg-eyebrow">Sistema de diseño · Referencia visual</p>
+      <h1>Sailing Planner</h1>
+      <p>Guía de estilos completa — tokens, tipografía, componentes y patrones de layout. Cambia el tema con los controles para ver cómo se adapta cada pieza.</p>
+    </div>
+    <div class="sg-theme-switcher">
+      <span>Tema</span>
+      <button class="sg-theme-btn is-active" data-theme-id="madrugada" style="background:linear-gradient(135deg,#0e1520,#00b4d8)" title="Madrugada"></button>
+      <button class="sg-theme-btn" data-theme-id="jade"      style="background:linear-gradient(135deg,#0e1520,#00d4aa)" title="Jade"></button>
+      <button class="sg-theme-btn" data-theme-id="abismo"    style="background:linear-gradient(135deg,#f0f2f5,#0057ff)" title="Abismo"></button>
+      <button class="sg-theme-btn" data-theme-id="poniente"  style="background:linear-gradient(135deg,#faf8f5,#e8571a)" title="Poniente"></button>
+      <button class="sg-theme-btn" data-theme-id="bruma"     style="background:linear-gradient(135deg,#f7f8fc,#6366f1)" title="Bruma"></button>
+    </div>
+  </header>
+
+  <!-- TOC -->
+  <nav class="sg-toc">
+    <a href="#temas">Temas</a>
+    <a href="#colores">Tokens de color</a>
+    <a href="#tipografia">Tipografía</a>
+    <a href="#espaciado">Espaciado &amp; radios</a>
+    <a href="#sombras">Sombras</a>
+    <a href="#botones">Botones</a>
+    <a href="#formularios">Formularios</a>
+    <a href="#badges">Badges &amp; estado</a>
+    <a href="#cards">Cards &amp; paneles</a>
+    <a href="#filas">Filas de datos</a>
+    <a href="#modales">Modales</a>
+    <a href="#timeline">Timeline</a>
+    <a href="#segmentado">Control segmentado</a>
+    <a href="#sidebar">Sidebar</a>
+    <a href="#layouts">Layouts</a>
+    <a href="#animaciones">Animaciones</a>
+  </nav>
+
+  <!-- ── 1. TEMAS ── -->
+  <section class="sg-section" id="temas">
+    <div class="sg-section-header">
+      <span class="sg-section-num">01</span>
+      <h2 class="sg-section-title">Sistema de temas</h2>
+    </div>
+    <div class="sg-grid">
+      <div class="sg-card">
+        <div class="sg-card__preview" style="background:linear-gradient(135deg,#0e1520 0%,#0c1829 100%);min-height:60px;">
+          <div style="width:14px;height:14px;border-radius:50%;background:#00b4d8;box-shadow:0 0 10px #00b4d8;"></div>
+        </div>
+        <div class="sg-card__meta"><div class="sg-card__name">Madrugada</div><div class="sg-card__desc">Oscuro · Cyan <span class="sg-code">#00b4d8</span></div></div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview" style="background:linear-gradient(135deg,#0e1520 0%,#0c1829 100%);min-height:60px;">
+          <div style="width:14px;height:14px;border-radius:50%;background:#00d4aa;box-shadow:0 0 10px #00d4aa;"></div>
+        </div>
+        <div class="sg-card__meta"><div class="sg-card__name">Jade</div><div class="sg-card__desc">Oscuro · Esmeralda <span class="sg-code">#00d4aa</span></div></div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview" style="background:linear-gradient(135deg,#f0f2f5 0%,#eef2ff 100%);min-height:60px;">
+          <div style="width:14px;height:14px;border-radius:50%;background:#0057ff;"></div>
+        </div>
+        <div class="sg-card__meta"><div class="sg-card__name">Abismo</div><div class="sg-card__desc">Claro · Azul eléctrico <span class="sg-code">#0057ff</span></div></div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview" style="background:linear-gradient(135deg,#faf8f5 0%,#fff3ee 100%);min-height:60px;">
+          <div style="width:14px;height:14px;border-radius:50%;background:#e8571a;"></div>
+        </div>
+        <div class="sg-card__meta"><div class="sg-card__name">Poniente</div><div class="sg-card__desc">Claro · Coral <span class="sg-code">#e8571a</span></div></div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview" style="background:linear-gradient(135deg,#f7f8fc 0%,#eef2ff 100%);min-height:60px;">
+          <div style="width:14px;height:14px;border-radius:50%;background:#6366f1;"></div>
+        </div>
+        <div class="sg-card__meta"><div class="sg-card__name">Bruma</div><div class="sg-card__desc">Claro · Índigo <span class="sg-code">#6366f1</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 2. COLORES ── -->
+  <section class="sg-section" id="colores">
+    <div class="sg-section-header">
+      <span class="sg-section-num">02</span>
+      <h2 class="sg-section-title">Tokens de color</h2>
+    </div>
+
+    <p class="sg-sublabel">Acento</p>
+    <div class="sg-grid">
+      <div class="sg-swatch"><div class="sg-swatch__color" style="background:var(--accent)"></div><div class="sg-swatch__label"><span class="sg-swatch__name">--accent</span><span class="sg-swatch__value">Acción principal</span></div></div>
+      <div class="sg-swatch"><div class="sg-swatch__color" style="background:var(--accent-strong)"></div><div class="sg-swatch__label"><span class="sg-swatch__name">--accent-strong</span><span class="sg-swatch__value">Brand, wordmark</span></div></div>
+      <div class="sg-swatch"><div class="sg-swatch__color" style="background:var(--accent-soft)"></div><div class="sg-swatch__label"><span class="sg-swatch__name">--accent-soft</span><span class="sg-swatch__value">Fondo selección</span></div></div>
+      <div class="sg-swatch"><div class="sg-swatch__color" style="background:var(--accent-border)"></div><div class="sg-swatch__label"><span class="sg-swatch__name">--accent-border</span><span class="sg-swatch__value">Bordes de énfasis</span></div></div>
+    </div>
+
+    <p class="sg-sublabel" style="margin-top:1.25rem">Superficies</p>
+    <div class="sg-grid">
+      <div class="sg-swatch"><div class="sg-swatch__color" style="background:var(--background)"></div><div class="sg-swatch__label"><span class="sg-swatch__name">--background</span><span class="sg-swatch__value">Fondo de página</span></div></div>
+      <div class="sg-swatch"><div class="sg-swatch__color" style="background:var(--surface);border:1px solid var(--border)"></div><div class="sg-swatch__label"><span class="sg-swatch__name">--surface</span><span class="sg-swatch__value">Cards, paneles</span></div></div>
+      <div class="sg-swatch"><div class="sg-swatch__color" style="background:var(--surface-raised);border:1px solid var(--border)"></div><div class="sg-swatch__label"><span class="sg-swatch__name">--surface-raised</span><span class="sg-swatch__value">Filas, inputs</span></div></div>
+      <div class="sg-swatch"><div class="sg-swatch__color" style="background:var(--surface-strong);border:1px solid var(--border)"></div><div class="sg-swatch__label"><span class="sg-swatch__name">--surface-strong</span><span class="sg-swatch__value">Modales, tooltips</span></div></div>
+    </div>
+
+    <p class="sg-sublabel" style="margin-top:1.25rem">Tinta</p>
+    <div class="sg-grid">
+      <div class="sg-swatch"><div class="sg-swatch__color" style="background:var(--ink)"></div><div class="sg-swatch__label"><span class="sg-swatch__name">--ink</span><span class="sg-swatch__value">Texto primario</span></div></div>
+      <div class="sg-swatch"><div class="sg-swatch__color" style="background:var(--ink-medium)"></div><div class="sg-swatch__label"><span class="sg-swatch__name">--ink-medium</span><span class="sg-swatch__value">Secundario · 52%</span></div></div>
+      <div class="sg-swatch"><div class="sg-swatch__color" style="background:var(--ink-soft)"></div><div class="sg-swatch__label"><span class="sg-swatch__name">--ink-soft</span><span class="sg-swatch__value">Labels, hints · 38%</span></div></div>
+      <div class="sg-swatch"><div class="sg-swatch__color" style="background:var(--muted)"></div><div class="sg-swatch__label"><span class="sg-swatch__name">--muted</span><span class="sg-swatch__value">Muted fijo</span></div></div>
+    </div>
+
+    <p class="sg-sublabel" style="margin-top:1.25rem">Feedback &amp; estados</p>
+    <div class="sg-grid">
+      <div class="sg-swatch"><div class="sg-swatch__color" style="background:var(--error)"></div><div class="sg-swatch__label"><span class="sg-swatch__name">--error</span><span class="sg-swatch__value">Error / destructivo</span></div></div>
+      <div class="sg-swatch"><div class="sg-swatch__color" style="background:var(--success)"></div><div class="sg-swatch__label"><span class="sg-swatch__name">--success</span><span class="sg-swatch__value">Éxito / positivo</span></div></div>
+      <div class="sg-swatch"><div class="sg-swatch__color" style="background:var(--status-ok-bg)"></div><div class="sg-swatch__label"><span class="sg-swatch__name">--status-ok-bg</span><span class="sg-swatch__value">Confirmado</span></div></div>
+      <div class="sg-swatch"><div class="sg-swatch__color" style="background:var(--status-plan-bg)"></div><div class="sg-swatch__label"><span class="sg-swatch__name">--status-plan-bg</span><span class="sg-swatch__value">Planificado</span></div></div>
+      <div class="sg-swatch"><div class="sg-swatch__color" style="background:var(--status-tentative-bg)"></div><div class="sg-swatch__label"><span class="sg-swatch__name">--status-tentative-bg</span><span class="sg-swatch__value">Tentativo</span></div></div>
+      <div class="sg-swatch"><div class="sg-swatch__color" style="background:var(--status-cancel-bg)"></div><div class="sg-swatch__label"><span class="sg-swatch__name">--status-cancel-bg</span><span class="sg-swatch__value">Cancelado</span></div></div>
+    </div>
+  </section>
+
+  <!-- ── 3. TIPOGRAFÍA ── -->
+  <section class="sg-section" id="tipografia">
+    <div class="sg-section-header">
+      <span class="sg-section-num">03</span>
+      <h2 class="sg-section-title">Tipografía</h2>
+    </div>
+
+    <p class="sg-sublabel">Familias</p>
+    <div class="sg-grid sg-grid--2">
+      <div class="sg-card">
+        <div class="sg-card__preview" style="flex-direction:column;align-items:flex-start;padding:1.25rem 1.5rem;">
+          <div style="font-family:'Cinzel',serif;font-size:2rem;font-weight:600;letter-spacing:-0.04em;color:var(--accent-strong);line-height:1;">Sailing Planner</div>
+          <div style="font-size:0.72rem;color:var(--ink-soft);margin-top:0.5rem;letter-spacing:0.06em;text-transform:uppercase;">ABCDEFGHIJKLMNOPQRSTUVWXYZ 0123456789</div>
+        </div>
+        <div class="sg-card__meta">
+          <div class="sg-card__name">Cinzel — Display</div>
+          <div class="sg-card__desc"><span class="sg-code">--font-display</span> · peso 600 · Headings de hero, wordmark, títulos de sección</div>
+        </div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview" style="flex-direction:column;align-items:flex-start;padding:1.25rem 1.5rem;">
+          <div style="font-size:1.25rem;font-weight:500;color:var(--ink);line-height:1.3;">Avenir Next / Segoe UI</div>
+          <div style="font-size:0.82rem;color:var(--ink-medium);margin-top:0.4rem;">El texto de la interfaz, labels, metadatos y cuerpo de contenido.</div>
+          <div style="font-size:0.72rem;color:var(--ink-soft);margin-top:0.3rem;">abcdefghijklmnopqrstuvwxyz 0123456789</div>
+        </div>
+        <div class="sg-card__meta">
+          <div class="sg-card__name">Avenir Next — Body / UI</div>
+          <div class="sg-card__desc"><span class="sg-code">--font-body</span> · Stack sans-serif · Todo lo que no es display</div>
+        </div>
+      </div>
+    </div>
+
+    <p class="sg-sublabel" style="margin-top:1.5rem">Escala</p>
+    <div class="sg-table-wrap">
+      <div class="sg-type-specimen">
+        <div class="sg-type-row">
+          <span class="sg-type-label">Hero H1</span>
+          <span style="font-family:'Cinzel',serif;font-size:clamp(1.6rem,4vw,2.8rem);font-weight:600;letter-spacing:-0.06em;line-height:0.95;color:var(--accent-strong);">Navegación</span>
+          <span class="sg-type-meta">clamp(2rem,5vw,4.2rem) · 600 · −0.06em</span>
+        </div>
+        <div class="sg-type-row">
+          <span class="sg-type-label">H2 Sección</span>
+          <span style="font-family:'Cinzel',serif;font-size:1.15rem;font-weight:600;color:var(--ink);">Temporada 2026</span>
+          <span class="sg-type-meta">clamp(0.95rem,2vw,1.3rem) · 600</span>
+        </div>
+        <div class="sg-type-row">
+          <span class="sg-type-label">H3 Card</span>
+          <span style="font-size:1rem;font-weight:600;color:var(--ink);">Etapas registradas</span>
+          <span class="sg-type-meta">1rem · 600</span>
+        </div>
+        <div class="sg-type-row">
+          <span class="sg-type-label">Body</span>
+          <span style="font-size:0.88rem;color:var(--ink-medium);line-height:1.6;">La temporada arranca con una primera estancia en las Cícladas.</span>
+          <span class="sg-type-meta">0.88rem · 400 · lh 1.6</span>
+        </div>
+        <div class="sg-type-row">
+          <span class="sg-type-label">Metadata</span>
+          <span style="font-size:0.78rem;color:var(--ink-soft);">30 abril — 20 mayo · Confirmado</span>
+          <span class="sg-type-meta">0.78rem · 400</span>
+        </div>
+        <div class="sg-type-row">
+          <span class="sg-type-label">Label uppercase</span>
+          <span style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-soft);">Ventanas de visita</span>
+          <span class="sg-type-meta">0.72rem · 700 · 0.08em</span>
+        </div>
+        <div class="sg-type-row">
+          <span class="sg-type-label">Micro label</span>
+          <span style="font-size:0.62rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);">Planificado</span>
+          <span class="sg-type-meta">0.62rem · 700 · 0.12em</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 4. ESPACIADO & RADIOS ── -->
+  <section class="sg-section" id="espaciado">
+    <div class="sg-section-header">
+      <span class="sg-section-num">04</span>
+      <h2 class="sg-section-title">Espaciado &amp; Border-radius</h2>
+    </div>
+    <div class="sg-grid sg-grid--2">
+      <div>
+        <p class="sg-sublabel">Espaciado de referencia</p>
+        <div class="sg-table-wrap">
+          <table class="sg-table">
+            <thead><tr><th>Contexto</th><th>Valor</th></tr></thead>
+            <tbody>
+              <tr><td>Gap inline pequeño</td><td><span class="sg-code">0.3–0.4rem</span></td></tr>
+              <tr><td>Padding de pill</td><td><span class="sg-code">0.18rem 0.55rem</span></td></tr>
+              <tr><td>Padding de botón</td><td><span class="sg-code">0 1rem</span></td></tr>
+              <tr><td>Padding de fila</td><td><span class="sg-code">0.5rem 0.75rem</span></td></tr>
+              <tr><td>Padding de card</td><td><span class="sg-code">1.15rem 1.25rem</span></td></tr>
+              <tr><td>Gap entre cards</td><td><span class="sg-code">1rem</span></td></tr>
+              <tr><td>Altura botón std</td><td><span class="sg-code">2.5rem</span></td></tr>
+              <tr><td>Altura botón sm</td><td><span class="sg-code">2.15rem</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <p class="sg-sublabel">Border-radius por componente</p>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.75rem;margin-bottom:0.75rem;">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:0.4rem;">
+            <div class="sg-radius-demo" style="border-radius:4px;"></div>
+            <span style="font-size:0.68rem;color:var(--ink-soft);text-align:center;">Timeline bar<br>4px</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:0.4rem;">
+            <div class="sg-radius-demo" style="border-radius:8px;"></div>
+            <span style="font-size:0.68rem;color:var(--ink-soft);text-align:center;">Nav item<br>8px</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:0.4rem;">
+            <div class="sg-radius-demo" style="border-radius:12px;"></div>
+            <span style="font-size:0.68rem;color:var(--ink-soft);text-align:center;">Botón / input<br>12px</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:0.4rem;">
+            <div class="sg-radius-demo" style="border-radius:18px;"></div>
+            <span style="font-size:0.68rem;color:var(--ink-soft);text-align:center;">Card / panel<br>18px</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:0.4rem;">
+            <div class="sg-radius-demo" style="border-radius:20px;"></div>
+            <span style="font-size:0.68rem;color:var(--ink-soft);text-align:center;">Hero / auth<br>20–24px</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:0.4rem;">
+            <div class="sg-radius-demo" style="border-radius:999px;"></div>
+            <span style="font-size:0.68rem;color:var(--ink-soft);text-align:center;">Pill / badge<br>999px</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 5. SOMBRAS ── -->
+  <section class="sg-section" id="sombras">
+    <div class="sg-section-header">
+      <span class="sg-section-num">05</span>
+      <h2 class="sg-section-title">Sombras &amp; efectos</h2>
+    </div>
+    <div class="sg-grid">
+      <div class="sg-card">
+        <div class="sg-card__preview">
+          <div class="sg-shadow-demo" style="box-shadow:var(--shadow)"></div>
+        </div>
+        <div class="sg-card__meta"><div class="sg-card__name">--shadow</div><div class="sg-card__desc">Cards, paneles, filas en hover</div></div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview">
+          <div class="sg-shadow-demo" style="box-shadow:var(--shadow-strong)"></div>
+        </div>
+        <div class="sg-card__meta"><div class="sg-card__name">--shadow-strong</div><div class="sg-card__desc">Modales, auth card</div></div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview">
+          <div class="sg-shadow-demo" style="box-shadow:0 0 0 3px var(--accent-soft);border-color:var(--accent-border)"></div>
+        </div>
+        <div class="sg-card__meta"><div class="sg-card__name">Focus ring</div><div class="sg-card__desc"><span class="sg-code">0 0 0 3px --accent-soft</span></div></div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview">
+          <div class="sg-shadow-demo" style="box-shadow:inset 3px 0 0 var(--accent);border-color:var(--accent)"></div>
+        </div>
+        <div class="sg-card__meta"><div class="sg-card__name">Fila seleccionada</div><div class="sg-card__desc"><span class="sg-code">inset 3px 0 0 --accent</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 6. BOTONES ── -->
+  <section class="sg-section" id="botones">
+    <div class="sg-section-header">
+      <span class="sg-section-num">06</span>
+      <h2 class="sg-section-title">Botones</h2>
+    </div>
+    <div class="sg-grid sg-grid--2">
+      <div class="sg-card">
+        <div class="sg-card__preview"><button class="primary-button">💾 Guardar posición</button></div>
+        <div class="sg-card__meta"><div class="sg-card__name">.primary-button</div><div class="sg-card__desc">Acción principal · gradiente acento · <span class="sg-code">h: 2.5rem · r: 12px</span></div></div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview"><button class="secondary-button">Cancelar</button></div>
+        <div class="sg-card__meta"><div class="sg-card__name">.secondary-button</div><div class="sg-card__desc">Acción secundaria · surface-raised</div></div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview"><button class="secondary-button secondary-button--small">+ Añadir etapa</button></div>
+        <div class="sg-card__meta"><div class="sg-card__name">.secondary-button--small</div><div class="sg-card__desc">Compacto · <span class="sg-code">h: 2.15rem · 0.8rem</span></div></div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview" style="gap:1rem;">
+          <button class="link-button">¿Olvidaste la contraseña?</button>
+          <button class="link-button link-button--danger">Eliminar</button>
+        </div>
+        <div class="sg-card__meta"><div class="sg-card__name">.link-button</div><div class="sg-card__desc">Terciario sin fondo · <span class="sg-code">--danger</span> para destructivo</div></div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview">
+          <button class="google-button">
+            <svg class="google-button__icon" viewBox="0 0 24 24"><path fill="#4285f4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34a853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#fbbc05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#ea4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+            Continuar con Google
+          </button>
+        </div>
+        <div class="sg-card__meta"><div class="sg-card__name">.google-button</div><div class="sg-card__desc">OAuth · colores fijos no temados</div></div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview" style="gap:0.5rem;">
+          <button class="icon-button" aria-label="Editar">✏️</button>
+          <button class="icon-button" aria-label="Eliminar">🗑</button>
+          <button class="icon-button" aria-label="Compartir">↗</button>
+        </div>
+        <div class="sg-card__meta"><div class="sg-card__name">.icon-button</div><div class="sg-card__desc">Circular · <span class="sg-code">2rem × 2rem</span> · siempre con aria-label</div></div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview"><button class="primary-button" disabled>Guardando…</button></div>
+        <div class="sg-card__meta"><div class="sg-card__name">:disabled</div><div class="sg-card__desc">opacity 0.45 · cursor not-allowed</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 7. FORMULARIOS ── -->
+  <section class="sg-section" id="formularios">
+    <div class="sg-section-header">
+      <span class="sg-section-num">07</span>
+      <h2 class="sg-section-title">Formularios</h2>
+    </div>
+    <div class="sg-grid sg-grid--2">
+      <div class="sg-card">
+        <div class="sg-card__preview sg-card__preview--start">
+          <label class="field"><span>Correo electrónico</span><input type="email" placeholder="owner@example.com" /></label>
+        </div>
+        <div class="sg-card__meta"><div class="sg-card__name">.field input</div><div class="sg-card__desc"><span class="sg-code">border-radius: 12px · padding: 0.65rem 0.85rem</span></div></div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview sg-card__preview--start">
+          <label class="field"><span>Puerto de escala</span><select><option>Seleccionar...</option><option>Atenas</option><option>Tesalónica</option></select></label>
+        </div>
+        <div class="sg-card__meta"><div class="sg-card__name">.field select</div><div class="sg-card__desc">Mismo tratamiento que input</div></div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview sg-card__preview--start">
+          <p class="feedback feedback--error">El correo electrónico es obligatorio.</p>
+        </div>
+        <div class="sg-card__meta"><div class="sg-card__name">.feedback--error</div><div class="sg-card__desc">Fondo <span class="sg-code">--feedback-error-bg</span></div></div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview sg-card__preview--start">
+          <p class="feedback feedback--success">Enlace enviado. Revisa tu correo.</p>
+        </div>
+        <div class="sg-card__meta"><div class="sg-card__name">.feedback--success</div><div class="sg-card__desc">Fondo <span class="sg-code">--feedback-ok-bg</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 8. BADGES ── -->
+  <section class="sg-section" id="badges">
+    <div class="sg-section-header">
+      <span class="sg-section-num">08</span>
+      <h2 class="sg-section-title">Badges &amp; pills de estado</h2>
+    </div>
+    <div class="sg-grid">
+      <div class="sg-card">
+        <div class="sg-card__preview"><span class="badge">5 etapas</span></div>
+        <div class="sg-card__meta"><div class="sg-card__name">.badge</div><div class="sg-card__desc">Acento suave · pill · contadores</div></div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview"><span class="status-pill is-confirmed">Confirmado</span></div>
+        <div class="sg-card__meta"><div class="sg-card__name">.is-confirmed</div><div class="sg-card__desc"><span class="sg-code">--status-ok-*</span></div></div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview"><span class="status-pill is-planned">Planificado</span></div>
+        <div class="sg-card__meta"><div class="sg-card__name">.is-planned</div><div class="sg-card__desc"><span class="sg-code">--status-plan-*</span></div></div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview"><span class="status-pill is-tentative">Tentativo</span></div>
+        <div class="sg-card__meta"><div class="sg-card__name">.is-tentative</div><div class="sg-card__desc"><span class="sg-code">--status-tentative-*</span></div></div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview"><span class="status-pill is-cancelled">Cancelado</span></div>
+        <div class="sg-card__meta"><div class="sg-card__name">.is-cancelled</div><div class="sg-card__desc"><span class="sg-code">--status-cancel-*</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 9. CARDS ── -->
+  <section class="sg-section" id="cards">
+    <div class="sg-section-header">
+      <span class="sg-section-num">09</span>
+      <h2 class="sg-section-title">Cards &amp; paneles</h2>
+    </div>
+    <div class="sg-grid sg-grid--2">
+      <div class="panel">
+        <p class="eyebrow">Resumen operativo</p>
+        <h3>Estructura de temporada</h3>
+        <p>La temporada arranca con una primera estancia en las <strong>Cícladas</strong> entre finales de abril y mayo. El siguiente bloque relevante se sitúa en <strong>Lemnos</strong>.</p>
+      </div>
+      <div class="panel" style="display:flex;flex-direction:column;gap:0.75rem;">
+        <p class="eyebrow">Métricas</p>
+        <h3>Resumen numérico</h3>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem;margin-top:0.25rem;">
+          <div style="text-align:center;">
+            <div style="font-size:1.75rem;font-weight:600;color:var(--accent);line-height:1;">343</div>
+            <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-soft);margin-top:0.2rem;">millas</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:1.75rem;font-weight:600;color:var(--accent);line-height:1;">5</div>
+            <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-soft);margin-top:0.2rem;">etapas</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:1.75rem;font-weight:600;color:var(--accent);line-height:1;">5</div>
+            <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-soft);margin-top:0.2rem;">visitas</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 10. FILAS DE DATOS ── -->
+  <section class="sg-section" id="filas">
+    <div class="sg-section-header">
+      <span class="sg-section-num">10</span>
+      <h2 class="sg-section-title">Filas de datos</h2>
+    </div>
+    <div class="sg-grid sg-grid--2">
+      <div>
+        <div class="data-sheet">
+          <div class="data-row">
+            <div><div class="data-row__main">Cícladas</div><div class="data-row__meta">30 abril — 20 mayo · 21 días</div></div>
+            <div class="data-row__aside"><span class="status-pill is-confirmed">Confirmado</span></div>
+          </div>
+          <div class="data-row is-selected">
+            <div><div class="data-row__main">Lemnos</div><div class="data-row__meta">15 julio — 15 agosto · 31 días</div></div>
+            <div class="data-row__aside"><span class="status-pill is-planned">Planificado</span></div>
+          </div>
+          <div class="data-row">
+            <div><div class="data-row__main">Lesbos</div><div class="data-row__meta">16 agosto — 22 agosto · 7 días</div></div>
+            <div class="data-row__aside"><span class="status-pill is-tentative">Tentativo</span></div>
+          </div>
+          <div class="data-row">
+            <div><div class="data-row__main">Samos</div><div class="data-row__meta">1 septiembre — 5 septiembre</div></div>
+            <div class="data-row__aside"><span class="status-pill is-cancelled">Cancelado</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="sg-table-wrap">
+        <table class="sg-table">
+          <thead><tr><th>Estado</th><th>Descripción</th></tr></thead>
+          <tbody>
+            <tr><td>Normal</td><td>surface-raised, border sutil</td></tr>
+            <tr><td>:hover</td><td>translateY(−1px), row-hover-bg/border</td></tr>
+            <tr><td>.is-selected</td><td>accent-border + inset 3px accent</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 11. MODALES ── -->
+  <section class="sg-section" id="modales">
+    <div class="sg-section-header">
+      <span class="sg-section-num">11</span>
+      <h2 class="sg-section-title">Modales</h2>
+    </div>
+    <div class="sg-grid sg-grid--wide">
+      <div class="modal-demo">
+        <div class="modal-demo__header">
+          <h4>Editar etapa — Cícladas</h4>
+          <button class="icon-button" aria-label="Cerrar">✕</button>
+        </div>
+        <div class="modal-demo__body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+            <label class="field"><span>Nombre</span><input type="text" value="Cícladas" /></label>
+            <label class="field"><span>Estado</span><select><option>Confirmado</option></select></label>
+            <label class="field"><span>Fecha inicio</span><input type="date" value="2026-04-30" /></label>
+            <label class="field"><span>Fecha fin</span><input type="date" value="2026-05-20" /></label>
+          </div>
+        </div>
+        <div class="modal-demo__footer">
+          <button class="secondary-button">Cancelar</button>
+          <button class="primary-button">Guardar cambios</button>
+        </div>
+      </div>
+    </div>
+    <p class="text-muted" style="margin-top:0.75rem;">Usa <span class="sg-code">&lt;dialog&gt;</span> nativo con <span class="sg-code">.showModal()</span>. Backdrop: <span class="sg-code">rgba(0,0,0,0.60)</span> + <span class="sg-code">blur(3px)</span>.</p>
+  </section>
+
+  <!-- ── 12. TIMELINE ── -->
+  <section class="sg-section" id="timeline">
+    <div class="sg-section-header">
+      <span class="sg-section-num">12</span>
+      <h2 class="sg-section-title">Timeline — Gantt</h2>
+    </div>
+    <div class="sg-grid">
+      <div class="sg-card">
+        <div class="sg-card__preview sg-card__preview--start"><div class="timeline-track" style="width:100%;"><div class="timeline-bar is-planned" style="left:0;width:72%;">Planificado</div></div></div>
+        <div class="sg-card__meta"><div class="sg-card__name">Tramo planificado</div><div class="sg-card__desc"><span class="sg-code">.timeline-bar.is-planned</span> · misma paleta en principal y compartidos</div></div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview sg-card__preview--start"><div class="timeline-track" style="width:100%;"><div class="timeline-bar is-confirmed" style="left:0;width:72%;">Confirmado</div></div></div>
+        <div class="sg-card__meta"><div class="sg-card__name">Tramo confirmado</div><div class="sg-card__desc"><span class="sg-code">.timeline-bar.is-confirmed</span> / <span class="sg-code">.is-occupied</span></div></div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview sg-card__preview--start"><div class="timeline-track" style="width:100%;"><div class="timeline-bar is-tentative" style="left:0;width:72%;">Tentativo</div></div></div>
+        <div class="sg-card__meta"><div class="sg-card__name">Tramo tentativo</div><div class="sg-card__desc"><span class="sg-code">.timeline-bar.is-tentative</span></div></div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview sg-card__preview--start"><div class="timeline-track" style="width:100%;"><div class="timeline-bar is-cancelled" style="left:0;width:72%;">Cancelado</div></div></div>
+        <div class="sg-card__meta"><div class="sg-card__name">Tramo cancelado</div><div class="sg-card__desc"><span class="sg-code">.timeline-bar.is-cancelled</span> / <span class="sg-code">.is-undefined</span></div></div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview sg-card__preview--start"><div class="timeline-track" style="width:100%;"><div class="timeline-bar is-blocked" style="left:0;width:72%;">Bloqueado</div></div></div>
+        <div class="sg-card__meta"><div class="sg-card__name">Tramo bloqueado</div><div class="sg-card__desc"><span class="sg-code">.timeline-bar.is-blocked</span> · patrón rayado</div></div>
+      </div>
+    </div>
+    <div class="timeline-card">
+      <div style="display:grid;gap:0.85rem;">
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.55rem;">
+            <strong>Seriyu</strong>
+            <span class="text-muted">30 abr 2026 - 31 oct 2026</span>
+          </div>
+          <div class="timeline-scale" style="grid-template-columns:repeat(7,1fr);">
+            <span>ABR</span><span>MAY</span><span>JUN</span>
+            <span>JUL</span><span>AGO</span><span>SEP</span><span>OCT</span>
+          </div>
+          <div class="timeline-lane">
+            <div><div class="timeline-lane__label">Cícladas</div><div class="timeline-lane__sub">30 abr — 20 may</div></div>
+            <div class="timeline-track">
+              <div class="timeline-bar is-planned" style="left:13.6%;width:10.2%;">Cícladas</div>
+            </div>
+          </div>
+        </div>
+        <div style="display:grid;gap:0.75rem;padding:0.9rem 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+          <div style="display:flex;justify-content:flex-start;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+            <span class="text-muted" style="flex:1 1 260px;">Barco seleccionado: Enjoy</span>
+            <button class="secondary-button">Seleccionar barco a ver</button>
+          </div>
+          <div style="display:flex;justify-content:flex-start;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+            <div class="segmented-control" style="width:min(100%,320px);grid-template-columns:repeat(3,1fr);">
+              <button>Temporada</button>
+              <button>Meses</button>
+              <button class="is-active">Semana</button>
+            </div>
+            <button class="secondary-button">Mostrar mapa</button>
+          </div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.55rem;">
+            <strong>Enjoy</strong>
+            <span class="text-muted">30 abr 2026 - 31 oct 2026</span>
+          </div>
+          <div class="timeline-scale" style="grid-template-columns:repeat(7,1fr);">
+            <span>ABR</span><span>MAY</span><span>JUN</span>
+            <span>JUL</span><span>AGO</span><span>SEP</span><span>OCT</span>
+          </div>
+          <div class="timeline-lane">
+            <div><div class="timeline-lane__label">Lemnos</div><div class="timeline-lane__sub">15 jul — 15 ago</div></div>
+            <div class="timeline-track">
+              <div class="timeline-bar is-confirmed" style="left:50%;width:21.5%;">Lemnos</div>
+            </div>
+          </div>
+          <div class="timeline-lane">
+            <div><div class="timeline-lane__label">Lesbos</div><div class="timeline-lane__sub">16 ago — 22 ago</div></div>
+            <div class="timeline-track">
+              <div class="timeline-bar is-tentative" style="left:71.8%;width:4.7%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="text-muted" style="margin-top:0.75rem;">Las posiciones (<span class="sg-code">left</span>, <span class="sg-code">width</span>) se calculan dinámicamente a partir de fechas. Las barras son rectangulares (<span class="sg-code">border-radius: 0</span>) para mantener semántica Gantt. En compartidos, ambos timelines viven en la misma card, sincronizan tanto la escala temporal como el scroll horizontal y reutilizan la misma paleta de barras del timeline principal.</p>
+  </section>
+
+  <!-- ── 13. CONTROL SEGMENTADO ── -->
+  <section class="sg-section" id="segmentado">
+    <div class="sg-section-header">
+      <span class="sg-section-num">13</span>
+      <h2 class="sg-section-title">Control segmentado</h2>
+    </div>
+    <div class="sg-grid">
+      <div class="sg-card">
+        <div class="sg-card__preview">
+          <div class="segmented-control" style="grid-template-columns:repeat(2,1fr);">
+            <button class="is-active">Etapas</button>
+            <button>Visitas</button>
+          </div>
+        </div>
+        <div class="sg-card__meta"><div class="sg-card__name">2 opciones</div><div class="sg-card__desc">Vista activa con acento</div></div>
+      </div>
+      <div class="sg-card">
+        <div class="sg-card__preview">
+          <div class="segmented-control" style="grid-template-columns:repeat(3,1fr);">
+            <button>Semana</button>
+            <button class="is-active">Mes</button>
+            <button>Temporada</button>
+          </div>
+        </div>
+        <div class="sg-card__meta"><div class="sg-card__name">3 opciones</div><div class="sg-card__desc">Grid de columnas iguales</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 14. SIDEBAR ── -->
+  <section class="sg-section" id="sidebar">
+    <div class="sg-section-header">
+      <span class="sg-section-num">14</span>
+      <h2 class="sg-section-title">Sidebar — Navegación</h2>
+    </div>
+    <div class="sidebar-demo">
+      <nav class="sidebar-demo__nav">
+        <div class="sidebar-demo__item is-active">
+          <svg class="sidebar-demo__icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="10" y="2" width="6" height="6" rx="1"/><rect x="2" y="10" width="6" height="6" rx="1"/><rect x="10" y="10" width="6" height="6" rx="1"/></svg>
+          <span>Dashboard</span>
+        </div>
+        <div class="sidebar-demo__item">
+          <svg class="sidebar-demo__icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15 9 3l6 12"/><path d="M5.5 10.5h7"/></svg>
+          <span>Ruta</span>
+        </div>
+        <div class="sidebar-demo__item">
+          <svg class="sidebar-demo__icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="7"/><path d="M9 6v3l2 2"/></svg>
+          <span>Timeline</span>
+        </div>
+        <div class="sidebar-demo__item">
+          <svg class="sidebar-demo__icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="12" cy="12" r="3"/><path d="M8.5 8.5l1 1"/></svg>
+          <span>Visitas</span>
+        </div>
+      </nav>
+      <div class="sidebar-demo__content">Pasa el ratón encima para expandir el sidebar →</div>
+    </div>
+    <p class="text-muted" style="margin-top:0.75rem;">Colapsa a <span class="sg-code">52px</span>, expande a <span class="sg-code">220px</span> en hover/focus-within. Transición <span class="sg-code">200ms ease</span>.</p>
+  </section>
+
+  <!-- ── 15. LAYOUTS ── -->
+  <section class="sg-section" id="layouts">
+    <div class="sg-section-header">
+      <span class="sg-section-num">15</span>
+      <h2 class="sg-section-title">Layouts</h2>
+    </div>
+    <div class="sg-table-wrap">
+      <table class="sg-table">
+        <thead><tr><th>Clase</th><th>Grid</th><th>Uso</th></tr></thead>
+        <tbody>
+          <tr><td>.shell</td><td><span class="sg-code">max-width: 1480px · padding 1.2rem 1.25rem</span></td><td>Contenedor principal de página</td></tr>
+          <tr><td>.shell--guest</td><td><span class="sg-code">max-width: 1320px</span></td><td>Vista pública / invitado</td></tr>
+          <tr><td>.workspace-grid</td><td><span class="sg-code">1.65fr 1.1fr (min 380px)</span></td><td>Vista de barco — defecto</td></tr>
+          <tr><td>.workspace-grid--visits</td><td><span class="sg-code">1.02fr 0.98fr (min 380px)</span></td><td>Vista de visitas</td></tr>
+          <tr><td>.workspace-grid--trip</td><td><span class="sg-code">1.02fr 0.98fr (min 380px)</span></td><td>Vista de tramos</td></tr>
+          <tr><td>.workspace-grid--single</td><td><span class="sg-code">1fr</span></td><td>Vista de ancho completo</td></tr>
+          <tr><td>.dashboard-grid</td><td><span class="sg-code">auto-fill minmax(240px,1fr) → 1.1fr 0.9fr</span></td><td>Grid del dashboard</td></tr>
+          <tr><td>.auth-layout</td><td><span class="sg-code">grid place-items: center</span></td><td>Centrado de auth card</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── 16. ANIMACIONES ── -->
+  <section class="sg-section" id="animaciones">
+    <div class="sg-section-header">
+      <span class="sg-section-num">16</span>
+      <h2 class="sg-section-title">Animaciones &amp; transiciones</h2>
+    </div>
+    <div class="sg-table-wrap">
+      <table class="sg-table">
+        <thead><tr><th>Elemento</th><th>Propiedad</th><th>Duración</th></tr></thead>
+        <tbody>
+          <tr><td>Botones</td><td>box-shadow, background, border-color</td><td>120ms ease</td></tr>
+          <tr><td>Filas de datos</td><td>transform, background, border, shadow</td><td>120ms ease</td></tr>
+          <tr><td>Barras de timeline</td><td>transform, opacity, shadow, filter</td><td>140ms ease</td></tr>
+          <tr><td>Sidebar</td><td>width</td><td>200ms ease</td></tr>
+          <tr><td>Nav items</td><td>background, color</td><td>120ms ease</td></tr>
+          <tr><td>Shell (entrada de página)</td><td>opacity + translateY(8px)</td><td>180ms ease</td></tr>
+          <tr><td>Inputs</td><td>border-color, box-shadow</td><td>120ms ease</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="text-muted" style="margin-top:0.75rem;">Todas las animaciones se deshabilitan con <span class="sg-code">@media (prefers-reduced-motion: reduce)</span>.</p>
+  </section>
+
+  <footer style="margin-top:3rem;padding-top:1.25rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
+    <span style="font-size:0.75rem;color:var(--ink-soft);">Sailing Planner · Guía de estilos · 2026-04-07</span>
+    <span style="font-size:0.75rem;color:var(--ink-soft);">CSS puro · Sin librerías de componentes · 5 temas</span>
+  </footer>
+
+</div>
+
+<script>
+  const btns = document.querySelectorAll('.sg-theme-btn');
+  btns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.themeId;
+      document.documentElement.setAttribute('data-theme', id === 'madrugada' ? '' : id);
+      if (id === 'madrugada') document.documentElement.removeAttribute('data-theme');
+      btns.forEach(b => b.classList.toggle('is-active', b === btn));
+    });
+  });
+</script>
+</body>
+</html>

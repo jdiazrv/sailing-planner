@@ -18,31 +18,20 @@ import {
   hashSeasonAccessToken,
   type SeasonAccessWindow,
 } from "@/lib/season-access";
-import { getStartTourStep } from "@/lib/onboarding";
+import {
+  getNextStepAfterBoatSettings,
+  getStartTourStep,
+} from "@/lib/onboarding";
+import {
+  asOptionalString,
+  parseOptionalYear,
+  resolveVisitPanelDisplayMode,
+  throwIfError,
+} from "@/lib/server-action-helpers";
 import type {
   PermissionLevel,
   PreferredLanguage,
-  VisitPanelDisplayMode,
 } from "@/types/database";
-
-const asOptionalString = (value: FormDataEntryValue | null) => {
-  const normalized = value?.toString().trim();
-  return normalized ? normalized : null;
-};
-
-const parseOptionalYear = (value: FormDataEntryValue | null) => {
-  const normalized = asOptionalString(value);
-  if (!normalized) {
-    return null;
-  }
-
-  const parsed = Number(normalized);
-  if (!Number.isInteger(parsed) || parsed < 1800 || parsed > 3000) {
-    throw new Error("Year built must be a valid year.");
-  }
-
-  return parsed;
-};
 
 const getBoatImageExtension = (file: File) => {
   if (file.type === "image/png") return "png";
@@ -50,13 +39,6 @@ const getBoatImageExtension = (file: File) => {
   if (file.type === "image/gif") return "gif";
   if (file.type === "image/svg+xml") return "svg";
   return "jpg";
-};
-
-const resolveVisitPanelDisplayMode = (
-  value: FormDataEntryValue | null,
-): VisitPanelDisplayMode => {
-  const mode = value?.toString();
-  return mode === "text" || mode === "image" || mode === "both" ? mode : "both";
 };
 
 const removeStoragePaths = async (
@@ -77,11 +59,6 @@ const removeStoragePaths = async (
 };
 
 const toBoolean = (value: FormDataEntryValue | null) => value?.toString() === "on";
-const throwIfError = (error: { message?: string } | null) => {
-  if (error) {
-    throw new Error(error.message ?? "Unexpected Supabase error.");
-  }
-};
 
 const requireProfileAdminClient = () => {
   const admin = createAdminClient();
@@ -179,7 +156,7 @@ const refreshAdminRoutes = (boatId?: string | null) => {
 };
 
 export async function saveBoat(formData: FormData) {
-  const { supabase } = await requireSuperuser();
+  const { supabase, user, viewer } = await requireSuperuser();
   const db = supabase as any;
   const boatId = asOptionalString(formData.get("boat_id"));
   const name = formData.get("name")?.toString().trim() ?? "";
@@ -195,9 +172,6 @@ export async function saveBoat(formData: FormData) {
     year_built: parseOptionalYear(formData.get("year_built")),
     home_port: asOptionalString(formData.get("home_port")),
     notes: asOptionalString(formData.get("notes")),
-    visit_panel_display_mode: resolveVisitPanelDisplayMode(
-      formData.get("visit_panel_display_mode"),
-    ),
     is_active: toBoolean(formData.get("is_active")),
   };
 
@@ -214,6 +188,25 @@ export async function saveBoat(formData: FormData) {
       .single();
     throwIfError(error);
     resolvedBoatId = data?.id ?? null;
+  }
+
+  if (resolvedBoatId && viewer.onboardingStep === "configure_boat") {
+    const { data: seasonRows, error: seasonRowsError } = await db
+      .from("seasons")
+      .select("id")
+      .eq("boat_id", resolvedBoatId)
+      .limit(1);
+    throwIfError(seasonRowsError);
+
+    const nextStep = getNextStepAfterBoatSettings({
+      hasSeason: (seasonRows?.length ?? 0) > 0,
+    });
+
+    const { error: onboardingError } = await db
+      .from("profiles")
+      .update({ onboarding_step: nextStep })
+      .eq("id", user.id);
+    throwIfError(onboardingError);
   }
 
   refreshAdminRoutes(resolvedBoatId);
@@ -460,6 +453,13 @@ export async function saveUserProfile(formData: FormData) {
     preferred_language:
       (formData.get("preferred_language")?.toString() as PreferredLanguage) ??
       "es",
+    ...(formData.has("visit_panel_display_mode")
+      ? {
+          visit_panel_display_mode: resolveVisitPanelDisplayMode(
+            formData.get("visit_panel_display_mode"),
+          ),
+        }
+      : {}),
     ...(viewer.isSuperuser
       ? {
           onboarding_pending: onboardingPending,
@@ -612,6 +612,7 @@ export async function createUserAccount(formData: FormData) {
       .from("profiles")
       .update({
         preferred_language: preferredLanguage,
+        visit_panel_display_mode: "both",
         onboarding_pending: true,
         onboarding_step: "welcome",
         is_guest_user: isGuestUser,
@@ -702,6 +703,7 @@ export async function inviteUserAccount(formData: FormData) {
         .update({
           display_name: displayName,
           preferred_language: preferredLanguage,
+          visit_panel_display_mode: "both",
           onboarding_pending: true,
           onboarding_step: "welcome",
           is_guest_user: isGuestUser,

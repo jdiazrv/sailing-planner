@@ -95,6 +95,7 @@ export interface Database {
           last_sign_in_at: string | null;
           last_sign_in_method: SignInMethod | null;
           preferred_language: PreferredLanguage;
+          visit_panel_display_mode: VisitPanelDisplayMode;
           created_at: string;
           updated_at: string;
         };
@@ -112,6 +113,7 @@ export interface Database {
           last_sign_in_at?: string | null;
           last_sign_in_method?: SignInMethod | null;
           preferred_language?: PreferredLanguage;
+          visit_panel_display_mode?: VisitPanelDisplayMode;
           created_at?: string;
           updated_at?: string;
         };

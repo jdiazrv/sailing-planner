@@ -55,6 +55,8 @@ export function BoatSettingsDialog({
           subtitle: allowNameEdit
             ? "Actualiza la ficha del barco."
             : "Actualiza los datos visibles del barco. El nombre y las notas internas siguen reservados a Superusers.",
+          profileEyebrow: "Ficha del barco",
+          profileTitle: "Datos visibles del barco",
           image: "Imagen del barco",
           upload: "Subir imagen",
           remove: "Quitar imagen",
@@ -64,11 +66,6 @@ export function BoatSettingsDialog({
           yearBuilt: "Año de construcción",
           homePort: "Puerto base",
           description: "Descripción",
-          visitPanelMode: "Visual de visitas en panel",
-          visitPanelModeHelp: "Define si el timeline de visitas muestra nombre, imagen/emoji o ambos.",
-          visitPanelText: "Solo texto",
-          visitPanelImage: "Solo imagen",
-          visitPanelBoth: "Texto e imagen",
           save: "Guardar cambios",
           saving: "Guardando...",
           saved: "Barco actualizado",
@@ -84,6 +81,8 @@ export function BoatSettingsDialog({
           subtitle: allowNameEdit
             ? "Update the boat record."
             : "Update the visible boat data. Name and internal notes remain restricted to superusers.",
+          profileEyebrow: "Boat profile",
+          profileTitle: "Visible boat details",
           image: "Boat image",
           upload: "Upload image",
           remove: "Remove image",
@@ -93,11 +92,6 @@ export function BoatSettingsDialog({
           yearBuilt: "Year built",
           homePort: "Home port",
           description: "Description",
-          visitPanelMode: "Visit panel visual",
-          visitPanelModeHelp: "Choose whether the visit timeline shows text, image/emoji, or both.",
-          visitPanelText: "Text only",
-          visitPanelImage: "Image only",
-          visitPanelBoth: "Text and image",
           save: "Save changes",
           saving: "Saving...",
           saved: "Boat updated",
@@ -293,47 +287,41 @@ export function BoatSettingsDialog({
               <input name="boat_id" type="hidden" value={boat.id} />
               {!allowNameEdit ? <input name="name" type="hidden" value={boat.name} /> : null}
 
-              <div className="form-grid">
-                {allowNameEdit ? (
-                  <label className="form-grid__wide">
-                    <span>{text.name}</span>
-                    <input defaultValue={boat.name} name="name" required />
+              <section className="boat-settings-form__section">
+                <div className="boat-settings-form__section-copy">
+                  <p className="eyebrow">{text.profileEyebrow}</p>
+                  <h3>{text.profileTitle}</h3>
+                </div>
+                <div className="form-grid">
+                  {allowNameEdit ? (
+                    <label className="form-grid__wide">
+                      <span>{text.name}</span>
+                      <input defaultValue={boat.name} name="name" required />
+                    </label>
+                  ) : null}
+                  <label>
+                    <span>{text.model}</span>
+                    <input defaultValue={boat.model ?? ""} name="model" />
                   </label>
-                ) : null}
-                <label>
-                  <span>{text.model}</span>
-                  <input defaultValue={boat.model ?? ""} name="model" />
-                </label>
-                <label>
-                  <span>{text.yearBuilt}</span>
-                  <input
-                    defaultValue={boat.year_built ?? ""}
-                    min={1900}
-                    name="year_built"
-                    type="number"
-                  />
-                </label>
-                <label className="form-grid__wide">
-                  <span>{text.homePort}</span>
-                  <input defaultValue={boat.home_port ?? ""} name="home_port" />
-                </label>
-                <label className="form-grid__wide">
-                  <span>{text.description}</span>
-                  <textarea defaultValue={boat.description ?? ""} name="description" rows={3} />
-                </label>
-                <label className="form-grid__wide">
-                  <span>{text.visitPanelMode}</span>
-                  <select
-                    defaultValue={boat.visit_panel_display_mode ?? "both"}
-                    name="visit_panel_display_mode"
-                  >
-                    <option value="text">{text.visitPanelText}</option>
-                    <option value="image">{text.visitPanelImage}</option>
-                    <option value="both">{text.visitPanelBoth}</option>
-                  </select>
-                  <small className="muted">{text.visitPanelModeHelp}</small>
-                </label>
-              </div>
+                  <label>
+                    <span>{text.yearBuilt}</span>
+                    <input
+                      defaultValue={boat.year_built ?? ""}
+                      min={1900}
+                      name="year_built"
+                      type="number"
+                    />
+                  </label>
+                  <label className="form-grid__wide">
+                    <span>{text.homePort}</span>
+                    <input defaultValue={boat.home_port ?? ""} name="home_port" />
+                  </label>
+                  <label className="form-grid__wide">
+                    <span>{text.description}</span>
+                    <textarea defaultValue={boat.description ?? ""} name="description" rows={3} />
+                  </label>
+                </div>
+              </section>
 
               <div className="modal__footer">
                 <button className="primary-button boat-settings__action" disabled={isPending} type="submit">

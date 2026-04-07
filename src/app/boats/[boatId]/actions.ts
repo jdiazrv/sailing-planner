@@ -11,13 +11,17 @@ import {
   revokeSeasonAccessLink as revokeSeasonAccessLinkInternal,
 } from "@/app/admin/actions";
 import { recordCurrentUserAccess } from "@/lib/auth-audit";
+import {
+  asOptionalString,
+  parseOptionalYear,
+  throwIfError,
+} from "@/lib/server-action-helpers";
 import { createClient } from "@/lib/supabase/server";
 import type {
   Database,
   LocationType,
   PlaceSource,
   PortStopStatus,
-  VisitPanelDisplayMode,
   VisitStatus,
 } from "@/types/database";
 
@@ -37,25 +41,6 @@ const refreshBoatRoutes = (boatId: string) => {
   revalidatePath("/dashboard");
   revalidatePath(`/boats/${boatId}/trip`);
   revalidatePath(`/boats/${boatId}/visits`);
-};
-
-const asOptionalString = (value: FormDataEntryValue | null) => {
-  const normalized = value?.toString().trim();
-  return normalized ? normalized : null;
-};
-
-const parseOptionalYear = (value: FormDataEntryValue | null) => {
-  const normalized = asOptionalString(value);
-  if (!normalized) {
-    return null;
-  }
-
-  const parsed = Number(normalized);
-  if (!Number.isInteger(parsed) || parsed < 1800 || parsed > 3000) {
-    throw new Error("Year built must be a valid year.");
-  }
-
-  return parsed;
 };
 
 const getImageExtension = (file: File) => {
@@ -115,18 +100,6 @@ const removeStoragePaths = async (
   throwIfError(error);
 };
 
-const resolveVisitPanelDisplayMode = (
-  value: FormDataEntryValue | null,
-): VisitPanelDisplayMode => {
-  const mode = value?.toString();
-  return mode === "text" || mode === "image" || mode === "both" ? mode : "both";
-};
-
-const throwIfError = (error: { message?: string } | null) => {
-  if (error) {
-    throw new Error(error.message ?? "Unexpected Supabase error.");
-  }
-};
 
 const requireBoatEditor = async (boatId: string) => {
   const supabase = await createClient();
@@ -555,9 +528,6 @@ export async function saveBoatProfile(formData: FormData) {
     year_built: parseOptionalYear(formData.get("year_built")),
     home_port: asOptionalString(formData.get("home_port")),
     description: asOptionalString(formData.get("description")),
-    visit_panel_display_mode: resolveVisitPanelDisplayMode(
-      formData.get("visit_panel_display_mode"),
-    ),
   };
 
   const { error } = await db.from("boats").update(payload).eq("id", boatId);

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { useI18n } from "@/components/i18n/provider";
@@ -12,17 +12,17 @@ import { Timeline } from "@/components/planning/timeline";
 import { TripSegmentsManager } from "@/components/planning/trip-segments-manager";
 import { VisitsManager } from "@/components/planning/visits-manager";
 import {
-  addDays,
+  computeAvailabilityReport,
   computeVisitConflicts,
-  diffDaysInclusive,
   hasVisitDateRange,
-  rangeIncludes,
+  sortTripSegmentsBySchedule,
   type PortStopView,
   type VisitConflict,
   type VisitPanelDisplayMode,
   type VisitView,
 } from "@/lib/planning";
 import { getDocumentLocale, getIntlLocale } from "@/lib/i18n";
+import { measureClientSync, startClientPerf } from "@/lib/perf-debug";
 import type { Database } from "@/types/database";
 
 type SeasonRow = Database["public"]["Tables"]["seasons"]["Row"];
@@ -44,93 +44,6 @@ type BoatWorkspaceShellProps = {
   onDeleteTripSegment: (fd: FormData) => Promise<void>;
   onSaveVisit: (fd: FormData) => Promise<void>;
   onDeleteVisit: (fd: FormData) => Promise<void>;
-};
-
-type AvailabilityPlaceRow = {
-  start: string;
-  end: string;
-  label: string;
-  status: "available" | "undefined";
-  segmentId: string | null;
-};
-
-const getAvailabilityPlaceRows = (
-  season: SeasonRow,
-  tripSegments: PortStopView[],
-  visits: VisitView[],
-) => {
-  const sortedSegments = [...tripSegments].sort(
-    (left, right) =>
-      left.start_date.localeCompare(right.start_date) ||
-      left.end_date.localeCompare(right.end_date) ||
-      (left.sort_order ?? 0) - (right.sort_order ?? 0),
-  );
-  const totalDays = diffDaysInclusive(season.start_date, season.end_date);
-  const rows: AvailabilityPlaceRow[] = [];
-  let current: AvailabilityPlaceRow | null = null;
-
-  for (let index = 0; index < totalDays; index += 1) {
-    const day = addDays(season.start_date, index);
-    const segment =
-      sortedSegments.find((entry) => rangeIncludes(entry.start_date, entry.end_date, day)) ?? null;
-    const hasConfirmedVisit = visits.some(
-      (visit) =>
-        hasVisitDateRange(visit) &&
-        (visit.status === "confirmed" || visit.status === "blocked") &&
-        rangeIncludes(visit.embark_date, visit.disembark_date, day),
-    );
-    const hasTentativeVisit = visits.some(
-      (visit) =>
-        hasVisitDateRange(visit) &&
-        visit.status === "tentative" &&
-        rangeIncludes(visit.embark_date, visit.disembark_date, day),
-    );
-
-    let status: AvailabilityPlaceRow["status"] | null = null;
-    if (hasConfirmedVisit || hasTentativeVisit) {
-      status = null;
-    } else if (!segment) {
-      status = "undefined";
-    } else {
-      status = "available";
-    }
-
-    if (!status) {
-      if (current) {
-        rows.push(current);
-        current = null;
-      }
-      continue;
-    }
-
-    const nextRow: AvailabilityPlaceRow = {
-      start: day,
-      end: day,
-      label: status === "undefined" ? "Sin definir" : segment?.location_label ?? "Sin definir",
-      status,
-      segmentId: status === "available" ? segment?.id ?? null : null,
-    };
-
-    if (
-      !current ||
-      current.status !== nextRow.status ||
-      current.segmentId !== nextRow.segmentId
-    ) {
-      if (current) {
-        rows.push(current);
-      }
-      current = nextRow;
-      continue;
-    }
-
-    current.end = day;
-  }
-
-  if (current) {
-    rows.push(current);
-  }
-
-  return rows;
 };
 
 const formatCompactAvailabilityRange = (start: string, end: string) => {
@@ -176,11 +89,16 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
   const [currentView, setCurrentView] = useState<"trip" | "visits">(initialView);
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   const [timelineEditVisit, setTimelineEditVisit] = useState<VisitView | null>(null);
+  const [timelineEditBlockedInterval, setTimelineEditBlockedInterval] = useState<VisitView | null>(null);
   const [timelineEditSegment, setTimelineEditSegment] = useState<PortStopView | null>(null);
   const [showPeopleLayer, setShowPeopleLayer] = useState(true);
   const [showAvailabilityLayer, setShowAvailabilityLayer] = useState(true);
-  const [showBlockedLayer, setShowBlockedLayer] = useState(true);
+  const [availabilitySectionOpen, setAvailabilitySectionOpen] = useState(false);
+  const [availabilitySectionLoaded, setAvailabilitySectionLoaded] = useState(false);
   const [blockedSectionOpen, setBlockedSectionOpen] = useState(
+    searchParams.get("blocked") === "create",
+  );
+  const [blockedOpenAdd, setBlockedOpenAdd] = useState(
     searchParams.get("blocked") === "create",
   );
   const [layoutMode, setLayoutMode] = useState<"split" | "table" | "map">("split");
@@ -192,14 +110,31 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
     (visit) => visit.status === "blocked" && hasVisitDateRange(visit),
   );
   const conflicts = computeVisitConflicts(season, tripSegments, regularVisits);
-  const filteredSegments = [...tripSegments]
-    .sort(
-      (left, right) =>
-        left.start_date.localeCompare(right.start_date) ||
-        left.end_date.localeCompare(right.end_date),
-    );
+  const filteredSegments = useMemo(
+    () =>
+      measureClientSync(
+        "planning.shell.sortTripSegments",
+        () => sortTripSegmentsBySchedule(tripSegments),
+        { boatId, seasonId, segments: tripSegments.length },
+      ),
+    [boatId, seasonId, tripSegments],
+  );
   const filteredVisits = regularVisits;
-  const availabilityPlaceRows = getAvailabilityPlaceRows(season, filteredSegments, filteredVisits);
+  const availabilityReport = useMemo(
+    () =>
+      measureClientSync(
+        "planning.shell.availabilityReport",
+        () => computeAvailabilityReport(season, filteredSegments, filteredVisits),
+        {
+          boatId,
+          seasonId,
+          segments: filteredSegments.length,
+          visits: filteredVisits.length,
+        },
+      ),
+    [boatId, filteredSegments, filteredVisits, season, seasonId],
+  );
+  const availabilityPlaceRows = availabilityReport.placeRows;
   const timelineZoom =
     timeScale === "season" ? 1 : timeScale === "month" ? 1.6 : 2.3;
   const showTable = layoutMode !== "map";
@@ -221,6 +156,7 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
   useEffect(() => {
     if (searchParams.get("blocked") === "create") {
       setBlockedSectionOpen(true);
+      setBlockedOpenAdd(true);
     }
   }, [searchParams]);
 
@@ -229,14 +165,14 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
       return;
     }
 
-    const stillVisible = [...filteredSegments, ...filteredVisits].some(
+    const stillVisible = [...filteredSegments, ...filteredVisits, ...blockedIntervals].some(
       (entry) => entry.id === selectedEntityId,
     );
 
     if (!stillVisible) {
       setSelectedEntityId(null);
     }
-  }, [filteredSegments, filteredVisits, selectedEntityId]);
+  }, [blockedIntervals, filteredSegments, filteredVisits, selectedEntityId]);
 
   useEffect(() => {
     const requestedView = searchParams.get("view");
@@ -247,6 +183,39 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
 
     setCurrentView(initialView);
   }, [initialView, searchParams]);
+
+  useEffect(() => {
+    const timing = startClientPerf("planning.shell.commit", {
+      boatId,
+      seasonId,
+      currentView,
+      layoutMode,
+      timeScale,
+      segments: filteredSegments.length,
+      visits: filteredVisits.length,
+      selectedEntityId: selectedEntityId ?? null,
+    });
+
+    const frame = window.requestAnimationFrame(() => {
+      timing.end({
+        blockedIntervals: blockedIntervals.length,
+        availabilityRows: availabilityPlaceRows.length,
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [
+    availabilityPlaceRows.length,
+    blockedIntervals.length,
+    boatId,
+    currentView,
+    filteredSegments.length,
+    filteredVisits.length,
+    layoutMode,
+    seasonId,
+    selectedEntityId,
+    timeScale,
+  ]);
 
   const switchView = (nextView: "trip" | "visits") => {
     setCurrentView(nextView);
@@ -266,74 +235,64 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
           "/shared",
         ]}
       />
-      <section className="dashboard-card planning-control-bar" data-tour="planning-control-bar">
-        <div className="planning-control-bar__row">
-          <label className="planning-control">
-            <span>Escala</span>
-            <select
-              onChange={(event) =>
-                setTimeScale(event.target.value as "season" | "month" | "week")
-              }
-              value={timeScale}
-            >
-              <option value="season">Temporada</option>
-              <option value="month">Mes</option>
-              <option value="week">Semana</option>
-            </select>
-          </label>
-          <label className="planning-control">
-            <span>Vista</span>
-            <select
-              onChange={(event) =>
-                setLayoutMode(event.target.value as "split" | "table" | "map")
-              }
-              value={layoutMode}
-            >
-              <option value="split">Tabla + mapa</option>
-              <option value="table">Solo tabla</option>
-              <option value="map">Solo mapa</option>
-            </select>
-          </label>
-        </div>
-        <div className="planning-control-bar__row">
-          <div className="planning-chip-group" data-tour="timeline-layers">
-            <span className="planning-chip-group__label">Capas</span>
-            <button
-              className="planning-chip is-locked"
-              type="button"
-            >
-              Viaje
-            </button>
-            {canViewVisits ? (
-              <button
-                className={`planning-chip${showPeopleLayer ? " is-active" : ""}`}
-                onClick={() => setShowPeopleLayer((value) => !value)}
-                type="button"
-              >
-                Visitas
-              </button>
-            ) : null}
-            <button
-              className={`planning-chip${showAvailabilityLayer ? " is-active" : ""}`}
-              onClick={() => setShowAvailabilityLayer((value) => !value)}
-              type="button"
-            >
-              Disponibilidad
-            </button>
-            <button
-              className={`planning-chip${showBlockedLayer ? " is-active" : ""}`}
-              onClick={() => setShowBlockedLayer((value) => !value)}
-              type="button"
-            >
-              Bloqueado
-            </button>
-          </div>
-        </div>
-      </section>
-
       <section className="workspace-grid workspace-grid--single">
         <div className="workspace-main" data-tour="boat-timeline">
           <Timeline
+            availabilityBlocks={availabilityReport.blocks}
+            headerControls={
+              <div className="timeline-card__controls-inner planning-control-bar" data-tour="planning-control-bar">
+                <div className="planning-control-bar__row">
+                  <label className="planning-control">
+                    <span>Escala</span>
+                    <select
+                      onChange={(event) =>
+                        setTimeScale(event.target.value as "season" | "month" | "week")
+                      }
+                      value={timeScale}
+                    >
+                      <option value="season">Temporada</option>
+                      <option value="month">Mes</option>
+                      <option value="week">Semana</option>
+                    </select>
+                  </label>
+                  <label className="planning-control">
+                    <span>Vista</span>
+                    <select
+                      onChange={(event) =>
+                        setLayoutMode(event.target.value as "split" | "table" | "map")
+                      }
+                      value={layoutMode}
+                    >
+                      <option value="split">Tabla + mapa</option>
+                      <option value="table">Solo tabla</option>
+                      <option value="map">Solo mapa</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="planning-chip-group" data-tour="timeline-layers">
+                  <span className="planning-chip-group__label">Capas</span>
+                  <button className="planning-chip is-locked" type="button">
+                    Escalas
+                  </button>
+                  {canViewVisits ? (
+                    <button
+                      className={`planning-chip${showPeopleLayer ? " is-active" : ""}`}
+                      onClick={() => setShowPeopleLayer((value) => !value)}
+                      type="button"
+                    >
+                      Visitas
+                    </button>
+                  ) : null}
+                  <button
+                    className={`planning-chip${showAvailabilityLayer ? " is-active" : ""}`}
+                    onClick={() => setShowAvailabilityLayer((value) => !value)}
+                    type="button"
+                  >
+                    Disponibilidad
+                  </button>
+                </div>
+              </div>
+            }
             onTripSegmentEdit={
               canEdit
                 ? (segment) => {
@@ -354,8 +313,13 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
             onVisitClick={
               canEdit
                 ? (visit) => {
-                    switchView("visits");
-                    setTimelineEditVisit(visit);
+                    if (visit.status === "blocked") {
+                      setBlockedSectionOpen(true);
+                      setTimelineEditBlockedInterval(visit);
+                    } else {
+                      switchView("visits");
+                      setTimelineEditVisit(visit);
+                    }
                     setSelectedEntityId(visit.id);
                   }
                 : undefined
@@ -366,8 +330,13 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
                 return;
               }
               setSelectedEntityId(visit.id);
+              if (visit.status === "blocked") {
+                setBlockedSectionOpen(true);
+                return;
+              }
               switchView("visits");
             }}
+            hideHeader
             season={season}
             selectedEntityId={selectedEntityId}
             showAvailability={showAvailabilityLayer}
@@ -375,44 +344,15 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
             enableVisits={canViewVisits}
             subtitle=""
             title={t("planning.timelineTitle")}
-            tripSegments={tripSegments}
-            visits={regularVisits}
+            tripSegments={filteredSegments}
+            visits={visits}
             visitsCollapsed={!showPeopleLayer}
             availabilityCollapsed={!showAvailabilityLayer}
-            blockedCollapsed={!showBlockedLayer}
-            onToggleVisitsCollapsed={() => setShowPeopleLayer((value) => !value)}
-            onToggleAvailabilityCollapsed={() => setShowAvailabilityLayer((value) => !value)}
-            onToggleBlockedCollapsed={() => setShowBlockedLayer((value) => !value)}
             visitPanelDisplayMode={visitPanelDisplayMode}
             zoom={timelineZoom}
           />
         </div>
       </section>
-
-      <div className="workspace-view-switch" data-tour="boat-nav">
-        <Link className="secondary-button" href={summaryHref}>
-          {t("summary.open")}
-        </Link>
-        {canViewVisits ? (
-          <button className="secondary-button" onClick={() => switchView(nextView)} type="button">
-            {viewToggleLabel}
-          </button>
-        ) : null}
-        {canEdit ? (
-          <button
-            className="secondary-button"
-            onClick={() => {
-              const nextParams = new URLSearchParams(searchParams.toString());
-              nextParams.set("blocked", "create");
-              router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
-              setBlockedSectionOpen(true);
-            }}
-            type="button"
-          >
-            + Bloquear período
-          </button>
-        ) : null}
-      </div>
 
       <section
         className="workspace-grid workspace-grid--trip"
@@ -429,10 +369,29 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
               <>
                 <div className="card-header">
                   <div>
-                    <p className="eyebrow">{t("planning.tripSegments")}</p>
-                    <h2>{t("planning.routeBlocks")} - {season.name}</h2>
+                    <p className="eyebrow">{canEdit ? "Editar" : "Ver"}</p>
+                    <h2>{t("planning.tripSegments")}</h2>
                   </div>
-                  <span className="muted">{filteredSegments.length} escalas visibles</span>
+                  <div className="card-header__actions">
+                    <span className="muted">{filteredSegments.length} escalas</span>
+                    {canViewVisits ? (
+                      <button className="secondary-button secondary-button--small" data-tour="boat-switch-visits" onClick={() => switchView("visits")} type="button">
+                        Ver visitas
+                      </button>
+                    ) : null}
+                    {canEdit ? (
+                      <button
+                        className="secondary-button secondary-button--small"
+                        onClick={() => { setBlockedSectionOpen(true); setBlockedOpenAdd(true); }}
+                        type="button"
+                      >
+                        + Bloquear período
+                      </button>
+                    ) : null}
+                    <Link className="secondary-button secondary-button--small" href={summaryHref}>
+                      {t("summary.open")}
+                    </Link>
+                  </div>
                 </div>
 
                 <TripSegmentsManager
@@ -453,10 +412,27 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
               <>
                 <div className="card-header">
                   <div>
-                    <p className="eyebrow">{t("planning.visitsList")}</p>
-                    <h2>{season.name}</h2>
+                    <p className="eyebrow">{canEdit ? "Editar" : "Ver"}</p>
+                    <h2>{t("planning.visitsList")}</h2>
                   </div>
-                  <span className="muted">{filteredVisits.length} visitas visibles</span>
+                  <div className="card-header__actions">
+                    <span className="muted">{filteredVisits.length} visitas</span>
+                    <button className="secondary-button secondary-button--small" data-tour="boat-switch-trip" onClick={() => switchView("trip")} type="button">
+                      Ver escalas
+                    </button>
+                    {canEdit ? (
+                      <button
+                        className="secondary-button secondary-button--small"
+                        onClick={() => { setBlockedSectionOpen(true); setBlockedOpenAdd(true); }}
+                        type="button"
+                      >
+                        + Bloquear período
+                      </button>
+                    ) : null}
+                    <Link className="secondary-button secondary-button--small" href={summaryHref}>
+                      {t("summary.open")}
+                    </Link>
+                  </div>
                 </div>
 
                 <VisitsManager
@@ -476,28 +452,39 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
                 />
               </>
             )}
-            <details className="inline-section" data-tour="availability-section" open>
+            <details
+              className="inline-section"
+              data-tour="availability-section"
+              open={availabilitySectionOpen}
+              onToggle={(e) => {
+                const open = (e.currentTarget as HTMLDetailsElement).open;
+                setAvailabilitySectionOpen(open);
+                if (open) setAvailabilitySectionLoaded(true);
+              }}
+            >
               <summary className="inline-section__summary">
                 Disponibilidad · {availabilityPlaceRows.length} períodos
               </summary>
-              {availabilityPlaceRows.length ? (
-                <ul className="list availability-places-list">
-                  {availabilityPlaceRows.map((row) => (
-                    <li key={`${row.status}-${row.segmentId ?? "none"}-${row.start}`}>
-                      <span className="availability-places-list__line">
-                        <span className="availability-places-list__dates">
-                          {formatCompactAvailabilityRange(row.start, row.end)}
+              {availabilitySectionLoaded ? (
+                availabilityPlaceRows.length ? (
+                  <ul className="list availability-places-list">
+                    {availabilityPlaceRows.map((row) => (
+                      <li key={`${row.status}-${row.segmentId ?? "none"}-${row.start}`}>
+                        <span className="availability-places-list__line">
+                          <span className="availability-places-list__dates">
+                            {formatCompactAvailabilityRange(row.start, row.end)}
+                          </span>
+                          <span className="availability-places-list__label">
+                            {row.label}
+                          </span>
                         </span>
-                        <span className="availability-places-list__label">
-                          {row.label}
-                        </span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="muted">No hay períodos disponibles.</p>
-              )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="muted">No hay períodos disponibles.</p>
+                )
+              ) : null}
             </details>
 
             <details className="inline-section" open={blockedSectionOpen}>
@@ -513,9 +500,11 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
               <BlockedIntervalsManager
                 boatId={boatId}
                 canEdit={canEdit}
-                initiallyOpenAdd={searchParams.get("blocked") === "create"}
+                externalEditInterval={timelineEditBlockedInterval}
+                initiallyOpenAdd={blockedOpenAdd}
                 intervals={blockedIntervals}
                 onDelete={onDeleteVisit}
+                onExternalEditHandled={() => setTimelineEditBlockedInterval(null)}
                 onSave={onSaveVisit}
                 seasonId={seasonId}
                 seasonStart={seasonStart}
@@ -554,17 +543,17 @@ function WarningsCard({ conflicts }: { conflicts: VisitConflict[] }) {
 
   return (
     <article className="dashboard-card">
-      <div className="card-header">
-        <div>
-          <p className="eyebrow">{t("planning.warnings")}</p>
-          <h2>{t("planning.reviewBeforeConfirming")}</h2>
-        </div>
-      </div>
-      <ul className="list">
-        {conflicts.map((conflict, index) => (
-          <li key={`${conflict.visitId}-${index}`}>{conflict.message}</li>
-        ))}
-      </ul>
+      <details className="inline-section">
+        <summary className="inline-section__summary">
+          <span className="eyebrow">{t("planning.warnings")}</span>
+          {t("planning.reviewBeforeConfirming")} · {conflicts.length}
+        </summary>
+        <ul className="list">
+          {conflicts.map((conflict, index) => (
+            <li key={`${conflict.visitId}-${index}`}>{conflict.message}</li>
+          ))}
+        </ul>
+      </details>
     </article>
   );
 }

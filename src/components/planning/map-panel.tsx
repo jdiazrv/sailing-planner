@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useI18n } from "@/components/i18n/provider";
-import { hasGoogleMapsKey, loadGoogleMaps } from "@/lib/google-maps";
+import { hasGoogleMapsKey, loadGoogleMaps, type GoogleMapsRuntime } from "@/lib/google-maps";
 import { recordApiUsage } from "@/lib/api-usage";
 import {
   loadGreekCoastalZoneGeometryLazy,
@@ -11,7 +11,12 @@ import {
   type CoastalZoneMatch,
   type CoastalZoneGeometry,
 } from "@/lib/coastal-zones-runtime";
-import type { PortStopView, VisitView } from "@/lib/planning";
+import {
+  getVisitDisplayName,
+  sortTripSegmentsBySchedule,
+  type PortStopView,
+  type VisitView,
+} from "@/lib/planning";
 
 declare global {
   interface Window {
@@ -37,6 +42,10 @@ type Marker = {
 type MapSelection = {
   entityId: string;
   tone: "trip" | "visit";
+};
+
+type GoogleMarkerHandle = {
+  detach: () => void;
 };
 
 type MapPanelProps = {
@@ -111,18 +120,10 @@ const getTripMarkerMeta = (locationType: PortStopView["location_type"]) => {
   }
 };
 
-const sortTripSegments = (tripSegments: PortStopView[]) =>
-  [...tripSegments].sort(
-    (a, b) =>
-      a.start_date.localeCompare(b.start_date) ||
-      a.end_date.localeCompare(b.end_date) ||
-      (a.sort_order ?? 0) - (b.sort_order ?? 0),
-  );
-
 const buildSequenceBySegment = (tripSegments: PortStopView[]) => {
   const sequence = new Map<string, number>();
 
-  sortTripSegments(tripSegments).forEach((segment, index) => {
+  sortTripSegmentsBySchedule(tripSegments).forEach((segment, index) => {
     sequence.set(segment.id, index + 1);
   });
 
@@ -136,7 +137,7 @@ const buildMarkers = (
   coastalZoneBySegmentId: Map<string, CoastalZoneMatch | null>,
   coastalZoneByVisitKey: Map<string, CoastalZoneMatch | null>,
 ) => {
-  const orderedSegments = sortTripSegments(tripSegments);
+  const orderedSegments = sortTripSegmentsBySchedule(tripSegments);
 
   const tripMarkers: Marker[] = orderedSegments.flatMap((segment, index) => {
     const latitude = toCoordinate(segment.latitude);
@@ -178,7 +179,7 @@ const buildMarkers = (
       markers.push({
         id: `visit-embark-${visit.id}`,
         entityId: visit.id,
-        label: `${visit.visitor_name ?? "Visit"} embark`,
+        label: `${getVisitDisplayName(visit, "Visit")} embark`,
         latitude: embarkLatitude,
         longitude: embarkLongitude,
         tone: "visit",
@@ -197,7 +198,7 @@ const buildMarkers = (
       markers.push({
         id: `visit-disembark-${visit.id}`,
         entityId: visit.id,
-        label: `${visit.visitor_name ?? "Visit"} disembark`,
+        label: `${getVisitDisplayName(visit, "Visit")} disembark`,
         latitude: disembarkLatitude,
         longitude: disembarkLongitude,
         tone: "visit",
@@ -217,7 +218,7 @@ const buildMarkers = (
 };
 
 const buildRoutePoints = (tripSegments: PortStopView[]) =>
-  sortTripSegments(tripSegments)
+  sortTripSegmentsBySchedule(tripSegments)
     .map((segment) => {
       const latitude = toCoordinate(segment.latitude);
       const longitude = toCoordinate(segment.longitude);
@@ -246,9 +247,9 @@ export const MapPanel = ({
   const mapRef = useRef<HTMLDivElement | null>(null);
   const onSelectEntityRef = useRef(onSelectEntity);
   // Refs for the Google Maps instances — kept stable across re-renders for imperative updates.
-  const mapsApiRef = useRef<typeof google | null>(null);
+  const mapsApiRef = useRef<GoogleMapsRuntime | null>(null);
   const googleMapRef = useRef<google.maps.Map | null>(null);
-  const googleMarkersRef = useRef<google.maps.Marker[]>([]);
+  const googleMarkersRef = useRef<GoogleMarkerHandle[]>([]);
   const routePolylinesRef = useRef<google.maps.Polyline[]>([]);
   const coastalPolygonsRef = useRef<google.maps.Polygon[]>([]);
   const tRef = useRef(t);
@@ -309,6 +310,26 @@ export const MapPanel = ({
     () => (selectedCoastalGeometry ? getZonePolygons(selectedCoastalGeometry) : []),
     [selectedCoastalGeometry],
   );
+
+  const teardownGoogleMap = () => {
+    googleMarkersRef.current.forEach((markerView) => {
+      markerView.detach();
+    });
+    googleMarkersRef.current = [];
+
+    routePolylinesRef.current.forEach((polyline) => polyline.setMap(null));
+    routePolylinesRef.current = [];
+
+    coastalPolygonsRef.current.forEach((polygon) => polygon.setMap(null));
+    coastalPolygonsRef.current = [];
+
+    googleMapRef.current = null;
+    mapsApiRef.current = null;
+
+    if (mapRef.current) {
+      mapRef.current.replaceChildren();
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -400,6 +421,7 @@ export const MapPanel = ({
   // Effect: Initialise the Google Map ONCE per mount — records exactly one billable API call.
   useEffect(() => {
     if (!hasGoogleMapsKey || !mapRef.current) {
+      teardownGoogleMap();
       setGoogleAvailable(false);
       return;
     }
@@ -409,6 +431,7 @@ export const MapPanel = ({
 
     window.gm_authFailure = () => {
       if (!detached) {
+        teardownGoogleMap();
         setGoogleAvailable(false);
         setMapReady(false);
         setMapMessage(tRef.current("planning.googleBlocked"));
@@ -416,9 +439,10 @@ export const MapPanel = ({
     };
 
     void (async () => {
-      const maps = await loadGoogleMaps();
-      if (!maps || !mapRef.current || detached) {
+      const runtime = await loadGoogleMaps();
+      if (!runtime || !mapRef.current || detached) {
         if (!detached) {
+          teardownGoogleMap();
           setGoogleAvailable(false);
           setMapReady(false);
           setMapMessage(tRef.current("planning.googleUnavailable"));
@@ -426,17 +450,18 @@ export const MapPanel = ({
         return;
       }
 
-      const map = new maps.maps.Map(mapRef.current, {
+      const map = new runtime.maps.Map(mapRef.current, {
         center: { lat: 37.9, lng: 18.0 },
         zoom: 6,
         mapTypeControl: false,
         mapTypeId: baseMap,
+        ...(runtime.mapId ? { mapId: runtime.mapId } : {}),
         streetViewControl: false,
         fullscreenControl: false,
         gestureHandling: "greedy",
       });
 
-      mapsApiRef.current = maps;
+      mapsApiRef.current = runtime;
       googleMapRef.current = map;
 
       setGoogleAvailable(true);
@@ -448,6 +473,7 @@ export const MapPanel = ({
 
     return () => {
       detached = true;
+      teardownGoogleMap();
       window.gm_authFailure = previousAuthFailure;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -456,18 +482,19 @@ export const MapPanel = ({
   // Effect: Update map type and seamarks imperatively — no new Map instance created.
   useEffect(() => {
     const map = googleMapRef.current;
-    const maps = mapsApiRef.current;
-    if (!map || !maps || !mapReady) return;
+    const runtime = mapsApiRef.current;
+    if (!map || !runtime || !mapReady) return;
+    const maps = runtime.maps;
 
     map.setMapTypeId(baseMap);
     map.overlayMapTypes.clear();
     if (showSeamarks) {
       map.overlayMapTypes.push(
-        new maps.maps.ImageMapType({
+        new maps.ImageMapType({
           getTileUrl(coord, zoom) {
             return `https://tiles.openseamap.org/seamark/${zoom}/${coord.x}/${coord.y}.png`;
           },
-          tileSize: new maps.maps.Size(256, 256),
+          tileSize: new maps.Size(256, 256),
           name: "OpenSeaMap",
           opacity: 0.8,
         }),
@@ -478,8 +505,9 @@ export const MapPanel = ({
   // Effect: Keep the local coastal GeoJSON highlight in sync with the current selection.
   useEffect(() => {
     const map = googleMapRef.current;
-    const maps = mapsApiRef.current;
-    if (!map || !maps || !mapReady) return;
+    const runtime = mapsApiRef.current;
+    if (!map || !runtime || !mapReady) return;
+    const maps = runtime.maps;
 
     coastalPolygonsRef.current.forEach((polygon) => polygon.setMap(null));
     coastalPolygonsRef.current = [];
@@ -490,7 +518,7 @@ export const MapPanel = ({
 
     getZonePolygons(selectedCoastalGeometry).forEach((polygon) => {
       coastalPolygonsRef.current.push(
-        new maps.maps.Polygon({
+        new maps.Polygon({
           map,
           paths: polygon.map((ring) =>
             ring.map(([lng, lat]) => ({ lat, lng })),
@@ -508,11 +536,16 @@ export const MapPanel = ({
   // Effect: Update markers and route polylines imperatively.
   useEffect(() => {
     const map = googleMapRef.current;
-    const maps = mapsApiRef.current;
-    if (!map || !maps || !mapReady) return;
+    const runtime = mapsApiRef.current;
+    if (!map || !runtime || !mapReady) return;
+    const maps = runtime.maps;
+    const markerLibrary = runtime.marker;
+    const useAdvancedMarkers = Boolean(runtime.mapId && markerLibrary?.AdvancedMarkerElement);
 
     // Clear previous overlays.
-    googleMarkersRef.current.forEach((m) => m.setMap(null));
+    googleMarkersRef.current.forEach((markerView) => {
+      markerView.detach();
+    });
     googleMarkersRef.current = [];
     routePolylinesRef.current.forEach((p) => p.setMap(null));
     routePolylinesRef.current = [];
@@ -520,7 +553,7 @@ export const MapPanel = ({
     // Route polylines.
     if (showRoute && routePoints.length > 1) {
       routePolylinesRef.current.push(
-        new maps.maps.Polyline({
+        new maps.Polyline({
           map,
           path: routePoints,
           geodesic: true,
@@ -530,7 +563,7 @@ export const MapPanel = ({
         }),
       );
       routePolylinesRef.current.push(
-        new maps.maps.Polyline({
+        new maps.Polyline({
           map,
           path: routePoints,
           geodesic: true,
@@ -542,7 +575,7 @@ export const MapPanel = ({
     }
 
     // Build bounds and markers.
-    const bounds = new maps.maps.LatLngBounds();
+    const bounds = new maps.LatLngBounds();
     markers.forEach((marker) => {
       bounds.extend({ lat: marker.latitude, lng: marker.longitude });
     });
@@ -551,55 +584,106 @@ export const MapPanel = ({
       (marker) => marker.entityId === selectedEntityId,
     );
 
+    const createMarkerContent = (marker: Marker, selected: boolean) => {
+      const element = document.createElement("div");
+      const size = selected ? 18 : hasSelection ? 12 : 14;
+      const strokeWidth = selected ? 3 : 2;
+
+      element.style.width = `${size}px`;
+      element.style.height = `${size}px`;
+      element.style.borderRadius = "999px";
+      element.style.background = marker.color;
+      element.style.border = `${strokeWidth}px solid ${selected ? "#17211f" : "#ffffff"}`;
+      element.style.boxSizing = "border-box";
+      element.style.display = "flex";
+      element.style.alignItems = "center";
+      element.style.justifyContent = "center";
+      element.style.color = "#ffffff";
+      element.style.fontSize = marker.order ? "9px" : "10px";
+      element.style.fontWeight = "700";
+      element.style.opacity = selected ? "1" : hasSelection ? "0.38" : "1";
+      element.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.22)";
+      element.textContent = marker.order ? String(marker.order) : marker.glyph;
+
+      return element;
+    };
+
     markers.forEach((marker) => {
       const selected = marker.entityId === selectedEntityId;
-      const markerView = new maps.maps.Marker({
-        clickable: Boolean(onSelectEntityRef.current),
-        map,
-        position: { lat: marker.latitude, lng: marker.longitude },
-        title: marker.label,
-        label: marker.glyph
-          ? marker.tone === "trip" && marker.order
+      if (useAdvancedMarkers && markerLibrary) {
+        const markerView = new markerLibrary.AdvancedMarkerElement({
+          content: createMarkerContent(marker, selected),
+          gmpClickable: Boolean(onSelectEntityRef.current),
+          map,
+          position: { lat: marker.latitude, lng: marker.longitude },
+          title: marker.label,
+        });
+
+        const clickListener = onSelectEntityRef.current
+          ? markerView.addListener("click", () => {
+              onSelectEntityRef.current?.({
+                entityId: marker.entityId,
+                tone: marker.tone,
+              });
+            })
+          : null;
+
+        googleMarkersRef.current.push({
+          detach: () => {
+            clickListener?.remove();
+            markerView.map = null;
+          },
+        });
+        return;
+      }
+
+      const markerView = new maps.Marker({
+        icon: {
+          fillColor: marker.color,
+          fillOpacity: selected ? 1 : hasSelection ? 0.38 : 1,
+          path: maps.SymbolPath.CIRCLE,
+          scale: selected ? 9 : hasSelection ? 6 : 7,
+          strokeColor: selected ? "#17211f" : "#ffffff",
+          strokeOpacity: 1,
+          strokeWeight: selected ? 3 : 2,
+        },
+        label: marker.order
+          ? {
+              color: "#ffffff",
+              fontSize: "9px",
+              fontWeight: "700",
+              text: String(marker.order),
+            }
+          : marker.glyph
             ? {
-                text: String(marker.order),
-                color: "#ffffff",
-                fontSize: "9px",
-                fontWeight: "700",
-              }
-            : {
-                text: marker.glyph,
                 color: "#ffffff",
                 fontSize: "10px",
                 fontWeight: "700",
-              }
-          : marker.order
-            ? {
-                text: String(marker.order),
-                color: "#ffffff",
-                fontSize: "9px",
-                fontWeight: "700",
+                text: marker.glyph,
               }
             : undefined,
-        icon: {
-          path: maps.maps.SymbolPath.CIRCLE,
-          scale: selected ? 9 : hasSelection ? 5.8 : 7,
-          fillColor: marker.color,
-          fillOpacity: selected ? 1 : hasSelection ? 0.38 : 1,
-          strokeColor: selected ? "#17211f" : "#ffffff",
-          strokeWeight: selected ? 3 : 2,
-        },
+        map,
+        opacity: selected ? 1 : hasSelection ? 0.38 : 1,
+        position: { lat: marker.latitude, lng: marker.longitude },
+        title: marker.label,
+        zIndex: selected ? 2 : 1,
       });
 
-      if (onSelectEntityRef.current) {
-        markerView.addListener("click", () => {
-          onSelectEntityRef.current?.({
-            entityId: marker.entityId,
-            tone: marker.tone,
-          });
-        });
-      }
+      const clickListener = onSelectEntityRef.current
+        ? markerView.addListener("click", () => {
+            onSelectEntityRef.current?.({
+              entityId: marker.entityId,
+              tone: marker.tone,
+            });
+          })
+        : null;
 
-      googleMarkersRef.current.push(markerView);
+      googleMarkersRef.current.push({
+        detach: () => {
+          clickListener?.remove();
+          markerView.setMap(null);
+        },
+      });
     });
 
     // Pan to selection, or fit all markers into view.
@@ -610,7 +694,7 @@ export const MapPanel = ({
       });
       map.setZoom(7);
     } else if (selectedMarkers.length > 1) {
-      const selectedBounds = new maps.maps.LatLngBounds();
+      const selectedBounds = new maps.LatLngBounds();
       selectedMarkers.forEach((marker) => {
         selectedBounds.extend({ lat: marker.latitude, lng: marker.longitude });
       });
@@ -677,7 +761,12 @@ export const MapPanel = ({
 
       {hasGoogleMapsKey && googleAvailable ? (
         <div className="map-canvas map-canvas--google">
-          <div className="map-google" ref={mapRef} />
+          <div
+            aria-hidden={!mapReady}
+            className="map-google"
+            data-ready={mapReady ? "true" : "false"}
+            ref={mapRef}
+          />
           {!mapReady ? <div className="map-empty">{mapMessage}</div> : null}
         </div>
       ) : (

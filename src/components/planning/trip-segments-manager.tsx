@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { useI18n } from "@/components/i18n/provider";
@@ -8,7 +8,12 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog } from "@/components/ui/dialog";
 import { PlaceAutocompleteField } from "@/components/places/place-autocomplete-field";
 import { GuidedEmptyState } from "@/components/planning/guided-empty-state";
-import { formatShortDate, nauticalMilesBetweenPoints } from "@/lib/planning";
+import {
+  addDays,
+  formatShortDate,
+  nauticalMilesBetweenPoints,
+  sortTripSegmentsBySchedule,
+} from "@/lib/planning";
 import type { PortStopView } from "@/lib/planning";
 
 type Props = {
@@ -44,6 +49,12 @@ export function TripSegmentsManager({
   const [segmentToDelete, setSegmentToDelete] = useState<PortStopView | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const rowRefs = useRef(new Map<string, HTMLDivElement>());
+  const orderedSegments = sortTripSegmentsBySchedule(segments);
+  const previousSegmentForNew = orderedSegments[orderedSegments.length - 1] ?? null;
+  const addSegmentStartDate = previousSegmentForNew
+    ? addDays(previousSegmentForNew.end_date, 1)
+    : seasonStart;
 
   // Open edit dialog when triggered from outside (e.g. selection panel)
   useEffect(() => {
@@ -53,6 +64,23 @@ export function TripSegmentsManager({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [externalEditSegment?.id]);
+
+  useEffect(() => {
+    if (!selectedSegmentId) {
+      return;
+    }
+
+    const selectedRow = rowRefs.current.get(selectedSegmentId);
+    if (!selectedRow) {
+      return;
+    }
+
+    selectedRow.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "nearest",
+    });
+  }, [selectedSegmentId]);
 
   const handleSave = (formData: FormData) => {
     const isEdit = Boolean(formData.get("segment_id"));
@@ -125,6 +153,7 @@ export function TripSegmentsManager({
             disabled={isPending}
             onClick={() => {
               setFormError(null);
+              setEditingSegment(null);
               setAddOpen(true);
             }}
             type="button"
@@ -134,7 +163,7 @@ export function TripSegmentsManager({
         </div>
       )}
 
-      {segments.length ? (
+      {orderedSegments.length ? (
         <div className={`data-sheet ${canEdit ? "data-sheet--trip-editable" : "data-sheet--trip-readonly"}`}>
           <div className="data-sheet__header data-sheet__header--trip">
             <span>#</span>
@@ -145,8 +174,8 @@ export function TripSegmentsManager({
             <span>{t("planning.notes")}</span>
             {canEdit && <span></span>}
           </div>
-          {segments.map((segment, index) => {
-            const previousSegment = index > 0 ? segments[index - 1] : null;
+          {orderedSegments.map((segment, index) => {
+            const previousSegment = index > 0 ? orderedSegments[index - 1] : null;
             const distanceFromPrevious = previousSegment
               ? nauticalMilesBetweenPoints(
                   previousSegment.latitude,
@@ -160,6 +189,14 @@ export function TripSegmentsManager({
               <div
                 className={`data-row data-row--trip${selectedSegmentId === segment.id ? " is-selected" : ""}`}
                 key={segment.id}
+                ref={(node) => {
+                  if (node) {
+                    rowRefs.current.set(segment.id, node);
+                    return;
+                  }
+
+                  rowRefs.current.delete(segment.id);
+                }}
                 onClick={() => onSelectSegment?.(segment)}
                 role="button"
                 tabIndex={0}
@@ -235,7 +272,14 @@ export function TripSegmentsManager({
           }
           action={
             canEdit
-              ? { label: `+ ${t("planning.addSegment")}`, onClick: () => setAddOpen(true) }
+              ? {
+                  label: `+ ${t("planning.addSegment")}`,
+                  onClick: () => {
+                    setFormError(null);
+                    setEditingSegment(null);
+                    setAddOpen(true);
+                  },
+                }
               : undefined
           }
         />
@@ -251,9 +295,10 @@ export function TripSegmentsManager({
       >
         <TripSegmentForm
           boatId={boatId}
+          defaultStartDate={addSegmentStartDate}
           errorMessage={formError}
           isPending={isPending}
-          key="add"
+          key={`add-${addOpen ? addSegmentStartDate : "closed"}-${orderedSegments.length}`}
           onSubmit={handleSave}
           seasonId={seasonId}
           seasonStart={seasonStart}
@@ -306,6 +351,7 @@ function TripSegmentForm({
   errorMessage,
   seasonId,
   seasonStart,
+  defaultStartDate,
   segment,
   onSubmit,
   isPending,
@@ -314,11 +360,15 @@ function TripSegmentForm({
   errorMessage?: string | null;
   seasonId: string;
   seasonStart: string;
+  defaultStartDate?: string;
   segment?: PortStopView;
   onSubmit: (fd: FormData) => void;
   isPending: boolean;
 }) {
   const { t } = useI18n();
+  const initialStartDate = segment?.start_date ?? defaultStartDate ?? seasonStart;
+  const initialEndDate = segment?.end_date ?? initialStartDate;
+
   return (
     <form
       className="editor-form"
@@ -342,7 +392,7 @@ function TripSegmentForm({
         <label>
           <span>{t("planning.startDate")}</span>
           <input
-            defaultValue={segment?.start_date ?? seasonStart}
+            defaultValue={initialStartDate}
             name="start_date"
             required
             type="date"
@@ -351,7 +401,7 @@ function TripSegmentForm({
         <label>
           <span>{t("planning.endDate")}</span>
           <input
-            defaultValue={segment?.end_date ?? seasonStart}
+            defaultValue={initialEndDate}
             name="end_date"
             required
             type="date"

@@ -25,6 +25,7 @@ type MemberTourStepsInput = {
   canManageUsers: boolean;
   canShare: boolean;
   canEditBoat: boolean;
+  isSuperuser: boolean;
   isReadOnly: boolean;
   hasSegments: boolean;
   hasVisits: boolean;
@@ -87,6 +88,7 @@ export const buildMemberTourSteps = ({
   canManageUsers,
   canShare,
   canEditBoat,
+  isSuperuser,
   isReadOnly,
   hasSegments,
   hasVisits,
@@ -94,10 +96,14 @@ export const buildMemberTourSteps = ({
   if (memberPhase === "configure_boat") {
     return [
       {
-        target: '[data-tour="sidebar-boat-settings"]',
+        target: isSuperuser
+          ? '[data-tour="sidebar-admin-boats"]'
+          : '[data-tour="sidebar-boat-settings"]',
         title: "Configurar barco",
         body: canEditBoat
-          ? "El primer paso es revisar y completar los datos del barco. Abre la configuracion, rellena el modelo, año y puerto base, y guarda. Cuando cierres, el tour continuara automaticamente."
+          ? isSuperuser
+            ? "El primer paso es revisar y completar los datos del barco desde el menú Barcos. Entra ahí, ajusta los datos generales del barco y después vuelve al espacio de trabajo para continuar."
+            : "El primer paso es revisar y completar los datos del barco. Abre la configuración del barco, rellena el modelo, año y puerto base, y guarda. Cuando cierres, el tour continuará automáticamente."
           : "Antes de empezar, revisa los datos del barco asignado. Un gestor debe haberlos completado para que puedas comenzar.",
       },
     ];
@@ -117,6 +123,26 @@ export const buildMemberTourSteps = ({
 
   if (isReadOnly) {
     return [
+      {
+        target: '[data-tour="sidebar-plan"]',
+        title: "Plan",
+        body: "Plan devuelve al espacio operativo principal del barco, donde ves timeline, escalas, mapa y visitas según tus permisos.",
+      },
+      {
+        target: '[data-tour="sidebar-summary"]',
+        title: "Resumen",
+        body: "Resumen abre la vista condensada de temporada con secuencia operativa, mapa y métricas principales.",
+      },
+      {
+        target: '[data-tour="sidebar-shared"]',
+        title: "Compartidos",
+        body: "Compartidos reúne los timelines públicos a los que tienes acceso para compararlos sin entrar en cada barco uno por uno.",
+      },
+      {
+        target: '[data-tour="sidebar-manual"]',
+        title: "Manual",
+        body: "Manual abre la guía operativa del producto con el flujo recomendado y las pautas de uso.",
+      },
       {
         target: '[data-tour="boat-timeline"]',
         title: "Timeline de la temporada",
@@ -139,8 +165,19 @@ export const buildMemberTourSteps = ({
         body: "El mapa situa visualmente el recorrido y los puntos clave de la temporada. Puedes seleccionar una escala para ver su ubicacion destacada.",
         requiredView: "trip",
       },
+      {
+        target: '[data-tour="sidebar-user-settings"]',
+        title: "Configuración personal",
+        body: "Tus preferencias personales viven aquí: paleta, idioma y forma de presentar las visitas. No cambian la configuración del barco para el resto de usuarios.",
+      },
       ...(canViewVisits
         ? [
+            {
+              target: '[data-tour="boat-switch-visits"]',
+              title: "Visitas",
+              body: "Desde este control cambias la card principal de Escalas a Visitas para consultar los invitados previstos.",
+              requiredView: "trip" as const,
+            },
             {
               target: '[data-tour="boat-visits-card"]',
               title: "Visitas de la temporada",
@@ -153,6 +190,62 @@ export const buildMemberTourSteps = ({
   }
 
   return [
+    {
+      target: '[data-tour="sidebar-plan"]',
+      title: "Plan",
+      body: "Plan es el centro operativo diario del barco. Desde aquí controlas el timeline y la operativa de la temporada.",
+    },
+    {
+      target: '[data-tour="sidebar-summary"]',
+      title: "Resumen",
+      body: "Resumen te da una lectura condensada de la temporada para revisar secuencia, mapa y magnitudes sin entrar al detalle de edición.",
+    },
+    ...(canShare
+      ? [
+          {
+            target: '[data-tour="sidebar-invite"]',
+            title: "Invitar tripulantes",
+            body: "Desde Invitar generas enlaces guest y controlas qué parte de la temporada se comparte en modo consulta.",
+          },
+        ]
+      : []),
+    ...(canEditBoat
+      ? [
+          {
+            target: isSuperuser
+              ? '[data-tour="sidebar-admin-boats"]'
+              : '[data-tour="sidebar-boat-settings"]',
+            title: "Configuración del barco",
+            body: isSuperuser
+              ? "Como superusuario, la configuración global del barco vive en Barcos. Ahí ajustas la ficha maestra y su configuración compartida."
+              : "Barco abre la configuración global del barco: modelo, año, puerto base, imagen y demás datos comunes a todos los usuarios.",
+          },
+        ]
+      : []),
+    ...(canManageUsers
+      ? [
+          {
+            target: '[data-tour="sidebar-users"]',
+            title: "Gestionar miembros",
+            body: "Miembros te permite crear y mantener usuarios del barco, asignando permisos según su responsabilidad real.",
+          },
+        ]
+      : []),
+    {
+      target: '[data-tour="sidebar-shared"]',
+      title: "Compartidos",
+      body: "Compartidos centraliza los timelines públicos a los que tienes acceso y te permite compararlos en paralelo.",
+    },
+    {
+      target: '[data-tour="sidebar-manual"]',
+      title: "Manual",
+      body: "Manual abre la guía escrita del producto. Úsalo cuando necesites recordar el flujo recomendado o revisar criterios operativos.",
+    },
+    {
+      target: '[data-tour="sidebar-user-settings"]',
+      title: "Configuración personal",
+      body: "En Configuración ajustas tus preferencias de uso: paleta, idioma y cómo quieres ver las visitas. Son preferencias tuyas y no cambian el barco para los demás.",
+    },
     {
       target: '[data-tour="boat-timeline"]',
       title: "Timeline de la temporada",
@@ -187,6 +280,12 @@ export const buildMemberTourSteps = ({
     ...(canViewVisits
       ? [
           {
+            target: '[data-tour="boat-switch-visits"]',
+            title: "Visitas",
+            body: "Desde este control cambias la card principal de Escalas a Visitas para trabajar con los invitados de la temporada.",
+            requiredView: "trip" as const,
+          },
+          {
             target: '[data-tour="boat-visits-card"]',
             title: "Visitas de la temporada",
             body: canEditBoat
@@ -199,29 +298,11 @@ export const buildMemberTourSteps = ({
         ]
       : []),
     {
-      target: '[data-tour="availability-card"]',
+      target: '[data-tour="availability-section"]',
       title: "Disponibilidad y bloqueos",
       body: "Bajo la tabla principal encontraras la disponibilidad calculada automaticamente (periodos libres segun las escalas y visitas) y la seccion de fechas bloqueadas, donde puedes cerrar periodos por mantenimiento o cualquier otra razon.",
       requiredView: "trip",
     },
-    ...(canShare
-      ? [
-          {
-            target: '[data-tour="sidebar-invite"]',
-            title: "Invitar tripulantes",
-            body: "Desde Invitar generas un enlace de acceso directo para invitados. El enlace no requiere contraseña y da acceso al panel compartido en modo consulta, con la visibilidad que tu configures.",
-          },
-        ]
-      : []),
-    ...(canManageUsers
-      ? [
-          {
-            target: '[data-tour="sidebar-users"]',
-            title: "Gestionar miembros",
-            body: "En Miembros creas otras cuentas para el barco y les asignas nivel lector o editor. Desde ahi gestionas sus datos y accesos sin afectar a tus propios permisos.",
-          },
-        ]
-      : []),
   ];
 };
 

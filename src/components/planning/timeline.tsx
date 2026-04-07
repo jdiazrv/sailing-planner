@@ -1,17 +1,21 @@
 "use client";
 
+import NextImage from "next/image";
 import {
+  useEffect,
+  useMemo,
   useRef,
   useState,
-  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { useI18n } from "@/components/i18n/provider";
+import { renderVisitIdentity } from "@/components/planning/visit-visual";
 import {
-  computeAvailability,
+  computeAvailabilityReport,
   diffDaysInclusive,
   formatLongDate,
   formatShortDate,
+  getVisitDisplayName,
   hasVisitDateRange,
   type AvailabilityBlock,
   type PortStopView,
@@ -19,14 +23,21 @@ import {
   type VisitView,
 } from "@/lib/planning";
 import { getDocumentLocale, getIntlLocale } from "@/lib/i18n";
+import { measureClientSync, startClientPerf } from "@/lib/perf-debug";
 import type { Database } from "@/types/database";
 
 type SeasonRow = Database["public"]["Tables"]["seasons"]["Row"];
+
+type TimelineWindow = {
+  start_date: string;
+  end_date: string;
+};
 
 type TimelineProps = {
   season: SeasonRow | null;
   tripSegments: PortStopView[];
   visits: VisitView[];
+  availabilityBlocks?: AvailabilityBlock[];
   title: string;
   subtitle: string;
   onVisitClick?: (visit: VisitView) => void;
@@ -38,15 +49,15 @@ type TimelineProps = {
   enableVisits?: boolean;
   showAvailability?: boolean;
   zoom?: number;
-  onZoomChange?: (zoom: number) => void;
+  visibleStartDate?: string;
+  visibleEndDate?: string;
   visitsCollapsed?: boolean;
   availabilityCollapsed?: boolean;
-  blockedCollapsed?: boolean;
-  onToggleVisitsCollapsed?: () => void;
-  onToggleAvailabilityCollapsed?: () => void;
-  onToggleBlockedCollapsed?: () => void;
   onlyShowTripPlan?: boolean;
   visitPanelDisplayMode?: VisitPanelDisplayMode;
+  statusVisualTone?: "default" | "strong";
+  hideHeader?: boolean;
+  headerControls?: React.ReactNode;
 };
 
 type TimelineTooltipState = {
@@ -64,18 +75,18 @@ const getTooltipPosition = (target: HTMLButtonElement) => {
   };
 };
 
-const buildMonthMarkers = (season: SeasonRow) => {
+const buildMonthMarkers = (window: TimelineWindow) => {
   const markers: { label: string; offset: number }[] = [];
   const dayMarkers: { label: string; offset: number }[] = [];
-  const totalDays = diffDaysInclusive(season.start_date, season.end_date);
-  const current = new Date(`${season.start_date}T00:00:00Z`);
+  const totalDays = diffDaysInclusive(window.start_date, window.end_date);
+  const current = new Date(`${window.start_date}T00:00:00Z`);
   current.setUTCDate(1);
 
-  while (current <= new Date(`${season.end_date}T00:00:00Z`)) {
+  while (current <= new Date(`${window.end_date}T00:00:00Z`)) {
     const markerDate = current.toISOString().slice(0, 10);
-    if (markerDate >= season.start_date && markerDate <= season.end_date) {
+    if (markerDate >= window.start_date && markerDate <= window.end_date) {
       const offset =
-        ((diffDaysInclusive(season.start_date, markerDate) - 1) / totalDays) * 100;
+        ((diffDaysInclusive(window.start_date, markerDate) - 1) / totalDays) * 100;
       markers.push({
         label: current.toLocaleString(getIntlLocale(getDocumentLocale()), {
           month: "short",
@@ -87,9 +98,9 @@ const buildMonthMarkers = (season: SeasonRow) => {
     [1, 15].forEach((day) => {
       const dayDate = new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), day));
       const dayLabel = dayDate.toISOString().slice(0, 10);
-      if (dayLabel >= season.start_date && dayLabel <= season.end_date) {
+      if (dayLabel >= window.start_date && dayLabel <= window.end_date) {
         const offset =
-          ((diffDaysInclusive(season.start_date, dayLabel) - 1) / totalDays) * 100;
+          ((diffDaysInclusive(window.start_date, dayLabel) - 1) / totalDays) * 100;
         dayMarkers.push({
           label: String(day),
           offset,
@@ -102,10 +113,10 @@ const buildMonthMarkers = (season: SeasonRow) => {
   return { markers, dayMarkers };
 };
 
-const toBarStyle = (season: SeasonRow, start: string, end: string) => {
-  const totalDays = diffDaysInclusive(season.start_date, season.end_date);
+const toBarStyle = (window: TimelineWindow, start: string, end: string) => {
+  const totalDays = diffDaysInclusive(window.start_date, window.end_date);
   const startOffset =
-    ((diffDaysInclusive(season.start_date, start) - 1) / totalDays) * 100;
+    ((diffDaysInclusive(window.start_date, start) - 1) / totalDays) * 100;
   const width = (diffDaysInclusive(start, end) / totalDays) * 100;
 
   return {
@@ -114,7 +125,21 @@ const toBarStyle = (season: SeasonRow, start: string, end: string) => {
   };
 };
 
+const resolveTimelineWindow = (
+  season: SeasonRow,
+  visibleStartDate?: string,
+  visibleEndDate?: string,
+): TimelineWindow => {
+  const start_date = visibleStartDate ?? season.start_date;
+  const end_date = visibleEndDate ?? season.end_date;
+
+  return start_date <= end_date
+    ? { start_date, end_date }
+    : { start_date: season.start_date, end_date: season.end_date };
+};
+
 const availabilityOrder: AvailabilityBlock["status"][] = [
+  "blocked",
   "occupied",
   "tentative",
   "available",
@@ -134,6 +159,8 @@ const getStatusGlyph = (status: string) => {
     case "tentative":
     case "planned":
       return "?";
+    case "blocked":
+      return "✕";
     case "cancelled":
     case "undefined":
       return "!";
@@ -142,90 +169,11 @@ const getStatusGlyph = (status: string) => {
   }
 };
 
-const renderVisitBadge = (
-  visit: VisitView,
-  options?: {
-    interactive?: boolean;
-    onOpenImage?: (visit: VisitView) => void;
-  },
-) => {
-  const className = `timeline-visit-badge is-${visit.status}`;
-
-  if (visit.image_url) {
-    if (options?.interactive && options.onOpenImage) {
-      return (
-        <button
-          aria-label={visit.visitor_name ?? "Visit image"}
-          className={`${className} timeline-visit-badge-button`}
-          onClick={(event: ReactMouseEvent<HTMLButtonElement>) => {
-            event.stopPropagation();
-            options.onOpenImage?.(visit);
-          }}
-          type="button"
-        >
-          <img alt="" src={visit.image_url} />
-        </button>
-      );
-    }
-
-    return (
-      <span className={className} aria-hidden="true">
-        <img alt="" src={visit.image_url} />
-      </span>
-    );
-  }
-
-  if (visit.badge_emoji) {
-    return (
-      <span className={className} aria-hidden="true">
-        <span>{visit.badge_emoji}</span>
-      </span>
-    );
-  }
-
-  return null;
-};
-
-const renderVisitIdentity = (
-  visit: VisitView,
-  fallbackLabel: string,
-  mode: VisitPanelDisplayMode,
-  options?: {
-    interactiveBadge?: boolean;
-    onOpenImage?: (visit: VisitView) => void;
-  },
-) => {
-  const badge = renderVisitBadge(visit, {
-    interactive: options?.interactiveBadge,
-    onOpenImage: options?.onOpenImage,
-  });
-  const label = visit.visitor_name ?? fallbackLabel;
-  const hasBadge = Boolean(badge);
-
-  if (mode === "image") {
-    if (hasBadge) {
-      return <span className="timeline-visit-identity timeline-visit-identity--image-only">{badge}</span>;
-    }
-
-    return <span className="timeline-visit-identity">{label}</span>;
-  }
-
-  if (mode === "both" && hasBadge) {
-    return (
-      <span className="timeline-visit-identity">
-        {badge}
-        <span>{label}</span>
-      </span>
-    );
-  }
-
-  return <span className="timeline-visit-identity">{label}</span>;
-};
-
 export const Timeline = ({
   season,
   tripSegments,
   visits,
+  availabilityBlocks,
   title,
   onVisitClick,
   onVisitSelect,
@@ -236,48 +184,110 @@ export const Timeline = ({
   enableVisits = true,
   showAvailability = true,
   zoom: controlledZoom,
-  onZoomChange,
+  visibleStartDate,
+  visibleEndDate,
   visitsCollapsed = false,
   availabilityCollapsed = false,
-  onToggleVisitsCollapsed,
-  onToggleAvailabilityCollapsed,
   onlyShowTripPlan = false,
   visitPanelDisplayMode = "both",
+  statusVisualTone = "default",
+  hideHeader = false,
+  headerControls,
 }: TimelineProps) => {
   const { t } = useI18n();
   const locale = getDocumentLocale();
-  const groupLabels =
-    locale === "es"
-      ? {
-          availability: "Disponibilidad",
-          show: "Mostrar",
-          hide: "Ocultar",
-        }
-      : {
-          availability: "Availability",
-          show: "Show",
-          hide: "Hide",
-        };
+  const availabilityLabel = locale === "es" ? "Disponibilidad" : "Availability";
   const [expandedVisitId, setExpandedVisitId] = useState<string | null>(null);
   const [selectedAvailabilityIndex, setSelectedAvailabilityIndex] = useState<number | null>(
     null,
   );
-  const [internalZoom, setInternalZoom] = useState(1);
   const [tooltip, setTooltip] = useState<TimelineTooltipState>(null);
   const [previewVisit, setPreviewVisit] = useState<VisitView | null>(null);
   const tooltipTimeoutRef = useRef<number | null>(null);
   const longPressTimeoutRef = useRef<number | null>(null);
   const longPressEntityRef = useRef<string | null>(null);
-  const zoom = controlledZoom ?? internalZoom;
+  const zoom = controlledZoom ?? 1;
 
-  const handleZoomChange = (nextZoom: number) => {
-    if (onZoomChange) {
-      onZoomChange(nextZoom);
+  const derivedData = useMemo(() => {
+    if (!season) {
+      return {
+        availability: [] as AvailabilityBlock[],
+        regularVisits: [] as VisitView[],
+        sortedAvailability: [] as AvailabilityBlock[],
+        monthMarkers: [] as { label: string; offset: number }[],
+        dayMarkers: [] as { label: string; offset: number }[],
+        isTimelineEmpty: tripSegments.length === 0 && visits.length === 0,
+      };
+    }
+
+    const resolvedTimelineWindow = resolveTimelineWindow(
+      season,
+      visibleStartDate,
+      visibleEndDate,
+    );
+
+    return measureClientSync(
+      "planning.timeline.derive",
+      () => {
+        const availability = availabilityBlocks ?? computeAvailabilityReport(season, tripSegments, visits).blocks;
+        const regularVisits = visits.filter((visit) => visit.status !== "blocked");
+        const sortedAvailability = [...availability].sort(
+          (a, b) =>
+            availabilityOrder.indexOf(a.status) - availabilityOrder.indexOf(b.status),
+        );
+        const { markers: monthMarkers, dayMarkers } = buildMonthMarkers(resolvedTimelineWindow);
+
+        return {
+          availability,
+          regularVisits,
+          sortedAvailability,
+          monthMarkers,
+          dayMarkers,
+          isTimelineEmpty: tripSegments.length === 0 && visits.length === 0,
+        };
+      },
+      {
+        seasonId: season.id,
+        tripSegments: tripSegments.length,
+        visits: visits.length,
+        reusedAvailability: Boolean(availabilityBlocks),
+        zoom,
+        windowStart: resolvedTimelineWindow.start_date,
+        windowEnd: resolvedTimelineWindow.end_date,
+      },
+    );
+  }, [availabilityBlocks, season, tripSegments, visits, visibleEndDate, visibleStartDate, zoom]);
+
+  useEffect(() => {
+    if (!season) {
       return;
     }
 
-    setInternalZoom(nextZoom);
-  };
+    const timing = startClientPerf("planning.timeline.commit", {
+      seasonId: season.id,
+      tripSegments: tripSegments.length,
+      visits: visits.length,
+      zoom,
+      selectedEntityId: selectedEntityId ?? null,
+    });
+
+    const frame = window.requestAnimationFrame(() => {
+      timing.end({
+        expandedVisitId: expandedVisitId ?? null,
+        selectedAvailabilityIndex,
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [
+    expandedVisitId,
+    season,
+    selectedAvailabilityIndex,
+    selectedEntityId,
+    tripSegments.length,
+    visits.length,
+    zoom,
+  ]);
 
   if (!season) {
     return (
@@ -292,13 +302,15 @@ export const Timeline = ({
     );
   }
 
-  const availability = computeAvailability(season, tripSegments, visits);
-  const sortedAvailability = [...availability].sort(
-    (a, b) =>
-      availabilityOrder.indexOf(a.status) - availabilityOrder.indexOf(b.status),
-  );
-  const { markers: monthMarkers, dayMarkers } = buildMonthMarkers(season);
-  const isTimelineEmpty = tripSegments.length === 0 && visits.length === 0;
+  const timelineWindow = resolveTimelineWindow(season, visibleStartDate, visibleEndDate);
+
+  const {
+    regularVisits,
+    sortedAvailability,
+    monthMarkers,
+    dayMarkers,
+    isTimelineEmpty,
+  } = derivedData;
   const expandedVisit = visits.find((v) => v.id === expandedVisitId) ?? null;
   const selectedAvailability =
     selectedAvailabilityIndex == null ? null : sortedAvailability[selectedAvailabilityIndex] ?? null;
@@ -385,39 +397,37 @@ export const Timeline = ({
   const hasActiveSelection = selectedEntityId !== null || selectedAvailabilityIndex !== null;
 
   return (
-    <article className="timeline-card" data-has-selection={hasActiveSelection ? "true" : "false"}>
-      <div className="timeline-card__header">
-        <div>
-          <p className="eyebrow">{title}</p>
-          <div className="timeline-card__title-row">
-            <h2>{season.name}</h2>
-            <span className="timeline-card__season-dates">
-              {formatLongDate(season.start_date)} – {formatLongDate(season.end_date)}
-            </span>
-          </div>
+    <article
+      className="timeline-card"
+      data-has-selection={hasActiveSelection ? "true" : "false"}
+      data-status-tone={statusVisualTone}
+    >
+      {(!hideHeader || headerControls) && (
+        <div className="timeline-card__header">
+          {!hideHeader && (
+            <div>
+              <p className="eyebrow">{title}</p>
+              <div className="timeline-card__title-row">
+                <h2>{season.name}</h2>
+                <span className="timeline-card__season-dates">
+                  {formatLongDate(timelineWindow.start_date)} – {formatLongDate(timelineWindow.end_date)}
+                </span>
+              </div>
+            </div>
+          )}
+          {headerControls && (
+            <div className="timeline-card__controls">{headerControls}</div>
+          )}
         </div>
-        <div className="timeline-card__meta">
-          <label className="timeline-zoom">
-            <span>Zoom</span>
-            <input
-              max="2.4"
-              min="0.8"
-              onChange={(event) => handleZoomChange(Number(event.target.value))}
-              step="0.2"
-              type="range"
-              value={zoom}
-            />
-          </label>
-        </div>
-      </div>
+      )}
 
       <div className="timeline">
         <div className="timeline__inner" style={{ width: `${zoom * 100}%` }}>
           {isTimelineEmpty ? (
             <div className="timeline__empty">
               <div className="timeline__empty-range">
-                <span>{formatShortDate(season.start_date)}</span>
-                <span>{formatShortDate(season.end_date)}</span>
+                <span>{formatShortDate(timelineWindow.start_date)}</span>
+                <span>{formatShortDate(timelineWindow.end_date)}</span>
               </div>
               <div className="timeline__empty-body">
                 <strong>{t("planning.noTripSegments")}</strong>
@@ -476,7 +486,7 @@ export const Timeline = ({
                         }
                         onTripSegmentSelect?.(segment);
                       }}
-                      style={toBarStyle(season, segment.start_date, segment.end_date)}
+                      style={toBarStyle(timelineWindow, segment.start_date, segment.end_date)}
                       type="button"
                     >
                       <span>{segment.location_label}</span>
@@ -489,19 +499,17 @@ export const Timeline = ({
                 <>
                   {enableVisits ? (
                     <TimelineGroup
-                      count={visits.length}
-                      onToggle={onToggleVisitsCollapsed}
+                      count={regularVisits.length}
                       open={!visitsCollapsed}
-                      toggleLabels={groupLabels}
                       title={t("planning.visitsList")}
                     >
-                      {showVisits && !visitsCollapsed && visits.length === 0 ? (
+                      {showVisits && !visitsCollapsed && regularVisits.length === 0 ? (
                         <TimelineLane label={t("planning.visit")}>
                           <span />
                         </TimelineLane>
                       ) : null}
                       {showVisits && !visitsCollapsed
-                        ? visits.map((visit) => {
+                        ? regularVisits.map((visit) => {
                             if (!hasVisitDateRange(visit)) {
                               return null;
                             }
@@ -517,6 +525,10 @@ export const Timeline = ({
                                   t("planning.visit"),
                                   visitPanelDisplayMode,
                                   {
+                                    badgeClassName: "timeline-visit-badge",
+                                    badgeSize: 28,
+                                    identityClassName: "timeline-visit-identity",
+                                    imageOnlyClassName: "timeline-visit-identity timeline-visit-identity--image-only",
                                     interactiveBadge: true,
                                     onOpenImage: setPreviewVisit,
                                   },
@@ -524,7 +536,7 @@ export const Timeline = ({
                               >
                                 <button
                                   aria-expanded={expandedVisitId === visit.id}
-                                  aria-label={`${t("planning.visit")}: ${visit.visitor_name ?? t("planning.visit")}`}
+                                  aria-label={`${t("planning.visit")}: ${getVisitDisplayName(visit, t("planning.visit"))}`}
                                   className={`timeline-bar timeline-bar--btn is-${visit.status}${expandedVisitId === visit.id || selectedEntityId === visit.id ? " is-selected" : ""}`}
                                   onDoubleClick={() => onVisitClick?.(visit)}
                                   onPointerCancel={clearLongPress}
@@ -534,7 +546,7 @@ export const Timeline = ({
                                   onPointerEnter={(event) =>
                                     showTooltip(
                                       event,
-                                      `${visit.visitor_name ?? t("planning.visit")} · ${t(`status.${visit.status}` as never)} · ${formatShortDate(visit.embark_date)} – ${formatShortDate(visit.disembark_date)}`,
+                                      `${getVisitDisplayName(visit, t("planning.visit"))} · ${t(`status.${visit.status}` as never)} · ${formatShortDate(visit.embark_date)} – ${formatShortDate(visit.disembark_date)}`,
                                     )
                                   }
                                   onPointerLeave={() => {
@@ -550,10 +562,15 @@ export const Timeline = ({
                                     toggleVisit(visit.id);
                                     onVisitSelect?.(visit);
                                   }}
-                                  style={toBarStyle(season, visit.embark_date, visit.disembark_date)}
+                                  style={toBarStyle(timelineWindow, visit.embark_date, visit.disembark_date)}
                                   type="button"
                                 >
-                                  {renderVisitIdentity(visit, t("planning.visit"), visitPanelDisplayMode)}
+                                  {renderVisitIdentity(visit, t("planning.visit"), visitPanelDisplayMode, {
+                                    badgeClassName: "timeline-visit-badge",
+                                    badgeSize: 28,
+                                    identityClassName: "timeline-visit-identity",
+                                    imageOnlyClassName: "timeline-visit-identity timeline-visit-identity--image-only",
+                                  })}
                                 </button>
                               </TimelineLane>
                             );
@@ -564,10 +581,8 @@ export const Timeline = ({
 
               <TimelineGroup
                 count={sortedAvailability.length}
-                onToggle={onToggleAvailabilityCollapsed}
                 open={!availabilityCollapsed}
-                toggleLabels={groupLabels}
-                title={groupLabels.availability}
+                title={availabilityLabel}
               >
                 {showAvailability && !availabilityCollapsed ? (
                   <TimelineLane availability>
@@ -588,7 +603,7 @@ export const Timeline = ({
                             current === index ? null : index,
                           )
                         }
-                        style={toBarStyle(season, block.start, block.end)}
+                        style={toBarStyle(timelineWindow, block.start, block.end)}
                         type="button"
                       >
                         <span aria-hidden="true" className="timeline-bar__glyph">
@@ -616,6 +631,10 @@ export const Timeline = ({
                 {t(`status.${expandedVisit.status}` as never)}
               </span>
               {renderVisitIdentity(expandedVisit, t("planning.visit"), "both", {
+                badgeClassName: "timeline-visit-badge",
+                badgeSize: 28,
+                identityClassName: "timeline-visit-identity",
+                imageOnlyClassName: "timeline-visit-identity timeline-visit-identity--image-only",
                 interactiveBadge: true,
                 onOpenImage: setPreviewVisit,
               })}
@@ -704,7 +723,7 @@ export const Timeline = ({
         >
           <div className="image-preview-dialog" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
             <div className="image-preview-dialog__header">
-              <strong>{previewVisit.visitor_name ?? t("planning.visit")}</strong>
+              <strong>{getVisitDisplayName(previewVisit, t("planning.visit"))}</strong>
               <button
                 aria-label="Cerrar"
                 className="modal__close"
@@ -715,7 +734,14 @@ export const Timeline = ({
               </button>
             </div>
             <div className="image-preview-dialog__body">
-              <img alt={previewVisit.visitor_name ?? t("planning.visit")} src={previewVisit.image_url} />
+              <NextImage
+                alt={getVisitDisplayName(previewVisit, t("planning.visit"))}
+                height={600}
+                sizes="(max-width: 720px) 100vw, 720px"
+                src={previewVisit.image_url}
+                unoptimized
+                width={720}
+              />
             </div>
           </div>
         </div>
@@ -749,29 +775,17 @@ const TimelineGroup = ({
   title,
   count,
   open,
-  onToggle,
-  toggleLabels,
   children,
 }: {
   title: string;
   count: number;
   open: boolean;
-  onToggle?: () => void;
-  toggleLabels: { show: string; hide: string };
   children: React.ReactNode;
 }) => (
   <section className={`timeline__group${open ? " is-open" : " is-collapsed"}`}>
     <div className="timeline__group-header">
-      <div>
-        <strong>{title}</strong>
-      </div>
-      <button
-        className="timeline__group-toggle"
-        onClick={onToggle}
-        type="button"
-      >
-        {open ? toggleLabels.hide : toggleLabels.show} · {count}
-      </button>
+      <strong>{title}</strong>
+      <span className="timeline__group-count">{count}</span>
     </div>
     {open ? <div className="timeline__group-body">{children}</div> : null}
   </section>

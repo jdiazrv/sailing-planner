@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { EmailOtpType } from "@supabase/supabase-js";
 
 import { recordCurrentUserAccess } from "@/app/actions";
 import { useI18n } from "@/components/i18n/provider";
@@ -21,14 +22,21 @@ export function SetPasswordForm() {
     locale === "es"
       ? "Esta invitacion ya no es valida o el usuario ya no existe. Solicita una nueva invitacion."
       : "This invitation is no longer valid or the user no longer exists. Request a new invitation.";
+  const missingSessionMessage =
+    locale === "es"
+      ? "Sesion no encontrada. Solicita una nueva invitacion o enlace de restablecimiento."
+      : "Auth session missing. Request a new invitation or reset link.";
 
   useEffect(() => {
     const supabase = createClient();
     void (async () => {
       const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const searchParams = new URLSearchParams(window.location.search);
       const accessToken = hashParams.get("access_token");
       const refreshToken = hashParams.get("refresh_token");
-      const code = new URLSearchParams(window.location.search).get("code");
+      const code = searchParams.get("code");
+      const tokenHash = searchParams.get("token_hash");
+      const tokenType = searchParams.get("type");
 
 
       if (accessToken) {
@@ -42,6 +50,20 @@ export function SetPasswordForm() {
             sessionError.message.includes("user_not_found")
               ? invalidInviteMessage
               : sessionError.message || failedMessage,
+          );
+          setIsReady(true);
+          return;
+        }
+      } else if (tokenHash && (tokenType === "invite" || tokenType === "recovery")) {
+        const { error: otpError } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: tokenType as EmailOtpType,
+        });
+        if (otpError) {
+          setError(
+            otpError.message.includes("user_not_found")
+              ? invalidInviteMessage
+              : otpError.message || failedMessage,
           );
           setIsReady(true);
           return;
@@ -60,16 +82,12 @@ export function SetPasswordForm() {
       } = await supabase.auth.getSession();
 
       if (!session) {
-        setError(
-          locale === "es"
-            ? "Sesion no encontrada. Solicita una nueva invitacion o enlace de restablecimiento."
-            : "Auth session missing. Request a new invitation or reset link.",
-        );
+        setError(missingSessionMessage);
       }
 
       setIsReady(true);
     })();
-  }, [failedMessage, invalidInviteMessage, locale]);
+  }, [failedMessage, invalidInviteMessage, missingSessionMessage]);
 
   const text =
     locale === "es"

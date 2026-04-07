@@ -70,6 +70,7 @@ export default async function BoatWorkspacePage({
           canManageUsers={canManageUsers}
           canShare={canShare}
           canViewVisits={canViewVisits}
+          isSuperuser={workspace.viewer.isSuperuser}
           hasSeason={Boolean(workspace.selectedSeason)}
           hasSegments={workspace.tripSegments.length > 0}
           hasVisits={workspace.visits.filter((v) => v.status !== "blocked").length > 0}
@@ -105,7 +106,11 @@ export default async function BoatWorkspacePage({
           seasonStart={workspace.selectedSeason.start_date}
           statusFilter={status}
           tripSegments={workspace.tripSegments}
-          visitPanelDisplayMode={workspace.boat.visit_panel_display_mode}
+          visitPanelDisplayMode={
+            workspace.viewer.profile?.visit_panel_display_mode ??
+            workspace.boat.visit_panel_display_mode ??
+            "both"
+          }
           visits={workspace.visits}
         />
       ) : (

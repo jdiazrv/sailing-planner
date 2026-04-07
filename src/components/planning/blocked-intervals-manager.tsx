@@ -18,6 +18,8 @@ type Props = {
   seasonStart: string;
   canEdit: boolean;
   initiallyOpenAdd?: boolean;
+  externalEditInterval?: VisitView | null;
+  onExternalEditHandled?: () => void;
   onSave: (fd: FormData) => Promise<void>;
   onDelete: (fd: FormData) => Promise<void>;
 };
@@ -29,6 +31,8 @@ export function BlockedIntervalsManager({
   seasonStart,
   canEdit,
   initiallyOpenAdd = false,
+  externalEditInterval,
+  onExternalEditHandled,
   onSave,
   onDelete,
 }: Props) {
@@ -56,6 +60,16 @@ export function BlockedIntervalsManager({
     const nextQuery = nextParams.toString();
     router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
   }, [initiallyOpenAdd, pathname, router, searchParams]);
+
+  useEffect(() => {
+    if (!externalEditInterval) {
+      return;
+    }
+
+    setFormError(null);
+    setEditingInterval(externalEditInterval);
+    onExternalEditHandled?.();
+  }, [externalEditInterval, onExternalEditHandled]);
 
   const handleSave = (formData: FormData) => {
     const isEdit = Boolean(formData.get("visit_id"));

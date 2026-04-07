@@ -10,6 +10,11 @@ import type {
   SeasonRow,
   VisitView,
 } from "@/lib/planning";
+import {
+  getVisitDisplayName,
+  sortTripSegmentsBySchedule,
+  sortVisitsBySchedule,
+} from "@/lib/planning";
 import { getIntlLocale, type Locale } from "@/lib/i18n";
 
 type SummaryActionsProps = {
@@ -20,22 +25,6 @@ type SummaryActionsProps = {
   tripSegments: PortStopView[];
   visits: VisitView[];
 };
-
-const sortTripSegments = (tripSegments: PortStopView[]) =>
-  [...tripSegments].sort(
-    (left, right) =>
-      left.start_date.localeCompare(right.start_date) ||
-      left.end_date.localeCompare(right.end_date) ||
-      (left.sort_order ?? 0) - (right.sort_order ?? 0),
-  );
-
-const sortVisits = (visits: VisitView[]) =>
-  [...visits].sort(
-    (left, right) =>
-      (left.embark_date ?? "9999-12-31").localeCompare(right.embark_date ?? "9999-12-31") ||
-      (left.disembark_date ?? "9999-12-31").localeCompare(right.disembark_date ?? "9999-12-31") ||
-      (left.visitor_name ?? "").localeCompare(right.visitor_name ?? ""),
-  );
 
 const formatDate = (value: string | null, locale: Locale) => {
   if (!value) {
@@ -113,9 +102,9 @@ export function SummaryActions({
         cursorY += 5;
       };
 
-      const orderedSegments = sortTripSegments(tripSegments);
+      const orderedSegments = sortTripSegmentsBySchedule(tripSegments);
       const visibleVisits = canViewVisits
-        ? sortVisits(visits.filter((visit) => visit.status !== "blocked"))
+        ? sortVisitsBySchedule(visits.filter((visit) => visit.status !== "blocked"))
         : [];
 
       addWrappedText(boat.name, { size: 19, weight: "bold", color: [18, 45, 74] });
@@ -171,7 +160,7 @@ export function SummaryActions({
         } else {
           visibleVisits.forEach((visit) => {
             addWrappedText(
-              `${visit.visitor_name ?? (locale === "es" ? "Visita" : "Visit")} · ${visit.status}`,
+              `${getVisitDisplayName(visit, locale === "es" ? "Visita" : "Visit")} · ${visit.status}`,
               { size: 10, weight: "bold" },
             );
             addWrappedText(

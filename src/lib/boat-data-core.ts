@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { startServerTiming } from "@/lib/server-timing";
 import type { Database } from "@/types/database";
 import type {
   BoatRow,
@@ -70,6 +71,37 @@ export const getVisitImageUrl = async (
   }
 
   return data?.signedUrl ?? null;
+};
+
+export const getVisitImageUrls = async (
+  imagePaths: Array<string | null | undefined>,
+) => {
+  const uniquePaths = [...new Set(
+    imagePaths.filter(
+      (path): path is string => typeof path === "string" && path.length > 0,
+    ),
+  )];
+
+  if (!uniquePaths.length) {
+    return new Map<string, string | null>();
+  }
+
+  const admin = createAdminClient();
+  if (!admin) {
+    return new Map(uniquePaths.map((path) => [path, null]));
+  }
+
+  const { data, error } = await admin.storage
+    .from("visit-images")
+    .createSignedUrls(uniquePaths, 60 * 60 * 24 * 7);
+
+  if (error) {
+    return new Map(uniquePaths.map((path) => [path, null]));
+  }
+
+  return new Map(
+    uniquePaths.map((path, index) => [path, data?.[index]?.signedUrl ?? null]),
+  );
 };
 
 export const mapBoatRowToSummary = (
@@ -170,6 +202,9 @@ export const getBoatAggregateData = async (
   db: any,
   boatIds: string[],
 ) => {
+  const timing = startServerTiming("boatData.getBoatAggregateData", {
+    boatIds: boatIds.length,
+  });
   const aggregateData: BoatAggregateData = {
     tripSegmentsCountByBoat: new Map<string, number>(),
     visitsCountByBoat: new Map<string, number>(),
@@ -184,6 +219,7 @@ export const getBoatAggregateData = async (
   };
 
   if (!boatIds.length) {
+    timing.end({ skipped: true });
     return aggregateData;
   }
 
@@ -300,6 +336,13 @@ export const getBoatAggregateData = async (
 
   usersByBoat.forEach((users, boatId) => {
     aggregateData.usersCountByBoat.set(boatId, users.size);
+  });
+
+  timing.end({
+    boatIds: boatIds.length,
+    seasonRows: seasonRows.length,
+    permissions: permissionRows.length,
+    usersWithAccess: usersByBoat.size,
   });
 
   return aggregateData;

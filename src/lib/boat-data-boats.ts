@@ -22,7 +22,7 @@ import {
   getAccessibleBoatBase,
   getBoatAggregateData,
   getBoatImageUrl,
-  getVisitImageUrl,
+  getVisitImageUrls,
   mapBoatRowToSummary,
 } from "@/lib/boat-data-core";
 import { requireViewer } from "@/lib/boat-data-viewer";
@@ -105,7 +105,12 @@ const loadSeasonWorkspaceData = async (
   selectedSeason: SeasonRow | null,
   options?: { includeVisits?: boolean },
 ) => {
+  const timing = startServerTiming("boatData.loadSeasonWorkspaceData", {
+    seasonId: selectedSeason?.id ?? null,
+    includeVisits: options?.includeVisits ?? true,
+  });
   if (!selectedSeason) {
+    timing.end({ skipped: true });
     return {
       tripSegments: [] as PortStopView[],
       visits: [] as VisitView[],
@@ -124,15 +129,34 @@ const loadSeasonWorkspaceData = async (
       : Promise.resolve({ data: [] }),
   ]);
 
-  return {
+  const rawVisits = (visitResult.data ?? []) as VisitView[];
+  const imageTiming = startServerTiming("boatData.loadSeasonWorkspaceData.signVisitImages", {
+    seasonId: selectedSeason.id,
+    visits: rawVisits.length,
+  });
+  const visitImageUrls = await getVisitImageUrls(rawVisits.map((visit) => visit.image_path));
+  const visits = rawVisits.map((visit) => ({
+    ...visit,
+    image_url: visit.image_path ? visitImageUrls.get(visit.image_path) ?? null : null,
+  }));
+  imageTiming.end({
+    seasonId: selectedSeason.id,
+    visits: rawVisits.length,
+    images: rawVisits.filter((visit) => Boolean(visit.image_path)).length,
+  });
+
+  const result = {
     tripSegments: (tripResult.data ?? []) as PortStopView[],
-    visits: await Promise.all(
-      ((visitResult.data ?? []) as VisitView[]).map(async (visit) => ({
-        ...visit,
-        image_url: await getVisitImageUrl(visit.image_path),
-      })),
-    ),
+    visits,
   };
+
+  timing.end({
+    seasonId: selectedSeason.id,
+    tripSegments: result.tripSegments.length,
+    visits: result.visits.length,
+  });
+
+  return result;
 };
 
 const ensureAccessibleBoat = (boats: BoatSummary[], boatId: string) => {
@@ -143,6 +167,41 @@ const ensureAccessibleBoat = (boats: BoatSummary[], boatId: string) => {
 
   return boat;
 };
+
+const getBoatWorkspaceBase = cache(async (boatId: string) => {
+  const timing = startServerTiming("boatData.getBoatWorkspaceBase", { boatId });
+  const { supabase, user, viewer } = await requireViewer();
+  const db = supabase as any;
+  const boats = await getAccessibleBoatBase(supabase, viewer);
+  ensureAccessibleBoat(boats, boatId);
+
+  const { boatRow, permission, seasons } = await loadBoatContext({
+    db,
+    userId: user.id,
+    boatId,
+  });
+
+  if (!boatRow) {
+    redirect("/dashboard");
+  }
+
+  const result = {
+    supabase,
+    viewer,
+    boats,
+    boatRow,
+    permission,
+    seasons,
+  };
+
+  timing.end({
+    boats: boats.length,
+    seasons: seasons.length,
+    hasPermission: Boolean(permission),
+  });
+
+  return result;
+});
 
 export const getAccessibleBoatsLite = cache(async () => {
   const { supabase, viewer } = await requireViewer();
@@ -338,18 +397,7 @@ export const getBoatShareWorkspace = cache(async (
     boatId,
     requestedSeasonId: requestedSeasonId ?? null,
   });
-  const { supabase, user, viewer } = await requireViewer();
-  const db = supabase as any;
-
-  const { boatRow, permission, seasons } = await loadBoatContext({
-    db,
-    userId: user.id,
-    boatId,
-  });
-
-  if (!boatRow) {
-    redirect("/dashboard");
-  }
+  const { supabase, viewer, boatRow, permission, seasons } = await getBoatWorkspaceBase(boatId);
 
   if (!viewer.isSuperuser && !permission) {
     redirect("/dashboard");
@@ -378,26 +426,9 @@ export const getBoatTimelineSnapshot = cache(async (
   boatId: string,
   requestedSeasonId?: string,
 ) => {
-  const { supabase, user, viewer } = await requireViewer();
+  const { supabase, viewer, boatRow, permission, seasons } = await getBoatWorkspaceBase(boatId);
   const db = supabase as any;
-  const boats = await getAccessibleBoatsLite();
-  ensureAccessibleBoat(boats, boatId);
-
-  const [{ boatRow, permission }, seasonData] = await Promise.all([
-    loadBoatContext({
-      db,
-      userId: user.id,
-      boatId,
-      includeSeasons: false,
-    }),
-    getBoatSelectedSeason(boatId, requestedSeasonId),
-  ]);
-
-  if (!boatRow) {
-    redirect("/dashboard");
-  }
-
-  const selectedSeason = seasonData.selectedSeason;
+  const selectedSeason = getSelectedSeasonFromList(seasons, requestedSeasonId);
   const { tripSegments } = await loadSeasonWorkspaceData(db, selectedSeason, {
     includeVisits: false,
   });
@@ -406,7 +437,7 @@ export const getBoatTimelineSnapshot = cache(async (
     viewer,
     boat: buildBoatDetails(supabase, boatRow),
     permission,
-    seasons: seasonData.seasons,
+    seasons,
     selectedSeason,
     tripSegments,
   };
@@ -446,20 +477,8 @@ export const getBoatWorkspace = cache(async (
     boatId,
     requestedSeasonId: requestedSeasonId ?? null,
   });
-  const { supabase, user, viewer } = await requireViewer();
+  const { supabase, viewer, boats, boatRow, permission, seasons } = await getBoatWorkspaceBase(boatId);
   const db = supabase as any;
-  const boats = await getAccessibleBoatsLite();
-  ensureAccessibleBoat(boats, boatId);
-
-  const { boatRow, permission, seasons } = await loadBoatContext({
-    db,
-    userId: user.id,
-    boatId,
-  });
-
-  if (!boatRow) {
-    redirect("/dashboard");
-  }
 
   const selectedSeason = getSelectedSeasonFromList(seasons, requestedSeasonId);
   const { tripSegments, visits } = await loadSeasonWorkspaceData(db, selectedSeason);
@@ -486,21 +505,7 @@ export const getBoatWorkspace = cache(async (
 
 export const getBoatLayoutSnapshot = cache(async (boatId: string) => {
   const timing = startServerTiming("boatData.getBoatLayoutSnapshot", { boatId });
-  const { supabase, user, viewer } = await requireViewer();
-  const db = supabase as any;
-  const boats = await getAccessibleBoatsLite();
-  ensureAccessibleBoat(boats, boatId);
-
-  const { boatRow, permission } = await loadBoatContext({
-    db,
-    userId: user.id,
-    boatId,
-    includeSeasons: false,
-  });
-
-  if (!boatRow) {
-    redirect("/dashboard");
-  }
+  const { supabase, viewer, boatRow, permission, boats } = await getBoatWorkspaceBase(boatId);
 
   const result = {
     viewer,
@@ -561,14 +566,23 @@ export const getSeasonGuestWorkspace = async (
     private_notes: null,
   })) as PortStopView[];
 
-  const visits = await Promise.all(
-    ((visitsData ?? []) as any[]).map(async (visit) => ({
-      ...visit,
-      private_notes: null,
-      blocks_availability: visit.status === "confirmed",
-      image_url: await getVisitImageUrl(visit.image_path),
-    })),
-  ) as VisitView[];
+  const rawVisits = (visitsData ?? []) as any[];
+  const imageTiming = startServerTiming("boatData.getSeasonGuestWorkspace.signVisitImages", {
+    seasonId: session.season.id,
+    visits: rawVisits.length,
+  });
+  const visitImageUrls = await getVisitImageUrls(rawVisits.map((visit) => visit.image_path));
+  const visits = rawVisits.map((visit) => ({
+    ...visit,
+    private_notes: null,
+    blocks_availability: visit.status === "confirmed",
+    image_url: visit.image_path ? visitImageUrls.get(visit.image_path) ?? null : null,
+  })) as VisitView[];
+  imageTiming.end({
+    seasonId: session.season.id,
+    visits: rawVisits.length,
+    images: rawVisits.filter((visit) => Boolean(visit.image_path)).length,
+  });
 
   return {
     viewer: {

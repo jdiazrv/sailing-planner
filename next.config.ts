@@ -10,6 +10,7 @@ const supabaseOrigin = (() => {
 })();
 
 const nextConfig: NextConfig = {
+  devIndicators: false,
   outputFileTracingRoot: process.cwd(),
   images: supabaseOrigin
     ? {

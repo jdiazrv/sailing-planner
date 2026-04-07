@@ -1,5 +1,6 @@
 "use client";
 
+import NextImage from "next/image";
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -8,8 +9,10 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog } from "@/components/ui/dialog";
 import { PlaceAutocompleteField } from "@/components/places/place-autocomplete-field";
 import { GuidedEmptyState } from "@/components/planning/guided-empty-state";
+import { renderVisitIdentity as renderSharedVisitIdentity } from "@/components/planning/visit-visual";
 import {
   formatShortDate,
+  getVisitDisplayName,
   hasVisitDateRange,
   type VisitPanelDisplayMode,
 } from "@/lib/planning";
@@ -183,31 +186,12 @@ export function VisitsManager({
   };
 
   const renderVisitIdentity = (visit: VisitView) => {
-    const label = visit.visitor_name ?? t("planning.visit");
-    const badge = visit.image_url ? (
-      <span className="visit-badge visit-badge--small" aria-hidden="true">
-        <img alt="" src={visit.image_url} />
-      </span>
-    ) : visit.badge_emoji ? (
-      <span className="visit-badge visit-badge--small" aria-hidden="true">
-        <span>{visit.badge_emoji}</span>
-      </span>
-    ) : null;
-
-    if (visitPanelDisplayMode === "image") {
-      return badge ?? <span>{label}</span>;
-    }
-
-    if (visitPanelDisplayMode === "both" && badge) {
-      return (
-        <span className="visit-row__identity">
-          {badge}
-          <span>{label}</span>
-        </span>
-      );
-    }
-
-    return <span>{label}</span>;
+    return renderSharedVisitIdentity(visit, t("planning.visit"), visitPanelDisplayMode, {
+      badgeClassName: "visit-badge visit-badge--small",
+      badgeSize: 24,
+      identityClassName: "visit-row__identity",
+      bareImageMode: true,
+    });
   };
 
   return (
@@ -369,7 +353,7 @@ export function VisitsManager({
           visitToDelete
             ? t("planning.deleteVisitConfirm").replace(
                 "{name}",
-                visitToDelete.visitor_name ?? t("planning.visit"),
+                getVisitDisplayName(visitToDelete, t("planning.visit")),
               )
             : ""
         }
@@ -612,7 +596,14 @@ function VisitForm({
             {currentImageUrl ? (
               <div className="visit-image-preview-card">
                 <span>{visualText.currentImage}</span>
-                <img alt={visit?.visitor_name ?? t("planning.visit")} src={currentImageUrl} />
+                <NextImage
+                  alt={visit?.visitor_name ?? t("planning.visit")}
+                  height={200}
+                  sizes="150px"
+                  src={currentImageUrl}
+                  unoptimized
+                  width={150}
+                />
                 <button
                   className="link-button link-button--danger"
                   onClick={() => {

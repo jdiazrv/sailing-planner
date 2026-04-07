@@ -25,7 +25,7 @@ export function SharedBoatPicker({
   const { locale, t } = useI18n();
   const [query, setQuery] = useState("");
   const [isMobile, setIsMobile] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(!selectedBoatId);
+  const [isExpanded, setIsExpanded] = useState(false);
   const useSearchPicker = entries.length > (isMobile ? 6 : 12);
   const hasQuery = query.trim().length > 0;
 
@@ -38,7 +38,6 @@ export function SharedBoatPicker({
   }, []);
 
   useEffect(() => {
-    setIsExpanded(!selectedBoatId);
     setQuery("");
   }, [selectedBoatId]);
 
@@ -55,81 +54,80 @@ export function SharedBoatPicker({
   );
   const selectedEntry = entries.find((entry) => entry.boatId === selectedBoatId) ?? null;
 
-  const selectionSummary = selectedEntry ? (
-    <article className="dashboard-card shared-selection-card">
-      <div className="card-header">
-        <div>
-          <p className="eyebrow">{t("shared.currentSelection")}</p>
-          <h2>{selectedEntry.boatName}</h2>
-          <p className="muted">
-            {selectedEntry.seasonName ?? t("shared.noSeasonPublished")}
-          </p>
-        </div>
-        <button
-          className="secondary-button"
-          onClick={() => setIsExpanded((value) => !value)}
-          type="button"
-        >
-          {t("shared.changeBoat")}
-        </button>
-      </div>
-    </article>
-  ) : null;
-
   if (!useSearchPicker) {
     return (
-      <section className="admin-stack">
-        {selectionSummary}
-        {(isExpanded || !selectedEntry) ? (
-          <>
-            <article className="dashboard-card">
-              <p className="eyebrow">{t("shared.selectionTitle")}</p>
-              <p className="muted">{t("shared.selectionBody")}</p>
-            </article>
-            <div className="shared-boat-grid">
-              {entries.map((entry) => (
-                <Link
-                  aria-disabled={!entry.seasonId}
-                  className={`boat-card ${entry.boatId === selectedBoatId ? "is-active" : ""}${!entry.seasonId ? " is-disabled" : ""}`}
-                  href={
-                    entry.seasonId
-                      ? `/shared?boat=${entry.boatId}&season=${entry.seasonId}`
-                      : "/shared"
+      <section className="shared-boat-picker">
+        <div className="shared-boat-picker__toolbar">
+          <p className="muted shared-boat-picker__selection">
+            {selectedEntry
+              ? `${t("shared.currentSelection")}: ${selectedEntry.boatName}`
+              : t("shared.selectionTitle")}
+          </p>
+          <button
+            className="secondary-button"
+            onClick={() => setIsExpanded((value) => !value)}
+            type="button"
+          >
+            {isExpanded ? t("shared.hideBoatList") : t("shared.selectBoatToView")}
+          </button>
+        </div>
+        {isExpanded ? (
+          <div className="shared-boat-grid">
+            {entries.map((entry) => (
+              <Link
+                aria-disabled={!entry.seasonId}
+                className={`boat-card ${entry.boatId === selectedBoatId ? "is-active" : ""}${!entry.seasonId ? " is-disabled" : ""}`}
+                href={
+                  entry.seasonId
+                    ? `/shared?boat=${entry.boatId}&season=${entry.seasonId}`
+                    : "/shared"
+                }
+                key={entry.boatId}
+                onClick={(event) => {
+                  if (!entry.seasonId) {
+                    event.preventDefault();
+                    return;
                   }
-                  key={entry.boatId}
-                  onClick={(event) => {
-                    if (!entry.seasonId) event.preventDefault();
-                  }}
-                >
-                  <div className="boat-card__header">
-                    <p className="eyebrow">{t("shared.boat")}</p>
-                    <span className={`status-pill ${entry.seasonId ? "is-good" : "is-muted"}`}>
-                      {entry.seasonId ? t("shared.select") : t("shared.noSeasonPublished")}
-                    </span>
-                  </div>
-                  <h3>{entry.boatName}</h3>
-                  <p className="muted">{entry.seasonName ?? t("shared.noSeasonPublished")}</p>
-                  <p className="meta">
-                    {t("shared.owner")}: {entry.ownerDisplayName ?? t("shared.ownerUnknown")}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          </>
+                  setIsExpanded(false);
+                }}
+              >
+                <div className="boat-card__header">
+                  <p className="eyebrow">{t("shared.boat")}</p>
+                  <span className={`status-pill ${entry.seasonId ? "is-good" : "is-muted"}`}>
+                    {entry.seasonId ? t("shared.select") : t("shared.noSeasonPublished")}
+                  </span>
+                </div>
+                <h3>{entry.boatName}</h3>
+                <p className="muted">{entry.seasonName ?? t("shared.noSeasonPublished")}</p>
+                <p className="meta">
+                  {t("shared.owner")}: {entry.ownerDisplayName ?? t("shared.ownerUnknown")}
+                </p>
+              </Link>
+            ))}
+          </div>
         ) : null}
       </section>
     );
   }
 
   return (
-    <section className="boat-selector-list">
-      {selectionSummary}
-      {(isExpanded || !selectedEntry) ? (
+    <section className="shared-boat-picker">
+      <div className="shared-boat-picker__toolbar">
+        <p className="muted shared-boat-picker__selection">
+          {selectedEntry
+            ? `${t("shared.currentSelection")}: ${selectedEntry.boatName}`
+            : t("shared.selectionTitle")}
+        </p>
+        <button
+          className="secondary-button"
+          onClick={() => setIsExpanded((value) => !value)}
+          type="button"
+        >
+          {isExpanded ? t("shared.hideBoatList") : t("shared.selectBoatToView")}
+        </button>
+      </div>
+      {isExpanded ? (
         <>
-          <article className="dashboard-card">
-            <p className="eyebrow">{t("shared.selectionTitle")}</p>
-            <p className="muted">{t("shared.selectionBody")}</p>
-          </article>
           <div className="form-grid">
             <label className="form-grid__wide">
               <span>{t("admin.users.searchBoat")}</span>
@@ -159,7 +157,11 @@ export function SharedBoatPicker({
                       }
                       key={entry.boatId}
                       onClick={(event) => {
-                        if (!entry.seasonId) event.preventDefault();
+                        if (!entry.seasonId) {
+                          event.preventDefault();
+                          return;
+                        }
+                        setIsExpanded(false);
                       }}
                     >
                       <div className="table-stack">

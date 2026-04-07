@@ -25,16 +25,24 @@ export default async function SharedPage({
     cookies(),
   ]);
   try {
-    const workspace = await getSharedTimelineWorkspace(boat, season);
-    const selected = workspace.selectedBoat;
     const lastBoatId = cookieStore.get("lastBoatId")?.value ?? null;
     const ownBoatId =
       (lastBoatId && availableBoats.some((entry) => entry.boat_id === lastBoatId)
         ? lastBoatId
         : availableBoats[0]?.boat_id) ?? null;
-    const ownWorkspace = ownBoatId ? await getBoatTimelineSnapshot(ownBoatId) : null;
+    const [workspace, ownWorkspace] = await Promise.all([
+      getSharedTimelineWorkspace(boat, season),
+      ownBoatId ? getBoatTimelineSnapshot(ownBoatId) : Promise.resolve(null),
+    ]);
+    const requestedSelection = boat
+      ? workspace.boats.find((entry) => entry.boat.id === boat) ?? null
+      : null;
+    const selected = requestedSelection;
     const isSameBoatAsOwn = Boolean(
       ownWorkspace?.boat.id && selected?.boat.id && ownWorkspace.boat.id === selected.boat.id,
+    );
+    const hasTimelineContent = Boolean(
+      (ownWorkspace?.boat && ownWorkspace.selectedSeason) || selected,
     );
     return (
       <>
@@ -55,20 +63,7 @@ export default async function SharedPage({
           </article>
         ) : (
           <>
-            <SharedBoatPicker
-              entries={workspace.boats.map((entry) => ({
-                boatId: entry.boat.id,
-                boatName: entry.boat.name,
-                homePort: entry.boat.home_port ?? null,
-                seasonId: entry.season?.id ?? null,
-                seasonName: entry.season?.name ?? null,
-                ownerDisplayName: entry.ownerDisplayName ?? null,
-                isActive: entry.boat.id === workspace.selectedBoatId,
-              }))}
-              selectedBoatId={workspace.selectedBoatId}
-            />
-
-            {selected && selected.season ? (
+            {hasTimelineContent ? (
               <SharedTimelineCompare
                 ownEntry={
                   ownWorkspace?.boat && ownWorkspace.selectedSeason && !isSameBoatAsOwn
@@ -80,17 +75,35 @@ export default async function SharedPage({
                       }
                     : null
                 }
-                selectedEntry={{
-                  boat: selected.boat,
-                  season: selected.season,
-                  tripSegments: selected.tripSegments,
-                  ownerDisplayName: selected.ownerDisplayName,
-                  label: selected.boat.name,
-                }}
+                pickerSlot={
+                  <SharedBoatPicker
+                    entries={workspace.boats.map((entry) => ({
+                      boatId: entry.boat.id,
+                      boatName: entry.boat.name,
+                      homePort: entry.boat.home_port ?? null,
+                      seasonId: entry.season?.id ?? null,
+                      seasonName: entry.season?.name ?? null,
+                      ownerDisplayName: entry.ownerDisplayName ?? null,
+                      isActive: entry.boat.id === selected?.boat.id,
+                    }))}
+                    selectedBoatId={selected?.boat.id ?? null}
+                  />
+                }
+                selectedEntry={
+                  selected && selected.season
+                    ? {
+                        boat: selected.boat,
+                        season: selected.season,
+                        tripSegments: selected.tripSegments,
+                        ownerDisplayName: selected.ownerDisplayName,
+                        label: selected.boat.name,
+                      }
+                    : null
+                }
               />
             ) : (
               <article className="dashboard-card">
-                <p className="eyebrow">{selected?.boat.name ?? t(locale, "shared.selectionTitle")}</p>
+                <p className="eyebrow">{t(locale, "shared.selectionTitle")}</p>
                 <p className="muted">{t(locale, "shared.noSeasonPublished")}</p>
               </article>
             )}

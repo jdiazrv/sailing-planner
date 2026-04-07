@@ -101,6 +101,7 @@ export type SeasonAccessLinkSummary = SeasonAccessLinkRow & {
 export type AvailabilityStatus =
   | "available"
   | "occupied"
+  | "blocked"
   | "tentative"
   | "undefined";
 
@@ -109,6 +110,19 @@ export type AvailabilityBlock = {
   end: string;
   status: AvailabilityStatus;
   label: string;
+};
+
+export type AvailabilityPlaceRow = {
+  start: string;
+  end: string;
+  label: string;
+  status: "available" | "undefined";
+  segmentId: string | null;
+};
+
+export type AvailabilityReport = {
+  blocks: AvailabilityBlock[];
+  placeRows: AvailabilityPlaceRow[];
 };
 
 export type VisitConflict = {
@@ -258,23 +272,45 @@ export const computeAvailability = (
   season: SeasonRow | null,
   tripSegments: PortStopView[],
   visits: VisitView[],
+) => computeAvailabilityReport(season, tripSegments, visits).blocks;
+
+export const computeAvailabilityReport = (
+  season: SeasonRow | null,
+  tripSegments: PortStopView[],
+  visits: VisitView[],
 ) => {
   if (!season) {
-    return [] as AvailabilityBlock[];
+    return {
+      blocks: [] as AvailabilityBlock[],
+      placeRows: [] as AvailabilityPlaceRow[],
+    } satisfies AvailabilityReport;
   }
 
-  const dayStatuses: AvailabilityStatus[] = [];
+  const sortedSegments = [...tripSegments].sort(
+    (left, right) =>
+      left.start_date.localeCompare(right.start_date) ||
+      left.end_date.localeCompare(right.end_date) ||
+      (left.sort_order ?? 0) - (right.sort_order ?? 0),
+  );
   const days = diffDaysInclusive(season.start_date, season.end_date);
+  const dayStatuses: AvailabilityStatus[] = [];
+  const placeRows: AvailabilityPlaceRow[] = [];
+  let currentPlaceRow: AvailabilityPlaceRow | null = null;
 
   for (let index = 0; index < days; index += 1) {
     const day = addDays(season.start_date, index);
-    const hasSegment = tripSegments.some((segment) =>
-      rangeIncludes(segment.start_date, segment.end_date, day),
+    const segment =
+      sortedSegments.find((entry) => rangeIncludes(entry.start_date, entry.end_date, day)) ?? null;
+    const hasBlockedVisit = visits.some(
+      (visit) =>
+        hasVisitDateRange(visit) &&
+        visit.status === "blocked" &&
+        rangeIncludes(visit.embark_date, visit.disembark_date, day),
     );
     const hasConfirmedVisit = visits.some(
       (visit) =>
         hasVisitDateRange(visit) &&
-        (visit.status === "confirmed" || visit.status === "blocked") &&
+        visit.status === "confirmed" &&
         rangeIncludes(visit.embark_date, visit.disembark_date, day),
     );
     const hasTentativeVisit = visits.some(
@@ -284,18 +320,66 @@ export const computeAvailability = (
         rangeIncludes(visit.embark_date, visit.disembark_date, day),
     );
 
-    if (hasConfirmedVisit) {
-      dayStatuses.push("occupied");
-    } else if (!hasSegment) {
-      dayStatuses.push("undefined");
+    let status: AvailabilityStatus;
+    if (hasBlockedVisit) {
+      status = "blocked";
+    } else if (hasConfirmedVisit) {
+      status = "occupied";
+    } else if (!segment) {
+      status = "undefined";
     } else if (hasTentativeVisit) {
-      dayStatuses.push("tentative");
+      status = "tentative";
     } else {
-      dayStatuses.push("available");
+      status = "available";
     }
+
+    dayStatuses.push(status);
+
+    const placeRowStatus =
+      status === "available" || status === "undefined" ? status : null;
+
+    if (!placeRowStatus) {
+      if (currentPlaceRow) {
+        placeRows.push(currentPlaceRow);
+        currentPlaceRow = null;
+      }
+      continue;
+    }
+
+    const nextPlaceRow: AvailabilityPlaceRow = {
+      start: day,
+      end: day,
+      label:
+        placeRowStatus === "undefined"
+          ? "Sin definir"
+          : segment?.location_label ?? "Sin definir",
+      status: placeRowStatus,
+      segmentId: placeRowStatus === "available" ? segment?.id ?? null : null,
+    };
+
+    if (
+      !currentPlaceRow ||
+      currentPlaceRow.status !== nextPlaceRow.status ||
+      currentPlaceRow.segmentId !== nextPlaceRow.segmentId
+    ) {
+      if (currentPlaceRow) {
+        placeRows.push(currentPlaceRow);
+      }
+      currentPlaceRow = nextPlaceRow;
+      continue;
+    }
+
+    currentPlaceRow.end = day;
   }
 
-  return compressStatusBlocks(season.start_date, dayStatuses);
+  if (currentPlaceRow) {
+    placeRows.push(currentPlaceRow);
+  }
+
+  return {
+    blocks: compressStatusBlocks(season.start_date, dayStatuses),
+    placeRows,
+  } satisfies AvailabilityReport;
 };
 
 const compressStatusBlocks = (
@@ -333,6 +417,8 @@ const getAvailabilityLabel = (status: AvailabilityStatus) => {
       return "Available";
     case "occupied":
       return "Occupied";
+    case "blocked":
+      return "Blocked";
     case "tentative":
       return "Tentative";
     case "undefined":
@@ -392,7 +478,7 @@ export const computeVisitConflicts = (
       conflicts.push({
         visitId: visit.id,
         severity: "warning",
-        message: `${visit.visitor_name ?? "Visit"} embarks in a period without a trip segment.`,
+        message: `${visit.visitor_name ?? "Visita"} embarca en un período sin escala de viaje.`,
       });
     }
 
@@ -400,7 +486,7 @@ export const computeVisitConflicts = (
       conflicts.push({
         visitId: visit.id,
         severity: "warning",
-        message: `${visit.visitor_name ?? "Visit"} disembarks in a period without a trip segment.`,
+        message: `${visit.visitor_name ?? "Visita"} desembarca en un período sin escala de viaje.`,
       });
     }
 
@@ -408,7 +494,7 @@ export const computeVisitConflicts = (
       conflicts.push({
         visitId: visit.id,
         severity: "warning",
-        message: `${visit.visitor_name ?? "Visit"} crosses a gap without trip coverage.`,
+        message: `${visit.visitor_name ?? "Visita"} cruza un tramo sin cobertura de viaje.`,
       });
     }
 
@@ -429,7 +515,7 @@ export const computeVisitConflicts = (
         conflicts.push({
           visitId: visit.id,
           severity: "warning",
-          message: `${visit.visitor_name ?? "Visit"} overlaps with confirmed visit ${otherVisit.visitor_name ?? "another visit"}.`,
+          message: `${visit.visitor_name ?? "Visita"} se solapa con la visita confirmada de ${otherVisit.visitor_name ?? "otro visitante"}.`,
         });
       }
     });
@@ -437,6 +523,27 @@ export const computeVisitConflicts = (
 
   return conflicts;
 };
+
+export const sortTripSegmentsBySchedule = (tripSegments: PortStopView[]) =>
+  [...tripSegments].sort(
+    (left, right) =>
+      left.start_date.localeCompare(right.start_date) ||
+      left.end_date.localeCompare(right.end_date) ||
+      (left.sort_order ?? 0) - (right.sort_order ?? 0),
+  );
+
+export const sortVisitsBySchedule = (visits: VisitView[]) =>
+  [...visits].sort(
+    (left, right) =>
+      (left.embark_date ?? "9999-12-31").localeCompare(right.embark_date ?? "9999-12-31") ||
+      (left.disembark_date ?? "9999-12-31").localeCompare(right.disembark_date ?? "9999-12-31") ||
+      (left.visitor_name ?? "").localeCompare(right.visitor_name ?? ""),
+  );
+
+export const getVisitDisplayName = (
+  visit: Pick<VisitView, "visitor_name">,
+  fallbackLabel: string,
+) => visit.visitor_name ?? fallbackLabel;
 
 export const getDefaultSeasonDraft = (boatId: string, year?: number) => {
   const resolvedYear = year ?? new Date().getUTCFullYear();

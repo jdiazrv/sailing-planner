@@ -5,9 +5,12 @@ import { SummaryActions } from "@/components/planning/summary-actions";
 import { getIntlLocale, t, type Locale } from "@/lib/i18n";
 import {
   diffDaysInclusive,
+  getVisitDisplayName,
   hasVisitDateRange,
   nauticalMilesBetweenPoints,
   parseDate,
+  sortTripSegmentsBySchedule,
+  sortVisitsBySchedule,
   type BoatDetails,
   type PortStopView,
   type SeasonRow,
@@ -28,28 +31,6 @@ type RouteLeg = {
   fromLabel: string | null;
   toLabel: string;
 };
-
-const sortTripSegments = (tripSegments: PortStopView[]) =>
-  [...tripSegments].sort(
-    (left, right) =>
-      left.start_date.localeCompare(right.start_date) ||
-      left.end_date.localeCompare(right.end_date) ||
-      (left.sort_order ?? 0) - (right.sort_order ?? 0),
-  );
-
-const sortVisits = (visits: VisitView[]) =>
-  [...visits].sort((left, right) => {
-    const leftDate = left.embark_date ?? "9999-12-31";
-    const rightDate = right.embark_date ?? "9999-12-31";
-
-    return (
-      leftDate.localeCompare(rightDate) ||
-      (left.disembark_date ?? "9999-12-31").localeCompare(
-        right.disembark_date ?? "9999-12-31",
-      ) ||
-      (left.visitor_name ?? "").localeCompare(right.visitor_name ?? "")
-    );
-  });
 
 const formatDate = (value: string, locale: Locale) =>
   new Intl.DateTimeFormat(getIntlLocale(locale), {
@@ -92,9 +73,9 @@ export function BoatSeasonSummary({
   tripSegments,
   visits,
 }: BoatSeasonSummaryProps) {
-  const orderedSegments = sortTripSegments(tripSegments);
+  const orderedSegments = sortTripSegmentsBySchedule(tripSegments);
   const visibleVisits = canViewVisits
-    ? sortVisits(visits.filter((visit) => visit.status !== "blocked"))
+    ? sortVisitsBySchedule(visits.filter((visit) => visit.status !== "blocked"))
     : [];
   const routeLegs = orderedSegments.map<RouteLeg>((segment, index) => {
     const previous = orderedSegments[index - 1];
@@ -203,7 +184,9 @@ export function BoatSeasonSummary({
           </div>
 
           {orderedSegments.length ? (
-            <div className="route-summary__route-list">
+            <div
+              className={`route-summary__route-list${orderedSegments.length > 10 ? " route-summary__route-list--scrollable" : ""}`}
+            >
               {orderedSegments.map((segment, index) => {
                 const leg = routeLegs[index];
 
@@ -212,31 +195,28 @@ export function BoatSeasonSummary({
                     <div className="route-summary__route-order">{index + 1}</div>
                     <div className="route-summary__route-body">
                       <div className="route-summary__route-top">
-                        <div>
-                          <h3>{segment.location_label}</h3>
-                          <p className="muted">
-                            {formatDateRange(segment.start_date, segment.end_date, locale)}
-                          </p>
+                        <div className="route-summary__route-line route-summary__route-line--primary">
+                          <strong>{segment.location_label}</strong>
+                          <span>{getLocationTypeLabel(locale, segment.location_type)}</span>
+                          <span>{formatDateRange(segment.start_date, segment.end_date, locale)}</span>
                         </div>
+                      </div>
+
+                      <div className="route-summary__route-line route-summary__route-line--secondary">
                         <span className={`status-pill is-${segment.status}`}>
                           {getStatusLabel(locale, segment.status)}
                         </span>
-                      </div>
-
-                      <div className="route-summary__route-meta">
-                        <span>{getLocationTypeLabel(locale, segment.location_type)}</span>
                         {leg.distanceNm != null && leg.fromLabel ? (
-                          <span>
+                          <span className="route-summary__route-meta">
                             {t(locale, "summary.legFrom").replace("{from}", leg.fromLabel)}
                             {": "}
                             {Math.round(leg.distanceNm)} nm
                           </span>
                         ) : null}
+                        {segment.public_notes ? (
+                          <span className="route-summary__notes">{segment.public_notes}</span>
+                        ) : null}
                       </div>
-
-                      {segment.public_notes ? (
-                        <p className="route-summary__notes">{segment.public_notes}</p>
-                      ) : null}
                     </div>
                   </article>
                 );
@@ -280,7 +260,7 @@ export function BoatSeasonSummary({
                   <div className="route-summary__visit-header">
                     {visit.image_url ? (
                       <Image
-                        alt={visit.visitor_name ?? t(locale, "planning.visit")}
+                        alt={getVisitDisplayName(visit, t(locale, "planning.visit"))}
                         className="route-summary__visit-image"
                         height={200}
                         sizes="150px"
@@ -296,7 +276,7 @@ export function BoatSeasonSummary({
                     <div className="route-summary__visit-copy">
                       <div className="route-summary__visit-topline">
                         <div>
-                          <h3>{visit.visitor_name ?? t(locale, "planning.visit")}</h3>
+                          <h3>{getVisitDisplayName(visit, t(locale, "planning.visit"))}</h3>
                           <p className="muted route-summary__visit-range">
                             {formatDateRange(visit.embark_date, visit.disembark_date, locale)}
                           </p>

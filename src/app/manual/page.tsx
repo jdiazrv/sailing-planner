@@ -94,6 +94,7 @@ export default async function ManualPage() {
                 ["#finalidad", isEs ? "Finalidad" : "Purpose"],
                 ["#flujo", isEs ? "Proceso normal" : "Normal flow"],
                 ["#conceptos", isEs ? "Conceptos clave" : "Key concepts"],
+                ["#tour", isEs ? "Tour guiado" : "Guided tour"],
                 ["#accesos", isEs ? "Invitaciones y editores" : "Invites and editors"],
                 ["#practicas", isEs ? "Buenas prácticas" : "Good practices"],
               ].map(([href, label]) => (
@@ -172,6 +173,36 @@ export default async function ManualPage() {
                 <InfoCard title={isEs ? "Visita" : "Visit"} body={isEs ? "Una estancia de invitados o tripulación con embarque y desembarque." : "A guest or crew stay with boarding and disembark dates."} />
                 <InfoCard title={isEs ? "Bloqueo" : "Blocked period"} body={isEs ? "Un periodo no operativo que se excluye de la disponibilidad." : "A non-operational period excluded from availability."} />
                 <InfoCard title="Timeline" body={isEs ? "La vista que une viaje, visitas y disponibilidad." : "The view that combines route, visits, and availability."} />
+              </div>
+            </section>
+
+            <section style={sectionStyle} id="tour">
+              <SectionHeader
+                eyebrow={isEs ? "Tour guiado" : "Guided tour"}
+                title={isEs ? "Cómo recorrer la aplicación paso a paso" : "How to walk through the product step by step"}
+                body={
+                  isEs
+                    ? "El menú lateral incluye una entrada Tour para volver a lanzar la guía sin alterar tu configuración real. El recorrido repasa las entradas del menú y los bloques operativos principales del espacio de trabajo."
+                    : "The sidebar includes a Tour entry so you can relaunch the guide without changing your real setup. The walkthrough covers the main menu entries and the core workspace areas."
+                }
+              />
+              <div style={{ display: "grid", gap: "0.9rem" }}>
+                <InfoCard
+                  title={isEs ? "Qué recorre" : "What it covers"}
+                  body={
+                    isEs
+                      ? "Plan, Resumen, Compartidos, Manual, Configuración y, cuando corresponda, Invitar, Barco y Miembros. Dentro del plan también pasa por timeline, controles, escalas, visitas, mapa y disponibilidad."
+                      : "Plan, Summary, Shared, Manual, Settings and, when applicable, Invite, Boat and Members. Inside the plan it also walks through the timeline, controls, port stops, visits, map and availability."
+                  }
+                />
+                <InfoCard
+                  title={isEs ? "Cuándo usarlo" : "When to use it"}
+                  body={
+                    isEs
+                      ? "Úsalo al incorporarte a un barco nuevo, cuando cambie el flujo de trabajo o cuando quieras validar que sigues entendiendo el recorrido completo del producto."
+                      : "Use it when joining a new boat, when the workflow changes, or when you want to validate that the full product journey is still clear."
+                  }
+                />
               </div>
             </section>
 
