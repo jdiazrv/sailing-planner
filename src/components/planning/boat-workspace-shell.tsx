@@ -82,7 +82,7 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
     onSaveVisit,
     onDeleteVisit,
   } = props;
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -139,18 +139,7 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
     timeScale === "season" ? 1 : timeScale === "month" ? 1.6 : 2.3;
   const showTable = layoutMode !== "map";
   const showMap = layoutMode !== "table";
-  const nextView = currentView === "trip" ? "visits" : "trip";
-  const viewToggleLabel =
-    currentView === "trip"
-      ? locale === "es"
-        ? "Mostrar visitas"
-        : "Show visits"
-      : locale === "es"
-        ? "Mostrar escalas"
-        : "Show trip segments";
-  const viewPrefetchParams = new URLSearchParams();
-  viewPrefetchParams.set("view", nextView);
-  viewPrefetchParams.set("season", seasonId);
+  const alternateViewHref = `/boats/${boatId}?view=${currentView === "trip" ? "visits" : "trip"}&season=${encodeURIComponent(seasonId)}`;
   const summaryHref = `/boats/${boatId}/summary?season=${encodeURIComponent(seasonId)}`;
 
   useEffect(() => {
@@ -230,7 +219,7 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
         routes={[
           "/dashboard",
           `/boats/${boatId}/share`,
-          `/boats/${boatId}?${viewPrefetchParams.toString()}`,
+          alternateViewHref,
           summaryHref,
           "/shared",
         ]}

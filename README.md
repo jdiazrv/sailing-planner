@@ -10,7 +10,23 @@ Sailing Planner is a Next.js + TypeScript app for managing one or more boats, th
 - public/shared timeline comparison between boats
 - local Supabase CLI setup, migrations, seed data and invite email template
 
-Current app version: `0.4.2`
+Current app version: `0.4.3`
+
+## What's New In v0.4.3
+
+Patch release highlights:
+
+- Planning consistency and usability:
+  - trip segments are now consistently ordered by schedule across workspace, summary, map and exports
+  - selecting a map marker, timeline item or trip row keeps the corresponding scale synchronized everywhere
+  - trip lists in workspace and summary now add vertical scroll once they exceed ten rows
+- Onboarding and navigation polish:
+  - guided tours now highlight the active cards and controls more reliably, including visits and timeline controls
+  - personal user settings now live in a dedicated account area from the sidebar
+  - boat settings navigation is clearer for both boat managers and superusers
+- Access and visit display defaults:
+  - new and invited users now default to `text + images` in visit display mode
+  - invite acceptance uses a safer confirmation step before password creation
 
 ## What's New In v0.4.2
 
