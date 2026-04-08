@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { useI18n } from "@/components/i18n/provider";
@@ -37,11 +36,11 @@ export function SeasonAccessPanel({
   onRevoke,
   onPurgeRevoked,
 }: Props) {
-  const router = useRouter();
   const { locale } = useI18n();
   const [isPending, startTransition] = useTransition();
   const [showActions, setShowActions] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<GeneratedLinkState>(null);
+  const [localLinks, setLocalLinks] = useState(links);
   const [canViewVisits, setCanViewVisits] = useState(true);
   const [inviteeName, setInviteeName] = useState("");
   const [revokingLinkId, setRevokingLinkId] = useState<string | null>(null);
@@ -166,10 +165,17 @@ export function SeasonAccessPanel({
           oneWeek: "One week",
         };
 
-  const activeLinks = useMemo(() => links.filter((link) => link.is_active), [links]);
+  useEffect(() => {
+    setLocalLinks(links);
+  }, [links]);
+
+  const activeLinks = useMemo(
+    () => localLinks.filter((link) => link.is_active),
+    [localLinks],
+  );
   const revokedLinks = useMemo(
-    () => links.filter((link) => Boolean(link.revoked_at)),
-    [links],
+    () => localLinks.filter((link) => Boolean(link.revoked_at)),
+    [localLinks],
   );
 
   const handleGenerate = () => {
@@ -189,15 +195,43 @@ export function SeasonAccessPanel({
             toast.error(result.error);
             return;
           }
+          const resolvedInviteeName = result.inviteeName ?? (inviteeName.trim() || null);
+          const createdAt = new Date().toISOString();
+
           setGeneratedLink({
             id: result.id,
-            inviteeName: result.inviteeName ?? (inviteeName.trim() || null),
+            inviteeName: resolvedInviteeName,
             expiresAt: result.expiresAt,
             url: result.url,
           });
+          setLocalLinks((current) => [
+            {
+              id: result.id,
+              boat_id: boatId,
+              season_id: seasonId,
+              token_hash: "",
+              invitee_name: resolvedInviteeName,
+              created_by_user_id: "",
+              created_at: createdAt,
+              updated_at: createdAt,
+              expires_at: result.expiresAt,
+              redeemed_at: null,
+              revoked_at: null,
+              last_access_at: null,
+              access_count: 0,
+              can_view_visits: canViewVisits,
+              single_use: accessWindow === "one_use",
+              first_access_at: null,
+              first_access_ip: null,
+              first_access_user_agent: null,
+              invitee_email: null,
+              creator_name: null,
+              is_active: true,
+            },
+            ...current,
+          ]);
           setInviteeName("");
           toast.success(text.generated);
-          router.refresh();
         })
         .catch((error) => {
           toast.error(error instanceof Error ? error.message : "Unexpected error");
@@ -217,8 +251,18 @@ export function SeasonAccessPanel({
           if (generatedLink?.id === linkId) {
             setGeneratedLink(null);
           }
+          setLocalLinks((current) =>
+            current.map((link) =>
+              link.id === linkId
+                ? {
+                    ...link,
+                    revoked_at: new Date().toISOString(),
+                    is_active: false,
+                  }
+                : link,
+            ),
+          );
           toast.success(text.revoked);
-          router.refresh();
         })
         .catch((error) => {
           toast.error(error instanceof Error ? error.message : "Unexpected error");
@@ -246,8 +290,8 @@ export function SeasonAccessPanel({
     startTransition(() => {
       void onPurgeRevoked(formData)
         .then(() => {
+          setLocalLinks((current) => current.filter((link) => !link.revoked_at));
           toast.success(text.revokedPurged);
-          router.refresh();
         })
         .catch((error) => {
           toast.error(error instanceof Error ? error.message : "Unexpected error");
@@ -270,8 +314,8 @@ export function SeasonAccessPanel({
           if (generatedLink?.id === linkId) {
             setGeneratedLink(null);
           }
+          setLocalLinks((current) => current.filter((link) => link.id !== linkId));
           toast.success(text.deleted);
-          router.refresh();
         })
         .catch((error) => {
           toast.error(error instanceof Error ? error.message : "Unexpected error");
@@ -307,7 +351,7 @@ export function SeasonAccessPanel({
               {activeLinks.length} {text.activeCount}
             </span>
             <span className="status-pill is-muted">
-              {links.length} {text.totalCount}
+              {localLinks.length} {text.totalCount}
             </span>
           </div>
           <button

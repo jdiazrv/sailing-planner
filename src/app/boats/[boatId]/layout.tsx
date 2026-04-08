@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { LogoutButton } from "@/components/auth/logout-button";
@@ -6,7 +7,7 @@ import { LastBoatTracker } from "@/components/boats/last-boat-tracker";
 import { BoatSettingsDialog } from "@/components/boats/boat-settings-dialog";
 import { AppSidebarNav } from "@/components/layout/app-sidebar-nav";
 import { getBoatLayoutSnapshot } from "@/lib/boat-data";
-import { getPermissionLabelForLocale, t } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n-server";
 import {
   removeBoatProfileImage,
@@ -63,7 +64,7 @@ export default async function BoatLayout({
     isSuperuser ? (
       <Link className="app-sidebar__item" data-tour="sidebar-admin-boats" href="/admin/boats">
         <span className="app-sidebar__icon">{settingsIcon}</span>
-        <span className="app-sidebar__label">{locale === "es" ? "Configurar barco" : "Boat settings"}</span>
+        <span className="app-sidebar__label">{t(locale, "boatLayout.boatSettingsAction")}</span>
       </Link>
     ) : (
       <BoatSettingsDialog
@@ -75,7 +76,7 @@ export default async function BoatLayout({
         onUploadImage={uploadBoatProfileImage}
         triggerClassName="app-sidebar__item"
         triggerIcon={settingsIcon}
-        triggerLabel={locale === "es" ? "Configurar barco" : "Boat settings"}
+        triggerLabel={t(locale, "boatLayout.boatSettingsAction")}
       />
     )
   ) : undefined;
@@ -105,30 +106,39 @@ export default async function BoatLayout({
                 t(locale, "boatLayout.defaultDescription")}
             </p>
           </div>
-          <div className="workspace-header__actions">
-            <span className="badge">
-              {getPermissionLabelForLocale(
-                locale,
-                snapshot.permission?.permission_level,
-                isSuperuser,
+          <div className="workspace-header__side">
+            {snapshot.boat.image_url ? (
+              <div className="workspace-header__image-wrap">
+                <Image
+                  alt={snapshot.boat.name}
+                  className="workspace-header__image"
+                  height={88}
+                  priority
+                  sizes="(max-width: 720px) 100vw, 220px"
+                  src={snapshot.boat.image_url}
+                  width={220}
+                />
+              </div>
+            ) : null}
+
+            <div className="workspace-header__actions">
+              {isSuperuser && (
+                <Link className="secondary-button sidebar-hidden" href="/admin/boats">
+                  {t(locale, "boatLayout.editBoats")}
+                </Link>
               )}
-            </span>
-            {isSuperuser && (
-              <Link className="secondary-button sidebar-hidden" href="/admin/boats">
-                {t(locale, "boatLayout.editBoats")}
+              {canManageUsers && (
+                <Link className="secondary-button sidebar-hidden" href="/admin/users">
+                  {t(locale, "boatLayout.editUsers")}
+                </Link>
+              )}
+              <Link className="secondary-button sidebar-hidden" href="/shared">
+                {t(locale, "boatLayout.sharedTimelines")}
               </Link>
-            )}
-            {canManageUsers && (
-              <Link className="secondary-button sidebar-hidden" href="/admin/users">
-                {t(locale, "boatLayout.editUsers")}
-              </Link>
-            )}
-            <Link className="secondary-button sidebar-hidden" href="/shared">
-              {t(locale, "boatLayout.sharedTimelines")}
-            </Link>
-            <span className="sidebar-hidden">
-              <LogoutButton />
-            </span>
+              <span className="sidebar-hidden">
+                <LogoutButton />
+              </span>
+            </div>
           </div>
         </header>
 

@@ -1,7 +1,6 @@
 import Image from "next/image";
 
 import { MapPanel } from "@/components/planning/map-panel";
-import { SummaryActions } from "@/components/planning/summary-actions";
 import { getIntlLocale, t, type Locale } from "@/lib/i18n";
 import {
   diffDaysInclusive,
@@ -11,14 +10,12 @@ import {
   parseDate,
   sortTripSegmentsBySchedule,
   sortVisitsBySchedule,
-  type BoatDetails,
   type PortStopView,
   type SeasonRow,
   type VisitView,
 } from "@/lib/planning";
 
 type BoatSeasonSummaryProps = {
-  boat: BoatDetails;
   canViewVisits: boolean;
   locale: Locale;
   season: SeasonRow;
@@ -60,13 +57,7 @@ const getLocationTypeLabel = (
 const getStatusLabel = (locale: Locale, status: string) =>
   t(locale, `status.${status}` as never);
 
-const getBoatMetaItems = (boat: BoatDetails) =>
-  [boat.model, boat.home_port, boat.year_built ? String(boat.year_built) : null].filter(
-    Boolean,
-  ) as string[];
-
 export function BoatSeasonSummary({
-  boat,
   canViewVisits,
   locale,
   season,
@@ -102,52 +93,9 @@ export function BoatSeasonSummary({
   ).size;
   const seasonDays = diffDaysInclusive(season.start_date, season.end_date);
   const seasonWindow = formatDateRange(season.start_date, season.end_date, locale);
-  const leadCopy = canViewVisits
-    ? t(locale, "summary.lead")
-    : t(locale, "summary.leadNoVisits");
-  const boatMetaItems = getBoatMetaItems(boat);
 
   return (
     <section className="stack route-summary">
-      <SummaryActions
-        boat={boat}
-        canViewVisits={canViewVisits}
-        locale={locale}
-        season={season}
-        tripSegments={tripSegments}
-        visits={visits}
-      />
-
-      <article className="dashboard-card route-summary__hero">
-        <div className="route-summary__hero-copy">
-          <p className="eyebrow">{t(locale, "summary.eyebrow")}</p>
-          <h1>{boat.name}</h1>
-          <p className="route-summary__season-name">{season.name}</p>
-          {boatMetaItems.length ? (
-            <div className="route-summary__hero-meta" aria-label={t(locale, "summary.boatMeta")}>
-              {boatMetaItems.map((item) => (
-                <span key={item}>{item}</span>
-              ))}
-            </div>
-          ) : null}
-          <p className="muted route-summary__lead">
-            {leadCopy}
-          </p>
-        </div>
-        {boat.image_url ? (
-          <div className="route-summary__boat-media">
-            <Image
-              alt={boat.name}
-              className="route-summary__boat-image"
-              height={180}
-              sizes="(max-width: 720px) 100vw, 240px"
-              src={boat.image_url}
-              width={240}
-            />
-          </div>
-        ) : null}
-      </article>
-
       <section className="route-summary__stats" aria-label={t(locale, "summary.snapshot")}>
         <article className="dashboard-card route-summary__stat-card">
           <p className="eyebrow">{t(locale, "summary.window")}</p>
@@ -159,8 +107,9 @@ export function BoatSeasonSummary({
         </article>
         <article className="dashboard-card route-summary__stat-card">
           <p className="eyebrow">{t(locale, "summary.routeBlocks")}</p>
-          <strong>{orderedSegments.length}</strong>
-          <span className="muted">{t(locale, "summary.trackedLocations").replace("{count}", String(routeLocations))}</span>
+          <strong>
+            {t(locale, "summary.trackedLocations").replace("{count}", String(routeLocations))}
+          </strong>
         </article>
         <article className="dashboard-card route-summary__stat-card">
           <p className="eyebrow">{t(locale, "summary.totalMiles")}</p>
@@ -227,21 +176,14 @@ export function BoatSeasonSummary({
           )}
         </article>
 
-        <article className="dashboard-card route-summary__panel route-summary__map-panel">
-          <div className="card-header">
-            <div>
-              <p className="eyebrow">{t(locale, "planning.map")}</p>
-              <h2>{t(locale, "summary.mapTitle")}</h2>
-            </div>
-          </div>
-
+        <div className="route-summary__map-panel">
           <MapPanel
             deemphasized
             title={t(locale, "summary.mapTitle")}
             tripSegments={orderedSegments}
             visits={canViewVisits ? visibleVisits.filter(hasVisitDateRange) : []}
           />
-        </article>
+        </div>
       </section>
 
       {canViewVisits ? (

@@ -12,6 +12,17 @@ import type { Database } from "@/types/database";
 
 type SeasonRow = Database["public"]["Tables"]["seasons"]["Row"];
 
+type SeasonMutationResult = {
+  mutatedSeasonId: string | null;
+  nextSelectedSeasonId: string | null;
+};
+
+type PostMutationNavigation = {
+  nextUrl: string;
+  shouldNavigate: boolean;
+  shouldRefreshFallback: boolean;
+};
+
 type Props = {
   seasons: SeasonRow[];
   selected: SeasonRow | null;
@@ -19,8 +30,39 @@ type Props = {
   boatId: string;
   canEdit: boolean;
   initiallyOpenAdd?: boolean;
-  onSave: (fd: FormData) => Promise<void>;
-  onDelete: (fd: FormData) => Promise<void>;
+  onSave: (fd: FormData) => Promise<SeasonMutationResult>;
+  onDelete: (fd: FormData) => Promise<SeasonMutationResult>;
+};
+
+const buildSeasonHref = (basePath: string, seasonId: string | null) => {
+  if (!seasonId) {
+    return basePath;
+  }
+
+  return `${basePath}${basePath.includes("?") ? "&" : "?"}season=${seasonId}`;
+};
+
+const resolvePostMutationNavigation = ({
+  basePath,
+  currentRequestedSeasonId,
+  currentSelectedSeasonId,
+  nextSelectedSeasonId,
+}: {
+  basePath: string;
+  currentRequestedSeasonId: string | null;
+  currentSelectedSeasonId: string | null;
+  nextSelectedSeasonId: string | null;
+}): PostMutationNavigation => {
+  const nextUrl = buildSeasonHref(basePath, nextSelectedSeasonId);
+  const selectionChanged = currentSelectedSeasonId !== nextSelectedSeasonId;
+  const requestedSelectionMatches = currentRequestedSeasonId === nextSelectedSeasonId;
+  const shouldNavigate = selectionChanged || !requestedSelectionMatches;
+
+  return {
+    nextUrl,
+    shouldNavigate,
+    shouldRefreshFallback: !shouldNavigate,
+  };
 };
 
 export function SeasonBar({
@@ -42,6 +84,7 @@ export function SeasonBar({
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { t } = useI18n();
+  const currentRequestedSeasonId = searchParams.get("season");
 
   useEffect(() => {
     if (!initiallyOpenAdd) {
@@ -57,19 +100,41 @@ export function SeasonBar({
     });
   }, [initiallyOpenAdd, pathname, router, searchParams]);
 
-  const buildSeasonHref = (seasonId: string) =>
-    `${basePath}${basePath.includes("?") ? "&" : "?"}season=${seasonId}`;
-
   const handleSave = (formData: FormData) => {
     const isEdit = Boolean(formData.get("season_id"));
+    formData.set("current_requested_season_id", currentRequestedSeasonId ?? "");
+
     startTransition(() => {
       try {
-        void onSave(formData).then(() => {
+        void onSave(formData).then((result) => {
+          const navigation = resolvePostMutationNavigation({
+            basePath,
+            currentRequestedSeasonId,
+            currentSelectedSeasonId: selected?.id ?? null,
+            nextSelectedSeasonId: result.nextSelectedSeasonId,
+          });
+
           toast.success(
             isEdit ? t("planning.seasonUpdated") : t("planning.seasonCreated"),
           );
           setAddOpen(false);
           setEditOpen(false);
+
+          if (navigation.shouldNavigate) {
+            router.replace(navigation.nextUrl, { scroll: false });
+            return;
+          }
+
+          if (process.env.NODE_ENV !== "production") {
+            console.warn("[SeasonBar] Falling back to router.refresh() after save to preserve current SSR behavior.", {
+              basePath,
+              currentRequestedSeasonId,
+              currentSelectedSeasonId: selected?.id ?? null,
+              mutatedSeasonId: result.mutatedSeasonId,
+              nextSelectedSeasonId: result.nextSelectedSeasonId,
+            });
+          }
+
           router.refresh();
         }).catch((error) => {
           toast.error(error instanceof Error ? error.message : t("planning.saveSeasonError"));
@@ -85,12 +150,37 @@ export function SeasonBar({
     const fd = new FormData();
     fd.set("boat_id", boatId);
     fd.set("season_id", selected.id);
+    fd.set("current_requested_season_id", currentRequestedSeasonId ?? "");
+
     startTransition(() => {
       try {
-        void onDelete(fd).then(() => {
+        void onDelete(fd).then((result) => {
+          const navigation = resolvePostMutationNavigation({
+            basePath,
+            currentRequestedSeasonId,
+            currentSelectedSeasonId: selected.id,
+            nextSelectedSeasonId: result.nextSelectedSeasonId,
+          });
+
           toast.success(t("planning.seasonDeleted"));
           setEditOpen(false);
           setConfirmDeleteOpen(false);
+
+          if (navigation.shouldNavigate) {
+            router.replace(navigation.nextUrl, { scroll: false });
+            return;
+          }
+
+          if (process.env.NODE_ENV !== "production") {
+            console.warn("[SeasonBar] Falling back to router.refresh() after delete to preserve current SSR behavior.", {
+              basePath,
+              currentRequestedSeasonId,
+              currentSelectedSeasonId: selected.id,
+              mutatedSeasonId: result.mutatedSeasonId,
+              nextSelectedSeasonId: result.nextSelectedSeasonId,
+            });
+          }
+
           router.refresh();
         }).catch((error) => {
           toast.error(error instanceof Error ? error.message : t("planning.deleteSeasonError"));
@@ -104,69 +194,72 @@ export function SeasonBar({
   return (
     <div className="season-bar" data-tour="season-bar">
       <div className="season-bar__current">
+        <span className="season-bar__label">{t("planning.activeSeason")}</span>
         {selected ? (
-          <>
+          <div className="season-bar__identity">
             <strong className="season-bar__name">{selected.name}</strong>
             <span className="muted">
               {formatLongDate(selected.start_date)} –{" "}
               {formatLongDate(selected.end_date)}
             </span>
-          </>
+          </div>
         ) : (
           <span className="muted">{t("planning.noSeasonCreateHint")}</span>
         )}
       </div>
 
       <div className="season-bar__actions">
-        {seasons.length > 1 && (
-          <div className="season-bar__picker-wrap">
+        <div className="season-bar__actions-group">
+          {seasons.length > 1 && (
+            <div className="season-bar__picker-wrap">
+              <button
+                className="link-button"
+                onClick={() => setShowPicker((v) => !v)}
+                type="button"
+              >
+                {t("planning.changeSeason")} ▾
+              </button>
+              {showPicker && (
+                <div className="season-picker-dropdown">
+                  {seasons.map((season) => (
+                    <a
+                      className={`season-picker-item${season.id === selected?.id ? " is-active" : ""}`}
+                      href={buildSeasonHref(basePath, season.id)}
+                      key={season.id}
+                      onClick={() => setShowPicker(false)}
+                    >
+                      <span>{season.name}</span>
+                      <span className="muted">
+                        {formatLongDate(season.start_date)} –{" "}
+                        {formatLongDate(season.end_date)}
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {canEdit && selected && (
             <button
               className="link-button"
-              onClick={() => setShowPicker((v) => !v)}
+              disabled={isPending}
+              onClick={() => setEditOpen(true)}
               type="button"
             >
-              {t("planning.changeSeason")} ▾
+              {t("planning.editSeason")}
             </button>
-            {showPicker && (
-              <div className="season-picker-dropdown">
-                {seasons.map((season) => (
-                  <a
-                    className={`season-picker-item${season.id === selected?.id ? " is-active" : ""}`}
-                    href={buildSeasonHref(season.id)}
-                    key={season.id}
-                    onClick={() => setShowPicker(false)}
-                  >
-                    <span>{season.name}</span>
-                    <span className="muted">
-                      {formatLongDate(season.start_date)} –{" "}
-                      {formatLongDate(season.end_date)}
-                    </span>
-                  </a>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-        {canEdit && selected && (
-          <button
-            className="link-button"
-            disabled={isPending}
-            onClick={() => setEditOpen(true)}
-            type="button"
-          >
-            {t("planning.editSeason")}
-          </button>
-        )}
-        {canEdit && (
-          <button
-            className="link-button"
-            disabled={isPending}
-            onClick={() => setAddOpen(true)}
-            type="button"
-          >
-            + {t("planning.newSeason")}
-          </button>
-        )}
+          )}
+          {canEdit && (
+            <button
+              className="link-button"
+              disabled={isPending}
+              onClick={() => setAddOpen(true)}
+              type="button"
+            >
+              + {t("planning.newSeason")}
+            </button>
+          )}
+        </div>
       </div>
 
       <Dialog onClose={() => setAddOpen(false)} open={addOpen} title={t("planning.newSeason")}>

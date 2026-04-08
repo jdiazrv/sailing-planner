@@ -80,7 +80,6 @@ export default async function GuestSeasonSummaryPage({
 
       {workspace.selectedSeason ? (
         <BoatSeasonSummary
-          boat={workspace.boat}
           canViewVisits={canViewVisits}
           locale={locale}
           season={workspace.selectedSeason}

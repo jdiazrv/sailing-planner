@@ -96,6 +96,7 @@ export default async function BoatWorkspacePage({
           canEdit={canEdit}
           canViewVisits={canViewVisits}
           initialView={currentView}
+          isTimelinePublic={workspace.viewer.profile?.is_timeline_public ?? null}
           onDeleteTripSegment={deleteTripSegment}
           onDeleteVisit={deleteVisit}
           onSaveTripSegment={saveTripSegment}

@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.4.4 - 2026-04-09
+
+- Removed dashboard/login bounce paths by resolving authenticated destinations directly after sign-in and on guarded public entries.
+- Consolidated authenticated loading into the app-level loader and refined loader copy and sidebar-preserving layout behavior.
+- Reduced redundant post-mutation refreshes across timeline visibility, guest onboarding, season access and guarded season navigation flows.
+- Moved onboarding and member welcome copy to a locale-aware canonical layer instead of keeping it inline inside components.
+- Moved manual localized content into a dedicated content module and aligned sidebar and boat-settings labels with shared i18n keys.
+
 ## v0.4.3 - 2026-04-07
 
 - Unified trip-segment ordering by schedule across workspace, summary, map and export flows.

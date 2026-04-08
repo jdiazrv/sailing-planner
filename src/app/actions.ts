@@ -68,7 +68,6 @@ export async function updateTimelineVisibility(isPublic: boolean) {
 
   revalidatePath("/dashboard");
   revalidatePath("/shared");
-  revalidatePath("/", "layout");
 }
 
 export async function saveOwnUserSettings(formData: FormData) {
@@ -129,8 +128,6 @@ export async function updateOwnPassword(formData: FormData) {
 
   const { error } = await supabase.auth.updateUser({ password });
   throwIfError(error);
-
-  revalidatePath("/account");
 }
 
 export async function recordCurrentUserAccess(
@@ -138,6 +135,9 @@ export async function recordCurrentUserAccess(
   accessToken?: string,
 ) {
   await recordCurrentUserAccessInternal(method, accessToken);
-  revalidatePath("/dashboard");
-  revalidatePath("/admin/users");
+
+  if (method && method !== "unknown") {
+    revalidatePath("/dashboard");
+    revalidatePath("/admin/users");
+  }
 }

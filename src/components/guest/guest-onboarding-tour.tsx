@@ -8,6 +8,7 @@ import {
   canExecuteOnboardingPhaseAction,
   type TourStep,
 } from "@/lib/onboarding";
+import { useI18n } from "@/components/i18n/provider";
 import type { OnboardingStep } from "@/types/database";
 
 type RectState = {
@@ -56,6 +57,7 @@ export function GuestOnboardingTour({
   variant = "guest",
   resetKey,
 }: GuestOnboardingTourProps) {
+  const { locale } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -68,6 +70,7 @@ export function GuestOnboardingTour({
   const steps = useMemo<TourStep[]>(() => {
     if (variant === "member") {
       return buildMemberTourSteps({
+        locale,
         memberPhase,
         canViewVisits,
         canManageUsers,
@@ -79,13 +82,18 @@ export function GuestOnboardingTour({
         hasVisits,
       });
       }
-    return buildGuestTourSteps({ canViewVisits });
-  }, [canEditBoat, canManageUsers, canShare, canViewVisits, hasSegments, hasVisits, isReadOnly, isSuperuser, memberPhase, variant]);
+    return buildGuestTourSteps({ locale, canViewVisits });
+  }, [canEditBoat, canManageUsers, canShare, canViewVisits, hasSegments, hasVisits, isReadOnly, isSuperuser, locale, memberPhase, variant]);
 
   const step = steps[stepIndex];
   const requiredView = step?.requiredView;
   const isRequiredViewActive = !requiredView || (requiredView === "visits" ? isVisitsView : !isVisitsView);
   const isWaitingForRequiredView = Boolean(isOpen && requiredView && !isRequiredViewActive);
+  const targetRequiresTableLayout =
+    step?.target === '[data-tour="boat-detail"]' ||
+    step?.target === '[data-tour="boat-switch-visits"]' ||
+    step?.target === '[data-tour="boat-visits-card"]' ||
+    step?.target === '[data-tour="availability-section"]';
 
   useEffect(() => {
     if (!isOpen || !requiredView) {
@@ -167,6 +175,16 @@ export function GuestOnboardingTour({
     }
 
     const selector = steps[stepIndex]?.target;
+    if (selector && targetRequiresTableLayout && !document.querySelector(selector)) {
+      const splitButton = document.querySelector<HTMLElement>('[data-tour="workspace-layout-split"]');
+      const tableButton = document.querySelector<HTMLElement>('[data-tour="workspace-layout-table"]');
+      const nextLayoutButton = splitButton ?? tableButton;
+
+      if (nextLayoutButton) {
+        nextLayoutButton.click();
+      }
+    }
+
     const getHighlightContainer = (target: HTMLElement) =>
       target.matches('[data-tour="planning-control-bar"]')
         ? target.closest<HTMLElement>(".timeline-card__controls, .planning-control-bar") ?? target
@@ -296,7 +314,7 @@ export function GuestOnboardingTour({
         window.removeEventListener("resize", resizeHandler);
       }
     };
-  }, [isOpen, isWaitingForRequiredView, stepIndex, steps]);
+  }, [isOpen, isWaitingForRequiredView, stepIndex, steps, targetRequiresTableLayout]);
 
   const dismissTour = async () => {
     document
@@ -390,7 +408,6 @@ export function GuestOnboardingTour({
 
                 void fetch("/api/onboarding/complete", { method: "POST" }).then(() => {
                   setIsOpen(false);
-                  router.refresh();
                 });
               } else {
                 setStepIndex((value) => value + 1);

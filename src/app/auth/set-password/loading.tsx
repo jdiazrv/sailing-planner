@@ -3,9 +3,10 @@ import { RouteLoading } from "@/components/ui/route-loading";
 export default function Loading() {
   return (
     <RouteLoading
+      debugKey="set-password"
       fullScreen
-      subtitle="Preparando la actualizacion segura de credenciales."
-      title="Cargando acceso"
+      subtitle="Verificando acceso"
+      title="Cargando"
     />
   );
 }

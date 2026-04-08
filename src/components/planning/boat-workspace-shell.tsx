@@ -1,19 +1,18 @@
 "use client";
-
-import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { useI18n } from "@/components/i18n/provider";
 import { RoutePrefetcher } from "@/components/layout/route-prefetcher";
 import { BlockedIntervalsManager } from "@/components/planning/blocked-intervals-manager";
-import { MapPanel } from "@/components/planning/map-panel";
 import { Timeline } from "@/components/planning/timeline";
 import { TripSegmentsManager } from "@/components/planning/trip-segments-manager";
 import { VisitsManager } from "@/components/planning/visits-manager";
 import {
   computeAvailabilityReport,
   computeVisitConflicts,
+  getVisitDisplayName,
   hasVisitDateRange,
   sortTripSegmentsBySchedule,
   type PortStopView,
@@ -27,10 +26,18 @@ import type { Database } from "@/types/database";
 
 type SeasonRow = Database["public"]["Tables"]["seasons"]["Row"];
 
+const LazyMapPanel = dynamic(
+  () => import("@/components/planning/map-panel").then((module) => module.MapPanel),
+  {
+    loading: () => <MapPanelPlaceholder />,
+  },
+);
+
 type BoatWorkspaceShellProps = {
   boatId: string;
   canEdit: boolean;
   canViewVisits: boolean;
+  isTimelinePublic?: boolean | null;
   initialView: "trip" | "visits";
   queryFilter?: string;
   season: SeasonRow;
@@ -70,6 +77,7 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
     boatId,
     canEdit,
     canViewVisits,
+    isTimelinePublic = null,
     initialView,
     season,
     seasonId,
@@ -83,6 +91,7 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
     onDeleteVisit,
   } = props;
   const { t } = useI18n();
+  const documentLocale = getDocumentLocale();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -101,7 +110,8 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
   const [blockedOpenAdd, setBlockedOpenAdd] = useState(
     searchParams.get("blocked") === "create",
   );
-  const [layoutMode, setLayoutMode] = useState<"split" | "table" | "map">("split");
+  const [shouldRenderMap, setShouldRenderMap] = useState(false);
+  const [layoutMode, setLayoutMode] = useState<"split" | "table" | "map">("map");
   const [timeScale, setTimeScale] = useState<"season" | "month" | "week">("season");
   const regularVisits = visits.filter(
     (visit) => visit.status !== "blocked" && hasVisitDateRange(visit),
@@ -135,12 +145,52 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
     [boatId, filteredSegments, filteredVisits, season, seasonId],
   );
   const availabilityPlaceRows = availabilityReport.placeRows;
+  const selectedEntity = useMemo(
+    () =>
+      [...filteredSegments, ...filteredVisits, ...blockedIntervals].find(
+        (entry) => entry.id === selectedEntityId,
+      ) ?? null,
+    [blockedIntervals, filteredSegments, filteredVisits, selectedEntityId],
+  );
+  const selectedEntityLabel = useMemo(() => {
+    if (!selectedEntity) {
+      return null;
+    }
+
+    if ("location_label" in selectedEntity) {
+      return selectedEntity.location_label;
+    }
+
+    if (selectedEntity.status === "blocked") {
+      if (!selectedEntity.embark_date || !selectedEntity.disembark_date) {
+        return t("planning.blockedPeriods");
+      }
+
+      return `${t("planning.blockedPeriods")} · ${formatCompactAvailabilityRange(
+        selectedEntity.embark_date,
+        selectedEntity.disembark_date,
+      )}`;
+    }
+
+    return getVisitDisplayName(selectedEntity, t("planning.visit"));
+  }, [selectedEntity, t]);
   const timelineZoom =
     timeScale === "season" ? 1 : timeScale === "month" ? 1.6 : 2.3;
   const showTable = layoutMode !== "map";
   const showMap = layoutMode !== "table";
   const alternateViewHref = `/boats/${boatId}?view=${currentView === "trip" ? "visits" : "trip"}&season=${encodeURIComponent(seasonId)}`;
   const summaryHref = `/boats/${boatId}/summary?season=${encodeURIComponent(seasonId)}`;
+  const currentViewCount = currentView === "trip" ? filteredSegments.length : filteredVisits.length;
+  const currentViewLabel = currentView === "trip" ? t("planning.tripSegments") : t("planning.visitsList");
+  const currentViewCountLabel = `${currentViewCount} ${currentViewLabel.toLocaleLowerCase(documentLocale)}`;
+
+  const setWorkspaceLayout = (nextLayout: "split" | "table" | "map") => {
+    if (nextLayout !== "table") {
+      setShouldRenderMap(true);
+    }
+
+    setLayoutMode(nextLayout);
+  };
 
   useEffect(() => {
     if (searchParams.get("blocked") === "create") {
@@ -172,6 +222,20 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
 
     setCurrentView(initialView);
   }, [initialView, searchParams]);
+
+  useEffect(() => {
+    if (!showMap || shouldRenderMap) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setShouldRenderMap(true);
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [shouldRenderMap, showMap]);
 
   useEffect(() => {
     const timing = startClientPerf("planning.shell.commit", {
@@ -232,53 +296,42 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
               <div className="timeline-card__controls-inner planning-control-bar" data-tour="planning-control-bar">
                 <div className="planning-control-bar__row">
                   <label className="planning-control">
-                    <span>Escala</span>
+                    <span>{t("planning.zoom")}</span>
                     <select
                       onChange={(event) =>
                         setTimeScale(event.target.value as "season" | "month" | "week")
                       }
                       value={timeScale}
                     >
-                      <option value="season">Temporada</option>
-                      <option value="month">Mes</option>
-                      <option value="week">Semana</option>
+                      <option value="season">{t("planning.scaleSeason")}</option>
+                      <option value="month">{t("planning.scaleMonth")}</option>
+                      <option value="week">{t("planning.scaleWeek")}</option>
                     </select>
                   </label>
-                  <label className="planning-control">
-                    <span>Vista</span>
-                    <select
-                      onChange={(event) =>
-                        setLayoutMode(event.target.value as "split" | "table" | "map")
-                      }
-                      value={layoutMode}
-                    >
-                      <option value="split">Tabla + mapa</option>
-                      <option value="table">Solo tabla</option>
-                      <option value="map">Solo mapa</option>
-                    </select>
-                  </label>
-                </div>
-                <div className="planning-chip-group" data-tour="timeline-layers">
-                  <span className="planning-chip-group__label">Capas</span>
-                  <button className="planning-chip is-locked" type="button">
-                    Escalas
-                  </button>
-                  {canViewVisits ? (
+                  <div className="planning-chip-group planning-chip-group--compact" data-tour="timeline-layers">
+                    <button className="planning-chip is-locked" type="button">
+                      <LayerFilterIcon />
+                      {t("planning.tripSegments")}
+                    </button>
+                    {canViewVisits ? (
+                      <button
+                        className={`planning-chip${showPeopleLayer ? " is-active" : ""}`}
+                        onClick={() => setShowPeopleLayer((value) => !value)}
+                        type="button"
+                      >
+                        <LayerFilterIcon />
+                        {t("planning.visitsList")}
+                      </button>
+                    ) : null}
                     <button
-                      className={`planning-chip${showPeopleLayer ? " is-active" : ""}`}
-                      onClick={() => setShowPeopleLayer((value) => !value)}
+                      className={`planning-chip${showAvailabilityLayer ? " is-active" : ""}`}
+                      onClick={() => setShowAvailabilityLayer((value) => !value)}
                       type="button"
                     >
-                      Visitas
+                      <LayerFilterIcon />
+                      {t("planning.availability")}
                     </button>
-                  ) : null}
-                  <button
-                    className={`planning-chip${showAvailabilityLayer ? " is-active" : ""}`}
-                    onClick={() => setShowAvailabilityLayer((value) => !value)}
-                    type="button"
-                  >
-                    Disponibilidad
-                  </button>
+                  </div>
                 </div>
               </div>
             }
@@ -325,7 +378,6 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
               }
               switchView("visits");
             }}
-            hideHeader
             season={season}
             selectedEntityId={selectedEntityId}
             showAvailability={showAvailabilityLayer}
@@ -343,6 +395,79 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
         </div>
       </section>
 
+      <section className="workspace-grid workspace-grid--single">
+        <div className="workspace-section-switch workspace-section-switch--compact">
+          <div className="workspace-section-switch__groups">
+            {showTable ? (
+              <div
+                aria-label={t("planning.workspaceSections")}
+                className="workspace-view-switch workspace-view-switch--segmented"
+                role="tablist"
+              >
+                <button
+                  aria-selected={currentView === "trip"}
+                  className={currentView === "trip" ? "is-active" : undefined}
+                  data-tour="boat-switch-trip"
+                  onClick={() => switchView("trip")}
+                  role="tab"
+                  type="button"
+                >
+                  <span>{t("planning.tripSegments")}</span>
+                </button>
+                {canViewVisits ? (
+                  <button
+                    aria-selected={currentView === "visits"}
+                    className={currentView === "visits" ? "is-active" : undefined}
+                    data-tour="boat-switch-visits"
+                    onClick={() => switchView("visits")}
+                    role="tab"
+                    type="button"
+                  >
+                    <span>{t("planning.visitsList")}</span>
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+            <div
+              aria-label={t("planning.layoutView")}
+              className="workspace-view-switch workspace-view-switch--segmented workspace-view-switch--layout"
+              role="tablist"
+            >
+              <button
+                aria-selected={layoutMode === "split"}
+                className={layoutMode === "split" ? "is-active" : undefined}
+                data-tour="workspace-layout-split"
+                onClick={() => setWorkspaceLayout("split")}
+                role="tab"
+                type="button"
+              >
+                <span>{t("planning.layoutSplit")}</span>
+              </button>
+              <button
+                aria-selected={layoutMode === "table"}
+                className={layoutMode === "table" ? "is-active" : undefined}
+                data-tour="workspace-layout-table"
+                onClick={() => setWorkspaceLayout("table")}
+                role="tab"
+                type="button"
+              >
+                <span>{t("planning.layoutTableOnly")}</span>
+              </button>
+              <button
+                aria-selected={layoutMode === "map"}
+                className={layoutMode === "map" ? "is-active" : undefined}
+                data-tour="workspace-layout-map"
+                onClick={() => setWorkspaceLayout("map")}
+                role="tab"
+                type="button"
+              >
+                <span>{t("planning.layoutMapOnly")}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section
         className="workspace-grid workspace-grid--trip"
         style={{ gridTemplateColumns: showTable && showMap ? undefined : "1fr" }}
@@ -356,30 +481,26 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
           >
             {currentView === "trip" ? (
               <>
-                <div className="card-header">
-                  <div>
-                    <p className="eyebrow">{canEdit ? "Editar" : "Ver"}</p>
-                    <h2>{t("planning.tripSegments")}</h2>
+                <div className="card-header card-header--workspace">
+                  <div className="workspace-panel__heading">
+                    <h2>{t("planning.seasonPlanTitle")}</h2>
+                    <p className="workspace-panel__meta">{currentViewCountLabel}</p>
                   </div>
                   <div className="card-header__actions">
-                    <span className="muted">{filteredSegments.length} escalas</span>
-                    {canViewVisits ? (
-                      <button className="secondary-button secondary-button--small" data-tour="boat-switch-visits" onClick={() => switchView("visits")} type="button">
-                        Ver visitas
-                      </button>
+                    {selectedEntityLabel ? (
+                      <span className="workspace-selection-chip">
+                        {t("planning.selectedItem")}: {selectedEntityLabel}
+                      </span>
                     ) : null}
-                    {canEdit ? (
+                    {selectedEntityId ? (
                       <button
-                        className="secondary-button secondary-button--small"
-                        onClick={() => { setBlockedSectionOpen(true); setBlockedOpenAdd(true); }}
+                        className="link-button"
+                        onClick={() => setSelectedEntityId(null)}
                         type="button"
                       >
-                        + Bloquear período
+                        {t("planning.clearSelection")}
                       </button>
                     ) : null}
-                    <Link className="secondary-button secondary-button--small" href={summaryHref}>
-                      {t("summary.open")}
-                    </Link>
                   </div>
                 </div>
 
@@ -399,28 +520,26 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
               </>
             ) : (
               <>
-                <div className="card-header">
-                  <div>
-                    <p className="eyebrow">{canEdit ? "Editar" : "Ver"}</p>
-                    <h2>{t("planning.visitsList")}</h2>
+                <div className="card-header card-header--workspace">
+                  <div className="workspace-panel__heading">
+                    <h2>{t("planning.visitsPlanTitle")}</h2>
+                    <p className="workspace-panel__meta">{currentViewCountLabel}</p>
                   </div>
                   <div className="card-header__actions">
-                    <span className="muted">{filteredVisits.length} visitas</span>
-                    <button className="secondary-button secondary-button--small" data-tour="boat-switch-trip" onClick={() => switchView("trip")} type="button">
-                      Ver escalas
-                    </button>
-                    {canEdit ? (
+                    {selectedEntityLabel ? (
+                      <span className="workspace-selection-chip">
+                        {t("planning.selectedItem")}: {selectedEntityLabel}
+                      </span>
+                    ) : null}
+                    {selectedEntityId ? (
                       <button
-                        className="secondary-button secondary-button--small"
-                        onClick={() => { setBlockedSectionOpen(true); setBlockedOpenAdd(true); }}
+                        className="link-button"
+                        onClick={() => setSelectedEntityId(null)}
                         type="button"
                       >
-                        + Bloquear período
+                        {t("planning.clearSelection")}
                       </button>
                     ) : null}
-                    <Link className="secondary-button secondary-button--small" href={summaryHref}>
-                      {t("summary.open")}
-                    </Link>
                   </div>
                 </div>
 
@@ -429,6 +548,7 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
                   canEdit={canEdit}
                   emptyMessage={t("planning.noVisitsEmpty")}
                   externalEditVisit={timelineEditVisit}
+                  isTimelinePublic={isTimelinePublic}
                   onDelete={onDeleteVisit}
                   onExternalEditHandled={() => setTimelineEditVisit(null)}
                   onSave={onSaveVisit}
@@ -452,7 +572,12 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
               }}
             >
               <summary className="inline-section__summary">
-                Disponibilidad · {availabilityPlaceRows.length} períodos
+                <span className="inline-section__summary-main">
+                  <span className="inline-section__label">{t("planning.availability")}</span>
+                  <span className="inline-section__count">
+                    {availabilityPlaceRows.length} {t("planning.periods")}
+                  </span>
+                </span>
               </summary>
               {availabilitySectionLoaded ? (
                 availabilityPlaceRows.length ? (
@@ -471,7 +596,7 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
                     ))}
                   </ul>
                 ) : (
-                  <p className="muted">No hay períodos disponibles.</p>
+                  <p className="muted">{t("planning.noAvailabilityPeriods")}</p>
                 )
               ) : null}
             </details>
@@ -484,7 +609,26 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
                   setBlockedSectionOpen((value) => !value);
                 }}
               >
-                Bloqueado · {blockedIntervals.length} períodos
+                <span className="inline-section__summary-main">
+                  <span className="inline-section__label">{t("planning.blockedPeriods")}</span>
+                  <span className="inline-section__count">
+                    {blockedIntervals.length} {t("planning.periods")}
+                  </span>
+                </span>
+                {canEdit ? (
+                  <button
+                    className="inline-section__add-btn"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setBlockedSectionOpen(true);
+                      setBlockedOpenAdd(true);
+                    }}
+                    type="button"
+                  >
+                    + {t("planning.addBlockedPeriod")}
+                  </button>
+                ) : null}
               </summary>
               <BlockedIntervalsManager
                 boatId={boatId}
@@ -507,23 +651,45 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
 
         {showMap ? (
         <aside className="stack">
-          <MapPanel
-            dataTour="boat-map"
-            deemphasized={!selectedEntityId && layoutMode === "split"}
-            onSelectEntity={({ entityId, tone }) => {
-              setSelectedEntityId(entityId);
-              switchView(tone === "visit" ? "visits" : "trip");
-            }}
-            selectedEntityId={selectedEntityId}
-            tall
-            title={t("planning.tripAndVisitPlaces")}
-            tripSegments={filteredSegments}
-            visits={filteredVisits}
-          />
+          {shouldRenderMap ? (
+            <LazyMapPanel
+              dataTour="boat-map"
+              deemphasized={!selectedEntityId && layoutMode === "split"}
+              onSelectEntity={({ entityId, tone }) => {
+                setSelectedEntityId(entityId);
+                if (showTable) {
+                  switchView(tone === "visit" ? "visits" : "trip");
+                }
+              }}
+              selectedEntityId={selectedEntityId}
+              tall
+              title={t("planning.seasonMapTitle")}
+              tripSegments={filteredSegments}
+              visits={filteredVisits}
+            />
+          ) : (
+            <MapPanelPlaceholder />
+          )}
         </aside>
         ) : null}
       </section>
     </>
+  );
+}
+
+function MapPanelPlaceholder() {
+  const { t } = useI18n();
+
+  return (
+    <article className="dashboard-card map-panel map-panel--tall">
+      <div className="card-header">
+        <div>
+          <p className="eyebrow">{t("planning.map")}</p>
+          <h2>{t("planning.loadingMap")}</h2>
+        </div>
+      </div>
+      <div className="map-empty">{t("planning.loadingMap")}</div>
+    </article>
   );
 }
 
@@ -534,8 +700,12 @@ function WarningsCard({ conflicts }: { conflicts: VisitConflict[] }) {
     <article className="dashboard-card">
       <details className="inline-section">
         <summary className="inline-section__summary">
-          <span className="eyebrow">{t("planning.warnings")}</span>
-          {t("planning.reviewBeforeConfirming")} · {conflicts.length}
+          <span className="inline-section__summary-main">
+            <span className="inline-section__label">{t("planning.reviewBeforeConfirming")}</span>
+            <span className="inline-section__count">
+              {conflicts.length} {t("planning.warnings").toLocaleLowerCase(getDocumentLocale())}
+            </span>
+          </span>
         </summary>
         <ul className="list">
           {conflicts.map((conflict, index) => (
@@ -544,5 +714,26 @@ function WarningsCard({ conflicts }: { conflicts: VisitConflict[] }) {
         </ul>
       </details>
     </article>
+  );
+}
+
+function LayerFilterIcon() {
+  return (
+    <span aria-hidden="true" className="planning-chip__filter-icon">
+      <svg
+        fill="none"
+        height="12"
+        viewBox="0 0 12 12"
+        width="12"
+      >
+        <path
+          d="M1.5 2.25H10.5L7.25 5.75V9.25L4.75 10V5.75L1.5 2.25Z"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.1"
+        />
+      </svg>
+    </span>
   );
 }

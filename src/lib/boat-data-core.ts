@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { startServerTiming } from "@/lib/server-timing";
+import { measureServerTiming, startServerTiming } from "@/lib/server-timing";
 import type { Database } from "@/types/database";
 import type {
   BoatRow,
@@ -129,16 +129,26 @@ export const getAccessibleBoatBase = async (
 ) => {
   const db = supabase as any;
   const [{ data }, { data: overviewData }] = await Promise.all([
-    db
-      .from("boats")
-      .select(
-        "id, name, description, is_active, model, year_built, home_port, image_path, updated_at",
-      )
-      .order("name"),
-    db
-      .from("boat_access_overview")
-      .select("boat_id, boat_name, permission_level, can_edit, can_manage_boat_users")
-      .order("boat_name"),
+    measureServerTiming(
+      "boatData.getAccessibleBoatBase.boats",
+      () =>
+        db
+          .from("boats")
+          .select(
+            "id, name, description, is_active, model, year_built, home_port, image_path, updated_at",
+          )
+          .order("name"),
+      { isSuperuser: viewer.isSuperuser },
+    ),
+    measureServerTiming(
+      "boatData.getAccessibleBoatBase.overview",
+      () =>
+        db
+          .from("boat_access_overview")
+          .select("boat_id, boat_name, permission_level, can_edit, can_manage_boat_users")
+          .order("boat_name"),
+      { isSuperuser: viewer.isSuperuser },
+    ),
   ]);
 
   const overviewByBoat = new Map(
@@ -150,27 +160,36 @@ export const getAccessibleBoatBase = async (
 
   const boatRows = (data ?? []) as ExtendedBoatRow[];
 
-  return boatRows.map((boat) => {
-    const overview = overviewByBoat.get(boat.id);
-    const canManageFromRole = overview?.permission_level === "manager";
+  return measureServerTiming(
+    "boatData.getAccessibleBoatBase.mapSummaries",
+    async () =>
+      boatRows.map((boat) => {
+        const overview = overviewByBoat.get(boat.id);
+        const canManageFromRole = overview?.permission_level === "manager";
 
-    return {
-      boat_id: boat.id,
-      boat_name: boat.name,
-      permission_level:
-        overview?.permission_level ?? (viewer.isSuperuser ? null : "viewer"),
-      can_edit: overview?.can_edit ?? Boolean(viewer.isSuperuser),
-      can_manage_boat_users:
-        overview?.can_manage_boat_users ?? canManageFromRole ?? Boolean(viewer.isSuperuser),
-      description: boat.description,
-      home_port: boat.home_port ?? null,
-      image_path: boat.image_path ?? null,
-      image_url: getBoatImageUrl(supabase, boat.image_path, boat.updated_at),
-      model: boat.model ?? null,
-      year_built: boat.year_built ?? null,
-      is_active: boat.is_active,
-    };
-  }) as BoatSummary[];
+        return {
+          boat_id: boat.id,
+          boat_name: boat.name,
+          permission_level:
+            overview?.permission_level ?? (viewer.isSuperuser ? null : "viewer"),
+          can_edit: overview?.can_edit ?? Boolean(viewer.isSuperuser),
+          can_manage_boat_users:
+            overview?.can_manage_boat_users ?? canManageFromRole ?? Boolean(viewer.isSuperuser),
+          description: boat.description,
+          home_port: boat.home_port ?? null,
+          image_path: boat.image_path ?? null,
+          image_url: getBoatImageUrl(supabase, boat.image_path, boat.updated_at),
+          model: boat.model ?? null,
+          year_built: boat.year_built ?? null,
+          is_active: boat.is_active,
+        };
+      }) as BoatSummary[],
+    {
+      boats: boatRows.length,
+      overviewRows: overviewByBoat.size,
+    },
+    (boats) => ({ boats: boats.length }),
+  );
 };
 
 const updateLastAccess = (

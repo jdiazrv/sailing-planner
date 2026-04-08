@@ -10,20 +10,32 @@ Sailing Planner is a Next.js + TypeScript app for managing one or more boats, th
 - public/shared timeline comparison between boats
 - local Supabase CLI setup, migrations, seed data and invite email template
 
-Current app version: `0.4.3`
+Current app version: `0.4.4`
 
-## What's New In v0.4.3
+## What's New In v0.4.4
 
 Patch release highlights:
 
+- Auth, loading and route flow cleanup:
+  - authenticated entry now resolves directly to the safest destination instead of bouncing through dashboard
+  - the app uses a single global loading strategy with shorter, clearer loading copy and preserved sidebar geometry
+  - season mutations now keep the selected season in sync with guarded post-mutation navigation
 - Planning consistency and usability:
   - trip segments are now consistently ordered by schedule across workspace, summary, map and exports
   - selecting a map marker, timeline item or trip row keeps the corresponding scale synchronized everywhere
   - trip lists in workspace and summary now add vertical scroll once they exceed ten rows
+- Planning UI cleanup:
+  - summary removes the redundant hero/export block and keeps the boat image in the shared header
+  - the planning map removes the nautical-chart toggle and adds contextual stop and visit tooltips
+  - account settings now show read-only role and boat access information in a denser two-column layout
 - Onboarding and navigation polish:
   - guided tours now highlight the active cards and controls more reliably, including visits and timeline controls
   - personal user settings now live in a dedicated account area from the sidebar
   - boat settings navigation is clearer for both boat managers and superusers
+- i18n consolidation first pass:
+  - onboarding tours and member welcome copy now follow the active locale from one canonical layer
+  - the manual content moved out of the route component into a dedicated localized content module
+  - sidebar and boat-settings navigation labels now use shared dictionary keys instead of inline bilingual conditionals
 - Access and visit display defaults:
   - new and invited users now default to `text + images` in visit display mode
   - invite acceptance uses a safer confirmation step before password creation

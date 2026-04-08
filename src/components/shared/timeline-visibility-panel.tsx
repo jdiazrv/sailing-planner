@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { updateTimelineVisibility } from "@/app/actions";
@@ -41,16 +40,22 @@ export function TimelineVisibilityPanel({
     | "shared.toggleOff"
     | "dashboard.crossBoatVisibilityToggleOff";
 }) {
-  const router = useRouter();
   const { t } = useI18n();
   const [isPending, startTransition] = useTransition();
+  const [localIsPublic, setLocalIsPublic] = useState(isPublic);
+
+  useEffect(() => {
+    setLocalIsPublic(isPublic);
+  }, [isPublic]);
 
   const handleToggle = () => {
+    const nextValue = !localIsPublic;
+
     startTransition(() => {
-      void updateTimelineVisibility(!isPublic)
+      void updateTimelineVisibility(nextValue)
         .then(() => {
           toast.success(t("shared.visibilitySaved"));
-          router.refresh();
+          setLocalIsPublic(nextValue);
         })
         .catch((error) => {
           toast.error(error instanceof Error ? error.message : t("auth.error"));
@@ -63,10 +68,10 @@ export function TimelineVisibilityPanel({
       <div className="card-header">
         <div>
           <p className="eyebrow">{t(titleKey ?? "dashboard.sharedTimelines")}</p>
-          <h2>{isPublic ? t(statusOnKey ?? "shared.visibilityOn") : t(statusOffKey ?? "shared.visibilityOff")}</h2>
+          <h2>{localIsPublic ? t(statusOnKey ?? "shared.visibilityOn") : t(statusOffKey ?? "shared.visibilityOff")}</h2>
         </div>
-        <span className={`status-pill ${isPublic ? "is-good" : "is-muted"}`}>
-          {isPublic ? t("common.active") : t("common.inactive")}
+        <span className={`status-pill ${localIsPublic ? "is-good" : "is-muted"}`}>
+          {localIsPublic ? t("common.active") : t("common.inactive")}
         </span>
       </div>
       {!compact ? (
@@ -85,7 +90,7 @@ export function TimelineVisibilityPanel({
           onClick={handleToggle}
           type="button"
         >
-          {isPublic ? t(toggleOffKey ?? "shared.toggleOff") : t(toggleOnKey ?? "shared.toggleOn")}
+          {localIsPublic ? t(toggleOffKey ?? "shared.toggleOff") : t(toggleOnKey ?? "shared.toggleOn")}
         </button>
         <Link className="secondary-button" href="/shared">
           {t(actionLabelKey ?? "dashboard.sharedTimelines")}

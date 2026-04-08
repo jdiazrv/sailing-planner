@@ -3,9 +3,10 @@ import { RouteLoading } from "@/components/ui/route-loading";
 export default function Loading() {
   return (
     <RouteLoading
+      debugKey="app"
       preserveSidebar
-      subtitle="Levantando la aplicacion, restaurando sesion y preparando el plan."
-      title="Cargando Sailing Planner"
+      subtitle="Abriendo panel"
+      title="Cargando"
     />
   );
 }

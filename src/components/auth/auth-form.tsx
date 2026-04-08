@@ -19,8 +19,12 @@ type AuthFormProps = {
 };
 
 const getSafeNextPath = (next: string | null) => {
-  if (!next || !next.startsWith("/") || next.startsWith("//")) {
-    return "/dashboard";
+  if (!next) {
+    return null;
+  }
+
+  if (!next.startsWith("/") || next.startsWith("//")) {
+    return null;
   }
 
   return next;
@@ -34,6 +38,7 @@ export const AuthForm = ({
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = getSafeNextPath(searchParams.get("next"));
+  const authNext = next ?? "/dashboard";
   const oauthError = searchParams.get("oauth_error");
   const oauthErrorDescription = searchParams.get("oauth_error_description");
 
@@ -88,8 +93,23 @@ export const AuthForm = ({
     }
 
     void recordCurrentUserAccess("password").catch(() => {});
-    router.replace(next);
-    router.refresh();
+    const destinationResponse = await fetch("/api/auth/post-login-destination", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ next }),
+    });
+
+    const destinationPayload = (await destinationResponse.json().catch(() => null)) as
+      | { destination?: string }
+      | null;
+    const destination =
+      destinationResponse.ok && destinationPayload?.destination
+        ? destinationPayload.destination
+        : next ?? "/dashboard";
+
+    router.replace(destination);
   };
 
   const handleMagicLink = async () => {
@@ -99,7 +119,7 @@ export const AuthForm = ({
     const redirectUrl = new URL(
       buildAuthRedirectUrl("/auth/callback", { requestOrigin }),
     );
-    redirectUrl.searchParams.set("next", next);
+    redirectUrl.searchParams.set("next", authNext);
 
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email,
@@ -152,7 +172,7 @@ export const AuthForm = ({
     const redirectUrl = new URL(
       buildAuthRedirectUrl("/auth/callback", { requestOrigin }),
     );
-    redirectUrl.searchParams.set("next", next);
+    redirectUrl.searchParams.set("next", authNext);
 
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -201,6 +221,7 @@ export const AuthForm = ({
     setLoadingIntent(null);
     setError(null);
     setMessage(null);
+    let keepLoadingAfterSubmit = false;
 
     try {
       ensureEmail();
@@ -212,6 +233,7 @@ export const AuthForm = ({
 
         setLoadingIntent("password");
         await handlePasswordLogin();
+        keepLoadingAfterSubmit = true;
       } else if (mode === "magic-link") {
         setLoadingIntent("magic-link");
         await handleMagicLink();
@@ -225,8 +247,10 @@ export const AuthForm = ({
           : t("auth.error"),
       );
     } finally {
-      setIsLoading(false);
-      setLoadingIntent(null);
+      if (!keepLoadingAfterSubmit) {
+        setIsLoading(false);
+        setLoadingIntent(null);
+      }
     }
   };
 

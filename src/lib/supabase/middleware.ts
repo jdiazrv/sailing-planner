@@ -90,13 +90,5 @@ export const updateSession = async (request: NextRequest) => {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (user && request.nextUrl.pathname === "/login") {
-    const dashboardUrl = request.nextUrl.clone();
-    dashboardUrl.pathname = "/dashboard";
-    dashboardUrl.searchParams.delete("next");
-
-    return NextResponse.redirect(dashboardUrl);
-  }
-
   return response;
 };

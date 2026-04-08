@@ -146,6 +146,17 @@ const availabilityOrder: AvailabilityBlock["status"][] = [
   "undefined",
 ];
 
+const timelineLegendStatuses = [
+  "tentative",
+  "planned",
+  "confirmed",
+  "active",
+  "completed",
+  "cancelled",
+  "blocked",
+  "available",
+] as const;
+
 const getShortName = (name: string | null) => {
   if (!name) return "Visit";
   return name.split(" ")[0] ?? name;
@@ -406,11 +417,10 @@ export const Timeline = ({
         <div className="timeline-card__header">
           {!hideHeader && (
             <div>
-              <p className="eyebrow">{title}</p>
               <div className="timeline-card__title-row">
-                <h2>{season.name}</h2>
+                <h2>{title}</h2>
                 <span className="timeline-card__season-dates">
-                  {formatLongDate(timelineWindow.start_date)} – {formatLongDate(timelineWindow.end_date)}
+                  {season.name} · {formatLongDate(timelineWindow.start_date)} – {formatLongDate(timelineWindow.end_date)}
                 </span>
               </div>
             </div>
@@ -420,6 +430,15 @@ export const Timeline = ({
           )}
         </div>
       )}
+
+      <div className="timeline-legend" aria-label="Timeline status legend">
+        {timelineLegendStatuses.map((status) => (
+          <span className="timeline-legend__item" key={status}>
+            <span className={`timeline-legend__swatch is-${status}`} aria-hidden="true" />
+            <span>{t(`status.${status}` as never)}</span>
+          </span>
+        ))}
+      </div>
 
       <div className="timeline">
         <div className="timeline__inner" style={{ width: `${zoom * 100}%` }}>

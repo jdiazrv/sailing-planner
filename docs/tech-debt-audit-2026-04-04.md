@@ -6,9 +6,38 @@ This file tracks live technical-debt findings observed while navigating the app 
 
 - Scope: live navigation audit on localhost while the app is running in dev mode.
 - Goal: collect actionable debt items without overloading chat context.
-- Last updated: 2026-04-07 after validating the latest cleanup pass against the current codebase and removing resolved debt items.
+- Last updated: 2026-04-08 after a senior production audit across routes, shared UI, i18n paths and mutation flows.
 
 ## High priority
+
+### 2026-04-08 - Production audit (fragmented i18n adoption and terminology drift)
+
+Observed from source inspection across the main routes, admin surfaces, onboarding and the in-app manual.
+
+Remaining issues:
+
+- The project has a solid central dictionary in `src/lib/i18n.ts`, but several critical surfaces still bypass it with inline `locale === "es"` conditionals or large local copy objects.
+  - Evidence:
+    - `src/components/admin/users-admin.tsx` contains a large amount of user-facing copy inline and repeated locale switches inside the component.
+    - `src/components/admin/boats-admin.tsx` keeps its own local bilingual copy object instead of using the shared dictionary.
+    - `src/components/guest/member-welcome-modal.tsx` hardcodes the welcome flow copy outside the dictionary.
+    - `src/app/manual/page.tsx` stores the entire manual as a route-local bilingual object.
+    - `src/app/boats/[boatId]/layout.tsx` still hardcodes `Configurar barco` / `Boat settings` in the main workspace navigation.
+- The terminology migration from `tramo` to `escala` is not fully closed despite the earlier backlog item being marked as completed.
+  - Evidence:
+    - `src/app/manual/page.tsx` still uses `tramos` and `route segments` in multiple user-visible paragraphs.
+    - `src/lib/planning.ts` still emits the validation message `cruza un tramo sin cobertura de viaje`.
+
+Risk:
+
+- Spanish/English parity is now partial rather than systemic.
+- Terminology can drift again because copy is maintained in several places outside the canonical dictionary.
+- Admin, onboarding and manual flows are becoming their own translation system, which undermines consistency with the style guide and raises review cost.
+
+Recommended direction:
+
+- Move all visible copy in admin, onboarding and manual flows to one canonical i18n layer.
+- Reopen the `tramo` -> `escala` migration as not fully closed until manual, validation messages and bilingual helper strings are aligned.
 
 ### 2026-04-05 - Post-fix validation findings (iPad)
 
@@ -56,6 +85,34 @@ Performance and data presentation:
 - Expand boat summary with richer operational metadata (for example users/managers counts and other relevant context).
 
 ## Medium priority
+
+### 2026-04-08 - Production audit (mutation invalidation and redirect policy drift)
+
+Observed from source inspection across server actions, auth routes and client mutation handlers.
+
+Remaining issues:
+
+- Route invalidation is still broader than the actual mutation scope and is split between server and client defensive refreshes.
+  - Evidence:
+    - `src/app/actions.ts` revalidates `/dashboard`, `/shared` and even `/` layout together for profile and visibility changes.
+    - `src/app/admin/actions.ts` uses `refreshAdminRoutes()` to invalidate dashboard, admin, boats and users on unrelated admin mutations.
+    - `src/app/boats/[boatId]/actions.ts` uses `refreshBoatRoutes()` to invalidate dashboard plus both boat workspaces for every boat mutation.
+    - Several client components still add `router.refresh()` after server actions, including `boat-settings-dialog`, `season-access-panel`, `season-bar`, `visits-manager`, `member-first-access`, `user-settings-panel` and `timeline-visibility-panel`.
+- Redirect policy is still duplicated across auth and guard layers.
+  - Evidence:
+    - `src/lib/auth-destination.ts` and `src/app/auth/callback/route.ts` both implement their own `getSafeNextPath` variants.
+    - `src/lib/boat-data-viewer.ts` and `src/lib/boat-data-boats.ts` repeat hardcoded `redirect("/dashboard")` decisions across several guards.
+
+Risk:
+
+- The current pattern keeps feeding loader churn, aborted POST noise and avoidable route regeneration.
+- Redirect behavior is harder to evolve safely because the fallback policy is not centralized.
+- The codebase is accumulating local safety patches instead of one explicit navigation/invalidation strategy.
+
+Recommended direction:
+
+- Narrow invalidation by mutation family and reduce client `router.refresh()` calls where server revalidation is already authoritative.
+- Centralize safe-next resolution and common guard redirects so auth and boat access flows do not drift.
 
 ### 2026-04-06 - Static production audit (data-path drift and maintainability)
 
@@ -155,6 +212,47 @@ Primary files to investigate:
 - `src/components/ui/theme-switcher.tsx`
 - `src/app/globals.css`
 
+### 2026-04-08 - Production audit (oversized route surfaces and patch accumulation)
+
+Observed from source inspection across admin and documentation routes.
+
+Remaining issues:
+
+- Some high-change surfaces are materially oversized and now combine view state, copy, conditional UX rules and mutation plumbing in single files.
+  - Evidence:
+    - `src/components/admin/users-admin.tsx` is about 1700 lines long and mixes table UI, creation flows, invitation flows, permission editing, password changes, selection logic and bilingual copy.
+    - `src/components/admin/boats-admin.tsx` is over 500 lines and embeds its own bilingual text map plus CRUD orchestration.
+    - `src/app/manual/page.tsx` is nearly 400 lines and stores the complete bilingual manual in-route.
+- Loader investigation residue is still present in the shared loading component.
+  - Evidence:
+    - `src/components/ui/route-loading.tsx` still carries `debugKey`, `data-loading-*` debug attributes and dev-only render logging.
+    - `src/components/ui/loading-debug-beacon.tsx` remains in the runtime tree as a dedicated debugging component.
+
+Risk:
+
+- These files are becoming difficult to test, refactor and review without regressions.
+- UI polish changes, translation work and behavior fixes all compete inside the same monoliths, which is a typical sign of patch accumulation.
+- The loader debugging residue is low-risk in production today, but it increases conceptual noise in a component that should stay minimal.
+
+Recommended direction:
+
+- Split admin surfaces by concern: listing, editor, invitation, permissions and security.
+- Move the manual content to a dedicated content module or dictionary-backed content structure.
+- Retire loader-debug artifacts once the current loading audit is considered closed.
+
 ## Low priority
 
 ### 2026-04-06 - Static production audit (low-risk debt)
+
+### 2026-04-08 - Production audit (minor coherence gaps)
+
+Observed from source inspection of top-level app shell metadata and route copy.
+
+Remaining issues:
+
+- Root metadata in `src/app/layout.tsx` is still fixed in English even though the app itself exposes Spanish and English.
+- Some route-level labels still use ad hoc bilingual conditionals instead of shared dictionary keys, even when the dictionary already contains adjacent concepts.
+
+Current assessment:
+
+- This is not the main UX bottleneck, but it reinforces the pattern of partial i18n adoption.

@@ -4,6 +4,7 @@ import NextImage from "next/image";
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import { updateTimelineVisibility } from "@/app/actions";
 import { useI18n } from "@/components/i18n/provider";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog } from "@/components/ui/dialog";
@@ -92,6 +93,7 @@ type Props = {
   seasonStart: string;
   visitPanelDisplayMode?: VisitPanelDisplayMode;
   canEdit: boolean;
+  isTimelinePublic?: boolean | null;
   selectedVisitId?: string | null;
   onSelectVisit?: (visit: VisitView) => void;
   onSave: (fd: FormData) => Promise<void>;
@@ -108,6 +110,7 @@ export function VisitsManager({
   seasonStart,
   visitPanelDisplayMode = "both",
   canEdit,
+  isTimelinePublic = null,
   selectedVisitId = null,
   onSelectVisit,
   onSave,
@@ -117,11 +120,13 @@ export function VisitsManager({
   emptyMessage,
 }: Props) {
   const { t } = useI18n();
+  const [timelineVisibility, setTimelineVisibility] = useState<boolean | null>(isTimelinePublic);
   const [addOpen, setAddOpen] = useState(false);
   const [editingVisit, setEditingVisit] = useState<VisitView | null>(null);
   const [visitToDelete, setVisitToDelete] = useState<VisitView | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isVisibilityPending, startVisibilityTransition] = useTransition();
 
   // Open edit dialog when triggered from outside (e.g. timeline click)
   useEffect(() => {
@@ -131,6 +136,10 @@ export function VisitsManager({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [externalEditVisit?.id]);
+
+  useEffect(() => {
+    setTimelineVisibility(isTimelinePublic);
+  }, [isTimelinePublic]);
 
   const handleSave = (formData: FormData) => {
     const isEdit = Boolean(formData.get("visit_id"));
@@ -183,6 +192,24 @@ export function VisitsManager({
     embarkDisembark: t("planning.embarkDisembark"),
     status: t("planning.status"),
     notes: t("planning.notes"),
+    actions: t("common.actions"),
+  };
+
+  const toggleTimelineVisibility = (nextValue: boolean) => {
+    if (timelineVisibility === nextValue) {
+      return;
+    }
+
+    startVisibilityTransition(() => {
+      void updateTimelineVisibility(nextValue)
+        .then(() => {
+          setTimelineVisibility(nextValue);
+          toast.success(t("shared.visibilitySaved"));
+        })
+        .catch((error) => {
+          toast.error(error instanceof Error ? error.message : t("auth.error"));
+        });
+    });
   };
 
   const renderVisitIdentity = (visit: VisitView) => {
@@ -196,19 +223,49 @@ export function VisitsManager({
 
   return (
     <>
-      {canEdit && visits.length > 0 && (
-        <div className="panel-toolbar">
-          <button
-            className="primary-button"
-            disabled={isPending}
-            onClick={() => {
-              setFormError(null);
-              setAddOpen(true);
-            }}
-            type="button"
-          >
-            + {t("planning.addVisit")}
-          </button>
+      {visits.length > 0 && (
+        <div className="panel-toolbar panel-toolbar--visits">
+          {canEdit ? (
+            <button
+              className="primary-button"
+              disabled={isPending}
+              onClick={() => {
+                setFormError(null);
+                setAddOpen(true);
+              }}
+              type="button"
+            >
+              + {t("planning.addVisit")}
+            </button>
+          ) : null}
+          {timelineVisibility !== null ? (
+            <div
+              aria-label={t("planning.timelineVisibilityControl")}
+              className="workspace-view-switch workspace-view-switch--segmented visit-visibility-switch"
+              role="tablist"
+            >
+              <button
+                aria-selected={timelineVisibility === true}
+                className={timelineVisibility === true ? "is-active" : undefined}
+                disabled={isVisibilityPending}
+                onClick={() => toggleTimelineVisibility(true)}
+                role="tab"
+                type="button"
+              >
+                <span>{t("planning.timelineSharedShort")}</span>
+              </button>
+              <button
+                aria-selected={timelineVisibility === false}
+                className={timelineVisibility === false ? "is-active" : undefined}
+                disabled={isVisibilityPending}
+                onClick={() => toggleTimelineVisibility(false)}
+                role="tab"
+                type="button"
+              >
+                <span>{t("planning.timelinePrivateShort")}</span>
+              </button>
+            </div>
+          ) : null}
         </div>
       )}
 
@@ -220,7 +277,7 @@ export function VisitsManager({
             <span>{t("planning.embarkDisembark")}</span>
             <span>{t("planning.status")}</span>
             <span>{t("planning.notes")}</span>
-            {canEdit && <span></span>}
+            {canEdit && <span>{t("common.actions")}</span>}
           </div>
           {visits.map((visit) => (
             <div
@@ -254,9 +311,9 @@ export function VisitsManager({
               <div data-label={visitRowLabels.status}>
                 <span className={`status-pill is-${visit.status}`}>{t(`status.${visit.status}` as never)}</span>
               </div>
-              <div className="cell-clamp muted" data-label={visitRowLabels.notes}>{visit.public_notes}</div>
+              <div className="cell-clamp muted" data-label={visitRowLabels.notes}>{visit.public_notes || "—"}</div>
               {canEdit && (
-                <div className="table-actions" data-label="">
+                <div className="table-actions" data-label={visitRowLabels.actions}>
                   <button
                   aria-label={t("common.edit")}
                   className="icon-button"

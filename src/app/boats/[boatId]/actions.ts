@@ -43,6 +43,33 @@ const refreshBoatRoutes = (boatId: string) => {
   revalidatePath(`/boats/${boatId}/visits`);
 };
 
+const loadResolvedSelectedSeasonId = async (
+  db: any,
+  boatId: string,
+  requestedSeasonId?: string | null,
+) => {
+  const { data, error } = await db
+    .from("seasons")
+    .select("id")
+    .eq("boat_id", boatId)
+    .order("year", { ascending: false });
+
+  throwIfError(error);
+
+  const seasons = ((data ?? []) as Array<{ id: string }>).map((season) => season.id);
+
+  if (requestedSeasonId && seasons.includes(requestedSeasonId)) {
+    return requestedSeasonId;
+  }
+
+  return seasons[0] ?? null;
+};
+
+type SeasonMutationResult = {
+  mutatedSeasonId: string | null;
+  nextSelectedSeasonId: string | null;
+};
+
 const getImageExtension = (file: File) => {
   if (file.type === "image/png") return "png";
   if (file.type === "image/webp") return "webp";
@@ -151,10 +178,13 @@ const getNextTripSortOrder = async (db: any, seasonId: string) => {
   return (data?.sort_order ?? 0) + 10;
 };
 
-export async function saveSeason(formData: FormData) {
+export async function saveSeason(formData: FormData): Promise<SeasonMutationResult> {
   const boatId = formData.get("boat_id")?.toString() ?? "";
   const { db, user } = await requireBoatEditor(boatId);
   const seasonId = asOptionalString(formData.get("season_id"));
+  const requestedSeasonId = asOptionalString(
+    formData.get("current_requested_season_id"),
+  );
 
   const payload = {
     boat_id: boatId,
@@ -165,12 +195,19 @@ export async function saveSeason(formData: FormData) {
     notes: asOptionalString(formData.get("notes")),
   };
 
+  let mutatedSeasonId = seasonId;
+
   if (seasonId) {
     const { error } = await db.from("seasons").update(payload).eq("id", seasonId);
     throwIfError(error);
   } else {
-    const { error } = await db.from("seasons").insert(payload);
+    const { data, error } = await db
+      .from("seasons")
+      .insert(payload)
+      .select("id")
+      .single();
     throwIfError(error);
+    mutatedSeasonId = data?.id ?? null;
 
     const { data: profile, error: profileError } = await db
       .from("profiles")
@@ -189,12 +226,24 @@ export async function saveSeason(formData: FormData) {
   }
 
   refreshBoatRoutes(boatId);
+
+  return {
+    mutatedSeasonId,
+    nextSelectedSeasonId: await loadResolvedSelectedSeasonId(
+      db,
+      boatId,
+      requestedSeasonId,
+    ),
+  };
 }
 
-export async function deleteSeason(formData: FormData) {
+export async function deleteSeason(formData: FormData): Promise<SeasonMutationResult> {
   const boatId = formData.get("boat_id")?.toString() ?? "";
   const { supabase, db } = await requireBoatEditor(boatId);
   const seasonId = formData.get("season_id")?.toString() ?? "";
+  const requestedSeasonId = asOptionalString(
+    formData.get("current_requested_season_id"),
+  );
 
   const { data: visitImages, error: visitImagesError } = await db
     .from("visits")
@@ -224,6 +273,15 @@ export async function deleteSeason(formData: FormData) {
   const { error } = await db.from("seasons").delete().eq("id", seasonId);
   throwIfError(error);
   refreshBoatRoutes(boatId);
+
+  return {
+    mutatedSeasonId: seasonId,
+    nextSelectedSeasonId: await loadResolvedSelectedSeasonId(
+      db,
+      boatId,
+      requestedSeasonId,
+    ),
+  };
 }
 
 export async function saveTripSegment(formData: FormData) {

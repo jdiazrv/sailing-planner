@@ -7,7 +7,7 @@ import Link from "next/link";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { ThemeSwitcher } from "@/components/ui/theme-switcher";
 import { LanguageSwitcher } from "@/components/i18n/language-switcher";
-import type { Locale } from "@/lib/i18n";
+import { t, type Locale } from "@/lib/i18n";
 
 // ---------------------------------------------------------------------------
 // Icons — 18×18, stroke-based, consistent 1.75 stroke-width
@@ -196,9 +196,9 @@ export function AppSidebarNav({
 }: AppSidebarNavProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const es = locale === "es";
-  const signOutLabel = es ? "Salir" : "Sign out";
+  const signOutLabel = t(locale, "common.signOut");
   const currentUserHref = currentUserId ? "/account" : null;
+  const homeHref = boatId ? `/boats/${boatId}` : "/dashboard";
 
   const isActive = (href: string) =>
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
@@ -227,7 +227,7 @@ export function AppSidebarNav({
       <button
         aria-controls="app-sidebar"
         aria-expanded={mobileOpen}
-        aria-label={es ? "Abrir menú" : "Open menu"}
+        aria-label={t(locale, "appSidebar.openMenu")}
         className="app-sidebar-mobile-toggle"
         onClick={() => setMobileOpen(true)}
         type="button"
@@ -239,7 +239,7 @@ export function AppSidebarNav({
 
       {mobileOpen ? (
         <button
-          aria-label={es ? "Cerrar menú" : "Close menu"}
+          aria-label={t(locale, "appSidebar.closeMenu")}
           className="app-sidebar-backdrop"
           onClick={() => setMobileOpen(false)}
           type="button"
@@ -248,7 +248,7 @@ export function AppSidebarNav({
 
     <aside className={`app-sidebar${mobileOpen ? " is-mobile-open" : ""}`} id="app-sidebar">
       {/* Brand */}
-      <Link className="app-sidebar__brand" href="/dashboard">
+      <Link className="app-sidebar__brand" href={homeHref}>
         <SidebarLogoMark />
         <span className="app-sidebar__brand-copy">
           <span className="app-sidebar__brand-label">Sailing Planner</span>
@@ -257,7 +257,7 @@ export function AppSidebarNav({
           ) : null}
         </span>
         <button
-          aria-label={es ? "Cerrar menú" : "Close menu"}
+          aria-label={t(locale, "appSidebar.closeMenu")}
           className="app-sidebar__close"
           onClick={(event) => {
             event.preventDefault();
@@ -274,7 +274,7 @@ export function AppSidebarNav({
         {!boatId ? (
           <NavItem
             href="/dashboard"
-            label={es ? "Panel" : "Dashboard"}
+            label={t(locale, "common.dashboard")}
             icon={<IconGrid />}
             active={pathname === "/dashboard"}
           />
@@ -284,11 +284,11 @@ export function AppSidebarNav({
         {boatId && (
           <>
             <p className="app-sidebar__section-label">
-              {es ? "Barco" : "Boat"}
+              {t(locale, "appSidebar.boatSection")}
             </p>
             <NavItem
               href={`/boats/${boatId}`}
-              label={es ? "Plan" : "Plan"}
+              label={t(locale, "appSidebar.plan")}
               icon={<IconRoute />}
               active={pathname === `/boats/${boatId}`}
               onClick={() => setMobileOpen(false)}
@@ -296,7 +296,7 @@ export function AppSidebarNav({
             />
             <NavItem
               href={`/boats/${boatId}/summary`}
-              label={es ? "Resumen" : "Summary"}
+              label={t(locale, "boatNav.summary")}
               icon={<IconChart />}
               active={isActive(`/boats/${boatId}/summary`)}
               onClick={() => setMobileOpen(false)}
@@ -305,7 +305,7 @@ export function AppSidebarNav({
             {canShare && (
               <NavItem
                 href={`/boats/${boatId}/share`}
-                label={es ? "Invitar" : "Invite"}
+                label={t(locale, "appSidebar.invite")}
                 icon={<IconLink />}
                 active={isActive(`/boats/${boatId}/share`)}
                 onClick={() => setMobileOpen(false)}
@@ -327,7 +327,7 @@ export function AppSidebarNav({
             {isSuperuser && (
               <NavItem
                 href="/admin/boats"
-                label={es ? "Barcos" : "Boats"}
+                label={t(locale, "common.boats")}
                 icon={<IconBoat />}
                 active={isActive("/admin/boats")}
                 onClick={() => setMobileOpen(false)}
@@ -336,7 +336,7 @@ export function AppSidebarNav({
             )}
             <NavItem
               href="/admin/users"
-              label={es ? "Miembros" : "Members"}
+              label={t(locale, "appSidebar.members")}
               icon={<IconUsers />}
               active={isActive("/admin/users")}
               onClick={() => setMobileOpen(false)}
@@ -345,7 +345,7 @@ export function AppSidebarNav({
             {isSuperuser && (
               <NavItem
                 href="/admin/metrics"
-                label={es ? "Métricas" : "Metrics"}
+                label={t(locale, "dashboard.systemMetrics")}
                 icon={<IconChart />}
                 active={isActive("/admin/metrics")}
                 onClick={() => setMobileOpen(false)}
@@ -357,7 +357,7 @@ export function AppSidebarNav({
         {/* Shared and account shortcuts */}
         <NavItem
           href="/shared"
-          label={es ? "Compartidos" : "Shared"}
+          label={t(locale, "appSidebar.shared")}
           icon={<IconCompare />}
           active={isActive("/shared")}
           onClick={() => setMobileOpen(false)}
@@ -366,7 +366,7 @@ export function AppSidebarNav({
 
         <NavItem
           href="/manual"
-          label={es ? "Manual" : "Manual"}
+          label={t(locale, "appSidebar.manual")}
           icon={<IconHelp />}
           onClick={() => setMobileOpen(false)}
           rel="noreferrer"
@@ -377,7 +377,7 @@ export function AppSidebarNav({
         {currentUserHref ? (
           <NavItem
             href={currentUserHref}
-            label={es ? "Configuración" : "Settings"}
+            label={t(locale, "userSettings.title")}
             icon={<IconProfile />}
             active={isActive(currentUserHref)}
             onClick={() => setMobileOpen(false)}

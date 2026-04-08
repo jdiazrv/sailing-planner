@@ -142,6 +142,7 @@ export function TripSegmentsManager({
     location: t("planning.location"),
     status: t("planning.status"),
     notes: t("planning.notes"),
+    actions: t("common.actions"),
   };
 
   return (
@@ -172,7 +173,7 @@ export function TripSegmentsManager({
             <span>{t("planning.location")}</span>
             <span>{t("planning.status")}</span>
             <span>{t("planning.notes")}</span>
-            {canEdit && <span></span>}
+            {canEdit && <span>{t("common.actions")}</span>}
           </div>
           {orderedSegments.map((segment, index) => {
             const previousSegment = index > 0 ? orderedSegments[index - 1] : null;
@@ -228,7 +229,7 @@ export function TripSegmentsManager({
                 </div>
                 <div className="cell-clamp muted" data-label={tripRowLabels.notes}>{segment.public_notes}</div>
                 {canEdit && (
-                  <div className="table-actions" data-label="">
+                  <div className="table-actions" data-label={tripRowLabels.actions}>
                     <button
                       aria-label={t("common.edit")}
                       className="icon-button"

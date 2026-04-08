@@ -11,6 +11,8 @@ import type { Database } from "@/types/database";
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 
 type UserSettingsPanelProps = {
+  accessProfileLabel: string;
+  boatAccessSummary: string;
   profile: ProfileRow;
   viewerEmail: string;
   onSave: (fd: FormData) => Promise<void>;
@@ -18,6 +20,8 @@ type UserSettingsPanelProps = {
 };
 
 export function UserSettingsPanel({
+  accessProfileLabel,
+  boatAccessSummary,
   profile,
   viewerEmail,
   onSave,
@@ -58,7 +62,6 @@ export function UserSettingsPanel({
       void onUpdatePassword(formData)
         .then(() => {
           toast.success(t("admin.users.passwordUpdated"));
-          router.refresh();
         })
         .catch((error) => {
           toast.error(error instanceof Error ? error.message : t("userSettings.saveError"));
@@ -68,6 +71,26 @@ export function UserSettingsPanel({
 
   return (
     <div className="stack">
+      <article className="dashboard-card admin-card admin-card--section">
+        <div className="card-header">
+          <div>
+            <p className="eyebrow">{t("userSettings.accessEyebrow")}</p>
+            <h2>{t("userSettings.accessTitle")}</h2>
+            <p className="muted">{t("userSettings.accessBody")}</p>
+          </div>
+        </div>
+        <div className="account-settings-grid">
+          <label className="account-settings-row">
+            <span>{t("userSettings.accessProfile")}</span>
+            <input disabled readOnly value={accessProfileLabel} />
+          </label>
+          <label className="account-settings-row account-settings-row--textarea">
+            <span>{t("userSettings.accessBoats")}</span>
+            <textarea disabled readOnly rows={Math.max(3, boatAccessSummary.split("\n").length)} value={boatAccessSummary} />
+          </label>
+        </div>
+      </article>
+
       <article className="dashboard-card">
         <div className="card-header">
           <div>
@@ -88,48 +111,53 @@ export function UserSettingsPanel({
           </div>
         </div>
         <form
-          className="editor-form"
+          className="editor-form editor-form--account"
           onSubmit={(event) => {
             event.preventDefault();
             handleSave(new FormData(event.currentTarget));
           }}
         >
-          <div className="form-grid">
-            <label>
+          <div className="account-settings-grid">
+            <label className="account-settings-row">
               <span>{t("userSettings.displayName")}</span>
               <input defaultValue={profile.display_name ?? ""} name="display_name" />
             </label>
-            <label>
+            <label className="account-settings-row">
               <span>{t("auth.email")}</span>
               <input defaultValue={viewerEmail} disabled readOnly />
             </label>
-            <label>
+            <label className="account-settings-row">
               <span>{t("userSettings.language")}</span>
               <select defaultValue={profile.preferred_language ?? "es"} name="preferred_language">
                 <option value="es">Español</option>
                 <option value="en">English</option>
               </select>
             </label>
-            <label className="form-grid__wide">
+            <label className="account-settings-row">
               <span>{t("userSettings.visitMode")}</span>
-              <select
-                defaultValue={profile.visit_panel_display_mode ?? "both"}
-                name="visit_panel_display_mode"
-              >
-                <option value="text">{t("userSettings.visitText")}</option>
-                <option value="image">{t("userSettings.visitImage")}</option>
-                <option value="both">{t("userSettings.visitBoth")}</option>
-              </select>
-              <small className="muted">{t("userSettings.visitModeHelp")}</small>
+              <div className="account-settings-row__field">
+                <select
+                  defaultValue={profile.visit_panel_display_mode ?? "both"}
+                  name="visit_panel_display_mode"
+                >
+                  <option value="text">{t("userSettings.visitText")}</option>
+                  <option value="image">{t("userSettings.visitImage")}</option>
+                  <option value="both">{t("userSettings.visitBoth")}</option>
+                </select>
+                <small className="account-settings-row__help">{t("userSettings.visitModeHelp")}</small>
+              </div>
             </label>
-            <label className="checkbox-field form-grid__wide">
-              <input
-                defaultChecked={profile.is_timeline_public}
-                name="is_timeline_public"
-                type="checkbox"
-              />
+            <div className="account-settings-row account-settings-row--checkbox">
               <span>{t("userSettings.timelineVisibility")}</span>
-            </label>
+              <label className="checkbox-field account-settings-toggle">
+                <input
+                  defaultChecked={profile.is_timeline_public}
+                  name="is_timeline_public"
+                  type="checkbox"
+                />
+                <span>{t("common.active")}</span>
+              </label>
+            </div>
           </div>
 
           <div className="modal__footer">
@@ -142,7 +170,7 @@ export function UserSettingsPanel({
 
       <article className="dashboard-card admin-card admin-card--section admin-card--editable">
         <form
-          className="editor-form"
+          className="editor-form editor-form--account"
           onSubmit={(event) => {
             event.preventDefault();
             handlePasswordChange(new FormData(event.currentTarget));
@@ -156,8 +184,8 @@ export function UserSettingsPanel({
               <p className="muted">{t("admin.users.sectionSecurityHelp")}</p>
             </div>
           </div>
-          <div className="form-grid">
-            <label>
+          <div className="account-settings-grid">
+            <label className="account-settings-row">
               <span>{t("auth.password")}</span>
               <input
                 minLength={8}
@@ -167,7 +195,7 @@ export function UserSettingsPanel({
                 type="password"
               />
             </label>
-            <label>
+            <label className="account-settings-row">
               <span>{t("admin.users.confirmPassword")}</span>
               <input
                 minLength={8}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import { GuestOnboardingTour } from "@/components/guest/guest-onboarding-tour";
 import { MemberWelcomeModal } from "@/components/guest/member-welcome-modal";
@@ -36,7 +35,6 @@ export function MemberFirstAccess({
   hasVisits = false,
 }: MemberFirstAccessProps) {
   const isReadOnly = !canEditBoat && !canManageUsers && !canShare;
-  const router = useRouter();
   const [currentStep, setCurrentStep] = useState<OnboardingStep | null>(onboardingStep ?? null);
 
   useEffect(() => {
@@ -53,7 +51,6 @@ export function MemberFirstAccess({
     });
 
     setCurrentStep(null);
-    router.refresh();
   };
 
   const startTour = async () => {
@@ -104,7 +101,6 @@ export function MemberFirstAccess({
         onComplete={() => {
           void fetch("/api/onboarding/complete", { method: "POST" }).then(() => {
             setCurrentStep(null);
-            router.refresh();
           });
         }}
         resetKey={viewerId}

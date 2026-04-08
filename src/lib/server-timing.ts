@@ -23,3 +23,25 @@ export const startServerTiming = (label: string, meta?: Record<string, unknown>)
     },
   };
 };
+
+export const measureServerTiming = async <T>(
+  label: string,
+  callback: () => T,
+  meta?: Record<string, unknown>,
+  extra?: (result: Awaited<T>) => Record<string, unknown> | undefined,
+): Promise<Awaited<T>> => {
+  const timing = startServerTiming(label, meta);
+
+  try {
+    const result = await callback();
+    timing.end(extra?.(result));
+    return result;
+  } catch (error) {
+    timing.end({
+      ...(meta ?? {}),
+      failed: true,
+      message: error instanceof Error ? error.message : "unknown-error",
+    });
+    throw error;
+  }
+};

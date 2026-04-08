@@ -12,7 +12,9 @@ import {
   type CoastalZoneGeometry,
 } from "@/lib/coastal-zones-runtime";
 import {
+  formatShortDate,
   getVisitDisplayName,
+  hasVisitDateRange,
   sortTripSegmentsBySchedule,
   type PortStopView,
   type VisitView,
@@ -44,6 +46,27 @@ type MapSelection = {
   tone: "trip" | "visit";
 };
 
+type StopTooltipData = {
+  variant: "stop";
+  title: string;
+  dateRange: string;
+  visits: Array<{
+    id: string;
+    name: string;
+    dateRange: string;
+  }>;
+};
+
+type VisitTooltipData = {
+  variant: "visit";
+  title: string;
+  subtitle?: string | null;
+  lines: string[];
+  note?: string | null;
+};
+
+type MapTooltipData = StopTooltipData | VisitTooltipData;
+
 type GoogleMarkerHandle = {
   detach: () => void;
 };
@@ -52,6 +75,7 @@ type MapPanelProps = {
   tripSegments: PortStopView[];
   visits: VisitView[];
   title?: string;
+  eyebrow?: string | null;
   tall?: boolean;
   selectedEntityId?: string | null;
   dataTour?: string;
@@ -233,6 +257,151 @@ const buildRoutePoints = (tripSegments: PortStopView[]) =>
     })
     .filter((point): point is { lat: number; lng: number } => Boolean(point));
 
+const buildMarkerTooltip = (
+  marker: Marker,
+  tripSegmentsById: Map<string, PortStopView>,
+  visitsById: Map<string, VisitView>,
+  visits: VisitView[],
+  t: ReturnType<typeof useI18n>["t"],
+) => {
+  if (marker.tone === "trip") {
+    const segment = tripSegmentsById.get(marker.entityId);
+    if (!segment) {
+      return {
+        variant: "visit",
+        title: marker.label,
+        lines: [],
+      } satisfies VisitTooltipData;
+    }
+
+    return {
+      variant: "stop",
+      title: segment.location_label,
+      dateRange: `${formatShortDate(segment.start_date)} – ${formatShortDate(segment.end_date)}`,
+      visits: visits.flatMap((visit) => {
+        if (
+          !hasVisitDateRange(visit) ||
+          visit.embark_date > segment.end_date ||
+          visit.disembark_date < segment.start_date
+        ) {
+          return [];
+        }
+
+        return [{
+          id: visit.id,
+          name: getVisitDisplayName(visit, t("planning.visit")),
+          dateRange: `${formatShortDate(visit.embark_date)} – ${formatShortDate(visit.disembark_date)}`,
+        }];
+      }),
+    } satisfies StopTooltipData;
+  }
+
+  const visit = visitsById.get(marker.entityId);
+  if (!visit) {
+    return {
+      variant: "visit",
+      title: marker.label,
+      lines: [],
+    } satisfies VisitTooltipData;
+  }
+
+  const embarkLabel = t("planning.embarkPlace");
+  const disembarkLabel = t("planning.disembarkPlace");
+  const markerRole = marker.id.startsWith("visit-embark-")
+    ? t("planning.embarkPoint")
+    : marker.id.startsWith("visit-disembark-")
+      ? t("planning.disembarkPoint")
+      : null;
+  const embarkLine =
+    visit.embark_date && visit.embark_place_label
+      ? `${embarkLabel}: ${visit.embark_place_label} · ${formatShortDate(visit.embark_date)}`
+      : visit.embark_place_label
+        ? `${embarkLabel}: ${visit.embark_place_label}`
+        : visit.embark_date
+          ? `${embarkLabel}: ${formatShortDate(visit.embark_date)}`
+          : "";
+  const disembarkLine =
+    visit.disembark_date && visit.disembark_place_label
+      ? `${disembarkLabel}: ${visit.disembark_place_label} · ${formatShortDate(visit.disembark_date)}`
+      : visit.disembark_place_label
+        ? `${disembarkLabel}: ${visit.disembark_place_label}`
+        : visit.disembark_date
+          ? `${disembarkLabel}: ${formatShortDate(visit.disembark_date)}`
+          : "";
+
+  return {
+    variant: "visit",
+    title: getVisitDisplayName(visit, t("planning.visit")),
+    subtitle: markerRole ?? t(`status.${visit.status}` as never),
+    lines: [embarkLine, disembarkLine].filter(Boolean),
+    note: visit.public_notes ?? null,
+  } satisfies VisitTooltipData;
+};
+
+const createTooltipContent = (tooltip: MapTooltipData) => {
+  const wrapper = document.createElement("div");
+  wrapper.className = `map-tooltip-card map-tooltip-card--${tooltip.variant}`;
+
+  const title = document.createElement("strong");
+  title.className = "map-tooltip-card__title";
+  title.textContent = tooltip.title;
+  wrapper.appendChild(title);
+
+  if (tooltip.variant === "stop") {
+    const dateRange = document.createElement("div");
+    dateRange.className = "map-tooltip-card__date";
+    dateRange.textContent = tooltip.dateRange;
+    wrapper.appendChild(dateRange);
+
+    if (tooltip.visits.length) {
+      const visitsList = document.createElement("div");
+      visitsList.className = "map-tooltip-card__visits";
+      tooltip.visits.forEach((visit) => {
+        const visitItem = document.createElement("div");
+        visitItem.className = "map-tooltip-card__visit";
+
+        const visitName = document.createElement("strong");
+        visitName.className = "map-tooltip-card__visit-name";
+        visitName.textContent = visit.name;
+        visitItem.appendChild(visitName);
+
+        const visitDates = document.createElement("div");
+        visitDates.className = "map-tooltip-card__visit-dates";
+        visitDates.textContent = visit.dateRange;
+        visitItem.appendChild(visitDates);
+
+        visitsList.appendChild(visitItem);
+      });
+      wrapper.appendChild(visitsList);
+    }
+
+    return wrapper;
+  }
+
+  if (tooltip.subtitle) {
+    const subtitle = document.createElement("div");
+    subtitle.className = "map-tooltip-card__subtitle";
+    subtitle.textContent = tooltip.subtitle;
+    wrapper.appendChild(subtitle);
+  }
+
+  tooltip.lines.forEach((line) => {
+    const row = document.createElement("div");
+    row.className = "map-tooltip-card__line";
+    row.textContent = line;
+    wrapper.appendChild(row);
+  });
+
+  if (tooltip.note) {
+    const note = document.createElement("div");
+    note.className = "map-tooltip-card__note";
+    note.textContent = tooltip.note;
+    wrapper.appendChild(note);
+  }
+
+  return wrapper;
+};
+
 export const MapPanel = ({
   tripSegments,
   visits,
@@ -246,6 +415,7 @@ export const MapPanel = ({
   const { t } = useI18n();
   const mapRef = useRef<HTMLDivElement | null>(null);
   const onSelectEntityRef = useRef(onSelectEntity);
+  const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
   // Refs for the Google Maps instances — kept stable across re-renders for imperative updates.
   const mapsApiRef = useRef<GoogleMapsRuntime | null>(null);
   const googleMapRef = useRef<google.maps.Map | null>(null);
@@ -262,13 +432,6 @@ export const MapPanel = ({
       return (localStorage.getItem("map_baseMap") as GoogleBaseMap) ?? "roadmap";
     } catch {
       return "roadmap";
-    }
-  });
-  const [showSeamarks, setShowSeamarks] = useState(() => {
-    try {
-      return localStorage.getItem("map_showSeamarks") === "true";
-    } catch {
-      return false;
     }
   });
   const [showRoute, setShowRoute] = useState(() => {
@@ -299,6 +462,29 @@ export const MapPanel = ({
     [coastalZoneBySegmentId, coastalZoneByVisitKey, sequenceBySegment, tripSegments, visits],
   );
   const routePoints = useMemo(() => buildRoutePoints(tripSegments), [tripSegments]);
+  const tripSegmentsById = useMemo(
+    () => new Map(tripSegments.map((segment) => [segment.id, segment])),
+    [tripSegments],
+  );
+  const visitsById = useMemo(
+    () => new Map(visits.map((visit) => [visit.id, visit])),
+    [visits],
+  );
+  const markerTooltips = useMemo(
+    () =>
+      new Map(
+        markers.map((marker) => [
+          marker.id,
+          buildMarkerTooltip(marker, tripSegmentsById, visitsById, visits, t),
+        ]),
+      ),
+    [markers, t, tripSegmentsById, visits, visitsById],
+  );
+  const [fallbackTooltip, setFallbackTooltip] = useState<{
+    x: number;
+    y: number;
+    data: MapTooltipData;
+  } | null>(null);
   const hasSelection = Boolean(selectedEntityId);
   const selectedCoastalZone = useMemo(() => {
     const selectedMarker = markers.find((marker) => marker.entityId === selectedEntityId);
@@ -322,6 +508,8 @@ export const MapPanel = ({
 
     coastalPolygonsRef.current.forEach((polygon) => polygon.setMap(null));
     coastalPolygonsRef.current = [];
+
+    infoWindowRef.current?.close();
 
     googleMapRef.current = null;
     mapsApiRef.current = null;
@@ -463,6 +651,7 @@ export const MapPanel = ({
 
       mapsApiRef.current = runtime;
       googleMapRef.current = map;
+      infoWindowRef.current = new runtime.maps.InfoWindow();
 
       setGoogleAvailable(true);
       setMapReady(true);
@@ -484,23 +673,10 @@ export const MapPanel = ({
     const map = googleMapRef.current;
     const runtime = mapsApiRef.current;
     if (!map || !runtime || !mapReady) return;
-    const maps = runtime.maps;
 
     map.setMapTypeId(baseMap);
     map.overlayMapTypes.clear();
-    if (showSeamarks) {
-      map.overlayMapTypes.push(
-        new maps.ImageMapType({
-          getTileUrl(coord, zoom) {
-            return `https://tiles.openseamap.org/seamark/${zoom}/${coord.x}/${coord.y}.png`;
-          },
-          tileSize: new maps.Size(256, 256),
-          name: "OpenSeaMap",
-          opacity: 0.8,
-        }),
-      );
-    }
-  }, [baseMap, mapReady, showSeamarks]);
+  }, [baseMap, mapReady]);
 
   // Effect: Keep the local coastal GeoJSON highlight in sync with the current selection.
   useEffect(() => {
@@ -552,26 +728,23 @@ export const MapPanel = ({
 
     // Route polylines.
     if (showRoute && routePoints.length > 1) {
-      routePolylinesRef.current.push(
-        new maps.Polyline({
-          map,
-          path: routePoints,
-          geodesic: true,
-          strokeColor: baseMap === "roadmap" ? "#7a5a00" : "#7c5b0a",
-          strokeOpacity: hasSelection ? 0.24 : 0.72,
-          strokeWeight: baseMap === "roadmap" ? 5 : 4,
-        }),
-      );
-      routePolylinesRef.current.push(
-        new maps.Polyline({
-          map,
-          path: routePoints,
-          geodesic: true,
-          strokeColor: baseMap === "roadmap" ? "#f0b90b" : "#f4c542",
-          strokeOpacity: hasSelection ? 0.78 : 0.98,
-          strokeWeight: baseMap === "roadmap" ? 2.8 : hasSelection ? 2.2 : 2.6,
-        }),
-      );
+      const backLine = new maps.Polyline({
+        map,
+        path: routePoints,
+        geodesic: true,
+        strokeColor: baseMap === "roadmap" ? "#7a5a00" : "#7c5b0a",
+        strokeOpacity: hasSelection ? 0.24 : 0.72,
+        strokeWeight: baseMap === "roadmap" ? 5 : 4,
+      });
+      const frontLine = new maps.Polyline({
+        map,
+        path: routePoints,
+        geodesic: true,
+        strokeColor: baseMap === "roadmap" ? "#f0b90b" : "#f4c542",
+        strokeOpacity: hasSelection ? 0.78 : 0.98,
+        strokeWeight: baseMap === "roadmap" ? 2.8 : hasSelection ? 2.2 : 2.6,
+      });
+      routePolylinesRef.current.push(backLine, frontLine);
     }
 
     // Build bounds and markers.
@@ -586,7 +759,7 @@ export const MapPanel = ({
 
     const createMarkerContent = (marker: Marker, selected: boolean) => {
       const element = document.createElement("div");
-      const size = selected ? 18 : hasSelection ? 12 : 14;
+      const size = selected ? 18 : 14;
       const strokeWidth = selected ? 3 : 2;
 
       element.style.width = `${size}px`;
@@ -610,17 +783,35 @@ export const MapPanel = ({
 
     markers.forEach((marker) => {
       const selected = marker.entityId === selectedEntityId;
+      const tooltip = markerTooltips.get(marker.id) ?? {
+        variant: "visit",
+        title: marker.label,
+        lines: [],
+      };
       if (useAdvancedMarkers && markerLibrary) {
+        const markerContent = createMarkerContent(marker, selected);
         const markerView = new markerLibrary.AdvancedMarkerElement({
-          content: createMarkerContent(marker, selected),
+          content: markerContent,
           gmpClickable: Boolean(onSelectEntityRef.current),
           map,
           position: { lat: marker.latitude, lng: marker.longitude },
           title: marker.label,
         });
+        const openInfo = () => {
+          infoWindowRef.current?.setContent(createTooltipContent(tooltip));
+          infoWindowRef.current?.open({
+            anchor: markerView,
+            map,
+            shouldFocus: false,
+          });
+        };
+        const closeInfo = () => infoWindowRef.current?.close();
+        markerContent.addEventListener("mouseenter", openInfo);
+        markerContent.addEventListener("mouseleave", closeInfo);
 
         const clickListener = onSelectEntityRef.current
           ? markerView.addListener("click", () => {
+              openInfo();
               onSelectEntityRef.current?.({
                 entityId: marker.entityId,
                 tone: marker.tone,
@@ -631,6 +822,8 @@ export const MapPanel = ({
         googleMarkersRef.current.push({
           detach: () => {
             clickListener?.remove();
+            markerContent.removeEventListener("mouseenter", openInfo);
+            markerContent.removeEventListener("mouseleave", closeInfo);
             markerView.map = null;
           },
         });
@@ -642,7 +835,7 @@ export const MapPanel = ({
           fillColor: marker.color,
           fillOpacity: selected ? 1 : hasSelection ? 0.38 : 1,
           path: maps.SymbolPath.CIRCLE,
-          scale: selected ? 9 : hasSelection ? 6 : 7,
+          scale: selected ? 9 : 7,
           strokeColor: selected ? "#17211f" : "#ffffff",
           strokeOpacity: 1,
           strokeWeight: selected ? 3 : 2,
@@ -671,16 +864,35 @@ export const MapPanel = ({
 
       const clickListener = onSelectEntityRef.current
         ? markerView.addListener("click", () => {
+            infoWindowRef.current?.setContent(createTooltipContent(tooltip));
+            infoWindowRef.current?.open({
+              anchor: markerView,
+              map,
+              shouldFocus: false,
+            });
             onSelectEntityRef.current?.({
               entityId: marker.entityId,
               tone: marker.tone,
             });
           })
         : null;
+      const mouseOverListener = markerView.addListener("mouseover", () => {
+        infoWindowRef.current?.setContent(createTooltipContent(tooltip));
+        infoWindowRef.current?.open({
+          anchor: markerView,
+          map,
+          shouldFocus: false,
+        });
+      });
+      const mouseOutListener = markerView.addListener("mouseout", () => {
+        infoWindowRef.current?.close();
+      });
 
       googleMarkersRef.current.push({
         detach: () => {
           clickListener?.remove();
+          mouseOverListener.remove();
+          mouseOutListener.remove();
           markerView.setMap(null);
         },
       });
@@ -702,7 +914,7 @@ export const MapPanel = ({
     } else if (!bounds.isEmpty()) {
       map.fitBounds(bounds, 48);
     }
-  }, [baseMap, hasSelection, mapReady, markers, routePoints, selectedEntityId, showRoute]);
+  }, [baseMap, hasSelection, mapReady, markers, markerTooltips, routePoints, selectedEntityId, showRoute]);
 
   return (
     <article
@@ -712,7 +924,6 @@ export const MapPanel = ({
     >
       <div className="card-header">
         <div>
-          <p className="eyebrow">{t("planning.map")}</p>
           <h2>{title}</h2>
         </div>
       </div>
@@ -732,18 +943,6 @@ export const MapPanel = ({
             <option value="satellite">{t("planning.mapSatellite")}</option>
             <option value="hybrid">{t("planning.mapHybrid")}</option>
           </select>
-        </label>
-        <label className="checkbox-field">
-          <input
-            checked={showSeamarks}
-            onChange={(event) => {
-              const checked = event.target.checked;
-              setShowSeamarks(checked);
-              try { localStorage.setItem("map_showSeamarks", String(checked)); } catch { /* noop */ }
-            }}
-            type="checkbox"
-          />
-          <span>{t("planning.mapSeamarks")}</span>
         </label>
         <label className="checkbox-field">
           <input
@@ -770,7 +969,10 @@ export const MapPanel = ({
           {!mapReady ? <div className="map-empty">{mapMessage}</div> : null}
         </div>
       ) : (
-        <div className={`map-canvas${hasSelection ? " has-selection" : ""}`}>
+        <div
+          className={`map-canvas${hasSelection ? " has-selection" : ""}`}
+          onClick={() => setFallbackTooltip(null)}
+        >
           <div className="map-canvas__grid" />
           {selectedCoastalZonePolygons.length ? (
             <svg
@@ -802,9 +1004,9 @@ export const MapPanel = ({
           {showRoute && routePoints.length > 1 ? (
             <svg
               aria-hidden="true"
+              className="map-route-layer"
               style={{
                 inset: 0,
-                pointerEvents: "none",
                 position: "absolute",
                 zIndex: 1,
               }}
@@ -847,6 +1049,7 @@ export const MapPanel = ({
           {markers.length ? (
             markers.map((marker) => {
               const point = toPoint(marker.latitude, marker.longitude);
+              const tooltip = markerTooltips.get(marker.id);
 
               return (
                 <button
@@ -854,13 +1057,21 @@ export const MapPanel = ({
                   key={marker.id}
                   onClick={(event) => {
                     event.stopPropagation();
+                    setFallbackTooltip({
+                      x: point.x,
+                      y: point.y,
+                      data: tooltip ?? {
+                        variant: "visit",
+                        title: marker.label,
+                        lines: [],
+                      },
+                    });
                     onSelectEntityRef.current?.({
                       entityId: marker.entityId,
                       tone: marker.tone,
                     });
                   }}
                   style={{ left: `${point.x}%`, top: `${point.y}%`, background: marker.color }}
-                  title={marker.label}
                   type="button"
                 >
                   {marker.order ? (
@@ -878,6 +1089,42 @@ export const MapPanel = ({
               {t("planning.mapEmpty")}
             </div>
           )}
+          {fallbackTooltip ? (
+            <div
+              className={`map-tooltip-overlay map-tooltip-overlay--${fallbackTooltip.data.variant}`}
+              style={{ left: `${fallbackTooltip.x}%`, top: `${fallbackTooltip.y}%` }}
+            >
+              {fallbackTooltip.data.variant === "stop" ? (
+                <div className="map-tooltip-card map-tooltip-card--stop">
+                  <strong className="map-tooltip-card__title">{fallbackTooltip.data.title}</strong>
+                  <div className="map-tooltip-card__date">{fallbackTooltip.data.dateRange}</div>
+                  {fallbackTooltip.data.visits.length ? (
+                    <div className="map-tooltip-card__visits">
+                      {fallbackTooltip.data.visits.map((visit) => (
+                        <div className="map-tooltip-card__visit" key={visit.id}>
+                          <strong className="map-tooltip-card__visit-name">{visit.name}</strong>
+                          <div className="map-tooltip-card__visit-dates">{visit.dateRange}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="map-tooltip-card map-tooltip-card--visit">
+                  <strong className="map-tooltip-card__title">{fallbackTooltip.data.title}</strong>
+                  {fallbackTooltip.data.subtitle ? (
+                    <div className="map-tooltip-card__subtitle">{fallbackTooltip.data.subtitle}</div>
+                  ) : null}
+                  {fallbackTooltip.data.lines.map((line) => (
+                    <div className="map-tooltip-card__line" key={line}>{line}</div>
+                  ))}
+                  {fallbackTooltip.data.note ? (
+                    <div className="map-tooltip-card__note">{fallbackTooltip.data.note}</div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          ) : null}
           <div className="map-caption">
             {hasGoogleMapsKey
               ? mapMessage

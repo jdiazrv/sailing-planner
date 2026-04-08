@@ -144,6 +144,7 @@ Este archivo se usa para registrar propuestas de mejora funcional, UX y tecnica 
   - 2026-04-04: paso 2 aplicado de forma acotada en `admin/boats`, retirando `router.refresh()` redundantes tras save/upload/remove/delete; pendiente medicion con sesion activa.
   - 2026-04-04: nueva medicion en `admin/users` con sesion activa (Maria BH): 1 POST, 0 POST abortados, 0 respuestas 500; flujo completo sin redireccion a login.
   - 2026-04-04: no se pudo medir `admin/boats` en la misma sesion por falta de permisos (la ruta retorna al espacio de barco).
+  - 2026-04-08: auditoria estatica de produccion confirma que el patron sigue vivo en varias superficies (`boat-settings-dialog`, `season-access-panel`, `season-bar`, `visits-manager`, `member-first-access`, `user-settings-panel`, `timeline-visibility-panel`) y que convive con `revalidatePath()` amplios en server actions.
 
 ## M-006 - Evitar redireccion inesperada a login tras guardar perfil en admin usuarios
 
@@ -231,7 +232,7 @@ Este archivo se usa para registrar propuestas de mejora funcional, UX y tecnica 
 ## M-010 - Unificar terminologia nautica de "tramo" a "escala"
 
 - Fecha: 2026-04-05
-- Estado: implantada
+- Estado: en-evaluacion
 - Fuente: usuario
 - Area: ux
 - Contexto: terminologia visible en toda la app (planificacion, botones, labels, tour guiado, docs y help text)
@@ -249,6 +250,7 @@ Este archivo se usa para registrar propuestas de mejora funcional, UX y tecnica 
   - 2026-04-05: implantacion parcial ejecutada en i18n, tipos y partes del flujo de planificacion.
   - 2026-04-05: detectados residuos de copy `tramo/tramos` en guest tour, guest page y textos auxiliares; pendiente cierre completo.
   - 2026-04-05: cierre completo de copy visible en app (`tramo/tramos` -> `escala/escalas`) y verificacion por busqueda en `src` sin resultados residuales.
+  - 2026-04-08: auditoria senior detecta residuos visibles en `src/app/manual/page.tsx`, en copy inglesa `route segments` y en mensajes de validacion de `src/lib/planning.ts`; se reabre hasta cerrar manual, validaciones y copys auxiliares.
 
 ## M-011 - Alinear naming de datos entre `trip_segments` y `port_stops`
 
@@ -289,3 +291,65 @@ Este archivo se usa para registrar propuestas de mejora funcional, UX y tecnica 
 - Historial:
   - 2026-04-05: propuesta creada tras detectar divergencia entre RPC tipado y RPC usado en runtime.
   - 2026-04-05: `src/types/database.ts` y referencias tipadas alineadas a `get_season_port_stops`, `port_stops` y `port_stop_private_notes`.
+
+## M-013 - Consolidar i18n real en admin, onboarding y manual
+
+- Fecha: 2026-04-08
+- Estado: en-evaluacion
+- Fuente: copilot
+- Area: arquitectura
+- Contexto: paneles de admin, bienvenida de miembros, manual operativo y navegacion principal
+- Problema u oportunidad: existe un diccionario central robusto en `src/lib/i18n.ts`, pero varias superficies criticas siguen manteniendo textos bilingues con `locale === "es"` o mapas locales de copy dentro del componente.
+- Propuesta: mover el copy visible de admin, onboarding y manual a una capa canonica de i18n y prohibir nuevos textos inline salvo casos excepcionales muy justificados.
+- Riesgo:
+  - Impacto: alto
+  - Probabilidad: alta
+  - Notas: hoy la paridad ES/EN depende de mantener dos sistemas de traduccion en paralelo, con riesgo directo de incoherencia terminologica y UX desigual segun la ruta.
+- Opinion de Copilot: deuda prioritaria porque mezcla problema de producto, mantenimiento y coherencia de estilo. Si no se corta ahora, cada ajuste funcional seguira anadiendo copy fuera del sistema.
+- Recomendacion: preparar y luego implantar
+- Relacionadas: M-010
+- Historial:
+  - 2026-04-08: alta inicial tras auditoria senior de produccion al detectar bypass del diccionario en `users-admin`, `boats-admin`, `member-welcome-modal`, `manual/page` y labels de layout.
+  - 2026-04-09: primera pasada cuidadosa implantada en onboarding, bienvenida de miembros, sidebar/layout del barco y manual. El tour deja de depender de copy fijo en español desde `src/lib/onboarding.ts`, `member-welcome-modal` consume copy canonico, la sidebar y la entrada de configuracion del barco usan claves de `src/lib/i18n.ts`, y `manual/page` delega su contenido localizado a `src/lib/manual-content.ts` sin cambiar el renderizado. Quedan pendientes las superficies admin grandes (`users-admin`, `boats-admin` y afines), donde conviene entrar por fases para no mezclar consolidacion de copy con cambios funcionales.
+
+## M-014 - Unificar estrategia de revalidacion y refresh post-mutacion
+
+- Fecha: 2026-04-08
+- Estado: en-evaluacion
+- Fuente: copilot
+- Area: rendimiento
+- Contexto: server actions globales, admin, workspace de barco y handlers cliente posteriores a mutaciones
+- Problema u oportunidad: el proyecto combina `revalidatePath()` amplios con `router.refresh()` defensivos en cliente y helpers duplicados de invalidez por ruta, lo que mantiene ruido de red, churn de loader y decisiones locales acumuladas.
+- Propuesta: definir una estrategia unica por familia de mutacion: que invalida el servidor, cuando hace falta `router.refresh()` y que rutas exactas deben regenerarse. Donde sea viable, evolucionar a invalidacion mas fina y utilidades compartidas.
+- Riesgo:
+  - Impacto: alto
+  - Probabilidad: alta
+  - Notas: tocar esta zona sin estrategia comun puede seguir produciendo POST abortados, refrescos dobles y regresiones de navegacion como las ya vistas en login y loaders.
+- Opinion de Copilot: es la mejora tecnica con mejor retorno sobre UX percibida ahora mismo, porque ataca simultaneamente rendimiento, estabilidad visual y mantenibilidad.
+- Recomendacion: implantar ahora
+- Relacionadas: M-004, M-006
+- Historial:
+  - 2026-04-08: alta inicial tras auditoria senior al confirmar invalidaciones amplias en `src/app/actions.ts`, `src/app/admin/actions.ts`, `src/app/boats/[boatId]/actions.ts` y multiples `router.refresh()` redundantes en cliente.
+  - 2026-04-09: primera pasada implantada reduciendo refreshes redundantes en `timeline-visibility-panel`, `visits-manager`, `member-first-access` y cierre del tour guest; tambien se evita revalidar `/dashboard` y `/admin/users` cuando `recordCurrentUserAccess()` se llama con metodo `unknown`, y se recorta invalidacion innecesaria en `updateTimelineVisibility()` y `updateOwnPassword()`.
+  - 2026-04-09: segunda pasada implantada en `season-access-panel`, sustituyendo los `router.refresh()` tras generar, revocar, borrar y purgar enlaces por estado local sincronizado con props para actualizar la UI al instante sin recargar la ruta completa.
+  - 2026-04-09: validacion completa en verde tras ajustar el tipado del enlace sintetico local en `season-access-panel`; revision posterior deja como pendientes solo refreshes todavia ligados a contenido SSR amplio (`language-switcher`, guardado de perfil, `season-bar` y `boat-settings-dialog`), que requieren una reestructuracion mayor para retirarlos sin regresion.
+  - 2026-04-09: tercera pasada parcial en `season-bar`, reemplazando el refresh ciego por una resolucion explicita de temporada post-mutacion desde server actions; ahora navega cuando cambia la temporada activa o la URL debe canonizarse, y conserva `router.refresh()` solo como fallback protegido para los casos en que el contenido SSR seguiria quedando obsoleto. Se anaden advertencias en desarrollo para visibilizar esos caminos conservadores.
+
+## M-015 - Descomponer superficies monoliticas de admin y manual
+
+- Fecha: 2026-04-08
+- Estado: propuesta
+- Fuente: copilot
+- Area: DX
+- Contexto: `UsersAdmin`, `BoatsAdmin` y `manual/page`
+- Problema u oportunidad: varias superficies de alto cambio concentran demasiadas responsabilidades en un solo archivo: copy, estado UI, mutaciones, filtros, seleccion, formularios y reglas de permiso.
+- Propuesta: dividir estas superficies por concern y mover el contenido estatico del manual a un modulo de contenido o estructura basada en diccionario para reducir friccion de cambios.
+- Riesgo:
+  - Impacto: medio
+  - Probabilidad: alta
+  - Notas: el riesgo no es funcional inmediato, pero si de velocidad y seguridad de cambio; cada parche futuro es mas caro de revisar y probar.
+- Opinion de Copilot: conviene hacerlo despues de fijar i18n e invalidacion, porque esos dos temas marcan el mejor corte para una refactorizacion limpia.
+- Recomendacion: preparar y luego implantar
+- Relacionadas: M-013, M-014
+- Historial:
+  - 2026-04-08: alta inicial tras auditoria senior al medir aprox. 1700 lineas en `UsersAdmin`, 500+ en `BoatsAdmin` y casi 400 en `manual/page`.

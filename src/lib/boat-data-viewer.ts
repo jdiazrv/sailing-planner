@@ -3,27 +3,38 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 
-import { startServerTiming } from "@/lib/server-timing";
+import { measureServerTiming, startServerTiming } from "@/lib/server-timing";
 import { createClient } from "@/lib/supabase/server";
 import type { ViewerContext } from "@/lib/planning";
 
 export const requireViewer = cache(async () => {
   const timing = startServerTiming("boatData.requireViewer");
-  const supabase = await createClient();
+  const supabase = await measureServerTiming(
+    "boatData.requireViewer.createClient",
+    () => createClient(),
+  );
   const db = supabase as any;
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await measureServerTiming(
+    "boatData.requireViewer.getUser",
+    () => supabase.auth.getUser(),
+  );
 
   if (!user) {
     redirect("/login");
   }
 
-  const { data: profile } = await db
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .maybeSingle();
+  const { data: profile } = await measureServerTiming(
+    "boatData.requireViewer.loadProfile",
+    () =>
+      db
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle(),
+    { userId: user.id },
+  );
 
   const viewer: ViewerContext = {
     profile,

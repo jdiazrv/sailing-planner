@@ -3,7 +3,7 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 
-import { startServerTiming } from "@/lib/server-timing";
+import { measureServerTiming, startServerTiming } from "@/lib/server-timing";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireSeasonGuestSession } from "@/lib/season-access-server";
 import type {
@@ -51,25 +51,39 @@ const loadBoatPermission = async (
   userId: string,
   boatId: string,
 ) => {
-  const { data } = await db
-    .from("user_boat_permissions")
-    .select("*")
-    .eq("boat_id", boatId)
-    .eq("user_id", userId)
-    .maybeSingle();
+  const { data } = await measureServerTiming(
+    "boatData.loadBoatPermission",
+    () =>
+      db
+        .from("user_boat_permissions")
+        .select("*")
+        .eq("boat_id", boatId)
+        .eq("user_id", userId)
+        .maybeSingle(),
+    { boatId, userId },
+  );
 
   return (data ?? null) as PermissionRow | null;
 };
 
 const loadBoatRow = async (db: any, boatId: string) => {
-  const { data } = await db.from("boats").select("*").eq("id", boatId).maybeSingle();
+  const { data } = await measureServerTiming(
+    "boatData.loadBoatRow",
+    () => db.from("boats").select("*").eq("id", boatId).maybeSingle(),
+    { boatId },
+  );
   return (data ?? null) as ExtendedBoatRow | null;
 };
 
 const loadBoatSeasons = async (db: any, boatId: string) => {
-  const { data } = await db.from("seasons").select("*").eq("boat_id", boatId).order("year", {
-    ascending: false,
-  });
+  const { data } = await measureServerTiming(
+    "boatData.loadBoatSeasons",
+    () =>
+      db.from("seasons").select("*").eq("boat_id", boatId).order("year", {
+        ascending: false,
+      }),
+    { boatId },
+  );
 
   return (data ?? []) as SeasonRow[];
 };
@@ -85,19 +99,31 @@ const loadBoatContext = async ({
   boatId: string;
   includeSeasons?: boolean;
 }) => {
-  const tasks = [loadBoatRow(db, boatId), loadBoatPermission(db, userId, boatId)] as const;
+  return measureServerTiming(
+    "boatData.loadBoatContext",
+    async () => {
+      const tasks = [loadBoatRow(db, boatId), loadBoatPermission(db, userId, boatId)] as const;
 
-  if (!includeSeasons) {
-    const [boatRow, permission] = await Promise.all(tasks);
-    return { boatRow, permission, seasons: [] as SeasonRow[] };
-  }
+      if (!includeSeasons) {
+        const [boatRow, permission] = await Promise.all(tasks);
+        return { boatRow, permission, seasons: [] as SeasonRow[] };
+      }
 
-  const [boatRow, permission, seasons] = await Promise.all([
-    ...tasks,
-    loadBoatSeasons(db, boatId),
-  ]);
+      const [boatRow, permission, seasons] = await Promise.all([
+        ...tasks,
+        loadBoatSeasons(db, boatId),
+      ]);
 
-  return { boatRow, permission, seasons };
+      return { boatRow, permission, seasons };
+    },
+    { boatId, userId, includeSeasons },
+    (result) => ({
+      boatId,
+      hasBoat: Boolean(result.boatRow),
+      hasPermission: Boolean(result.permission),
+      seasons: result.seasons.length,
+    }),
+  );
 };
 
 const loadSeasonWorkspaceData = async (
@@ -119,13 +145,23 @@ const loadSeasonWorkspaceData = async (
 
   const includeVisits = options?.includeVisits ?? true;
   const [tripResult, visitResult] = await Promise.all([
-    db.rpc("get_season_port_stops", {
-      p_season_id: selectedSeason.id,
-    }),
-    includeVisits
-      ? db.rpc("get_season_visits", {
+    measureServerTiming(
+      "boatData.loadSeasonWorkspaceData.tripRpc",
+      () =>
+        db.rpc("get_season_port_stops", {
           p_season_id: selectedSeason.id,
-        })
+        }),
+      { seasonId: selectedSeason.id },
+    ),
+    includeVisits
+      ? measureServerTiming(
+          "boatData.loadSeasonWorkspaceData.visitRpc",
+          () =>
+            db.rpc("get_season_visits", {
+              p_season_id: selectedSeason.id,
+            }),
+          { seasonId: selectedSeason.id },
+        )
       : Promise.resolve({ data: [] }),
   ]);
 
@@ -170,16 +206,35 @@ const ensureAccessibleBoat = (boats: BoatSummary[], boatId: string) => {
 
 const getBoatWorkspaceBase = cache(async (boatId: string) => {
   const timing = startServerTiming("boatData.getBoatWorkspaceBase", { boatId });
-  const { supabase, user, viewer } = await requireViewer();
+  const { supabase, user, viewer } = await measureServerTiming(
+    "boatData.getBoatWorkspaceBase.requireViewer",
+    () => requireViewer(),
+    { boatId },
+  );
   const db = supabase as any;
-  const boats = await getAccessibleBoatBase(supabase, viewer);
+  const boats = await measureServerTiming(
+    "boatData.getBoatWorkspaceBase.accessibleBoats",
+    () => getAccessibleBoatBase(supabase, viewer),
+    { boatId, isSuperuser: viewer.isSuperuser },
+    (result) => ({ boats: result.length }),
+  );
   ensureAccessibleBoat(boats, boatId);
 
-  const { boatRow, permission, seasons } = await loadBoatContext({
-    db,
-    userId: user.id,
-    boatId,
-  });
+  const { boatRow, permission, seasons } = await measureServerTiming(
+    "boatData.getBoatWorkspaceBase.context",
+    () =>
+      loadBoatContext({
+        db,
+        userId: user.id,
+        boatId,
+      }),
+    { boatId, userId: user.id },
+    (result) => ({
+      hasBoat: Boolean(result.boatRow),
+      hasPermission: Boolean(result.permission),
+      seasons: result.seasons.length,
+    }),
+  );
 
   if (!boatRow) {
     redirect("/dashboard");
@@ -477,11 +532,27 @@ export const getBoatWorkspace = cache(async (
     boatId,
     requestedSeasonId: requestedSeasonId ?? null,
   });
-  const { supabase, viewer, boats, boatRow, permission, seasons } = await getBoatWorkspaceBase(boatId);
+  const { supabase, viewer, boats, boatRow, permission, seasons } = await measureServerTiming(
+    "boatData.getBoatWorkspace.base",
+    () => getBoatWorkspaceBase(boatId),
+    { boatId },
+    (result) => ({ boats: result.boats.length, seasons: result.seasons.length }),
+  );
   const db = supabase as any;
 
   const selectedSeason = getSelectedSeasonFromList(seasons, requestedSeasonId);
-  const { tripSegments, visits } = await loadSeasonWorkspaceData(db, selectedSeason);
+  const { tripSegments, visits } = await measureServerTiming(
+    "boatData.getBoatWorkspace.seasonData",
+    () => loadSeasonWorkspaceData(db, selectedSeason),
+    {
+      boatId,
+      seasonId: selectedSeason?.id ?? null,
+    },
+    (result) => ({
+      tripSegments: result.tripSegments.length,
+      visits: result.visits.length,
+    }),
+  );
 
   const result = {
     viewer,
