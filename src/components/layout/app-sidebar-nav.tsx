@@ -216,7 +216,7 @@ export function AppSidebarNav({
     label: string;
     target?: string;
   }) => {
-    if (target === "_blank" || !href.startsWith("/") || isActive(href)) {
+    if (target === "_blank" || !href.startsWith("/") || pathname === href) {
       return;
     }
 
