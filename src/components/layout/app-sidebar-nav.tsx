@@ -6,6 +6,7 @@ import Link from "next/link";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { ThemeSwitcher } from "@/components/ui/theme-switcher";
+import { AppLoading } from "@/components/ui/app-loading";
 import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 import { t, type Locale } from "@/lib/i18n";
 
@@ -197,16 +198,49 @@ export function AppSidebarNav({
 }: AppSidebarNavProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [pendingNavigationLabel, setPendingNavigationLabel] = useState<string | null>(null);
   const signOutLabel = t(locale, "common.signOut");
   const currentUserHref = currentUserId ? "/account" : null;
   const homeHref = boatId ? `/boats/${boatId}` : "/dashboard";
+  const loadingTitle = t(locale, "common.loading");
 
   const isActive = (href: string) =>
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
 
+  const beginNavigationFeedback = ({
+    href,
+    label,
+    target,
+  }: {
+    href: string;
+    label: string;
+    target?: string;
+  }) => {
+    if (target === "_blank" || !href.startsWith("/") || isActive(href)) {
+      return;
+    }
+
+    setPendingNavigationLabel(label);
+  };
+
   useEffect(() => {
     setMobileOpen(false);
+    setPendingNavigationLabel(null);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!pendingNavigationLabel) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setPendingNavigationLabel(null);
+    }, 12000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [pendingNavigationLabel]);
 
   useEffect(() => {
     if (typeof document === "undefined") {
@@ -249,7 +283,12 @@ export function AppSidebarNav({
 
     <aside className={`app-sidebar${mobileOpen ? " is-mobile-open" : ""}`} id="app-sidebar">
       {/* Brand */}
-      <Link className="app-sidebar__brand" href={homeHref} prefetch={false}>
+      <Link
+        className="app-sidebar__brand"
+        href={homeHref}
+        onClick={() => beginNavigationFeedback({ href: homeHref, label: t(locale, "appSidebar.plan") })}
+        prefetch={false}
+      >
         <SidebarLogoMark />
         <span className="app-sidebar__brand-copy">
           <span className="app-sidebar__brand-label">Sailing Planner</span>
@@ -292,7 +331,10 @@ export function AppSidebarNav({
               label={t(locale, "appSidebar.plan")}
               icon={<IconRoute />}
               active={pathname === `/boats/${boatId}`}
-              onClick={() => setMobileOpen(false)}
+              onClick={() => {
+                beginNavigationFeedback({ href: `/boats/${boatId}`, label: t(locale, "appSidebar.plan") });
+                setMobileOpen(false);
+              }}
               tourId="sidebar-plan"
             />
             <NavItem
@@ -300,7 +342,10 @@ export function AppSidebarNav({
               label={t(locale, "boatNav.summary")}
               icon={<IconChart />}
               active={isActive(`/boats/${boatId}/summary`)}
-              onClick={() => setMobileOpen(false)}
+              onClick={() => {
+                beginNavigationFeedback({ href: `/boats/${boatId}/summary`, label: t(locale, "boatNav.summary") });
+                setMobileOpen(false);
+              }}
               tourId="sidebar-summary"
             />
             {canShare && (
@@ -309,7 +354,10 @@ export function AppSidebarNav({
                 label={t(locale, "appSidebar.invite")}
                 icon={<IconLink />}
                 active={isActive(`/boats/${boatId}/share`)}
-                onClick={() => setMobileOpen(false)}
+                onClick={() => {
+                  beginNavigationFeedback({ href: `/boats/${boatId}/share`, label: t(locale, "appSidebar.invite") });
+                  setMobileOpen(false);
+                }}
                 tourId="sidebar-invite"
               />
             )}
@@ -331,7 +379,10 @@ export function AppSidebarNav({
                 label={t(locale, "common.boats")}
                 icon={<IconBoat />}
                 active={isActive("/admin/boats")}
-                onClick={() => setMobileOpen(false)}
+                onClick={() => {
+                  beginNavigationFeedback({ href: "/admin/boats", label: t(locale, "common.boats") });
+                  setMobileOpen(false);
+                }}
                 tourId="sidebar-admin-boats"
               />
             )}
@@ -340,7 +391,10 @@ export function AppSidebarNav({
               label={t(locale, "appSidebar.members")}
               icon={<IconUsers />}
               active={isActive("/admin/users")}
-              onClick={() => setMobileOpen(false)}
+              onClick={() => {
+                beginNavigationFeedback({ href: "/admin/users", label: t(locale, "appSidebar.members") });
+                setMobileOpen(false);
+              }}
               tourId="sidebar-users"
             />
             {isSuperuser && (
@@ -349,7 +403,10 @@ export function AppSidebarNav({
                 label={t(locale, "dashboard.systemMetrics")}
                 icon={<IconChart />}
                 active={isActive("/admin/metrics")}
-                onClick={() => setMobileOpen(false)}
+                onClick={() => {
+                  beginNavigationFeedback({ href: "/admin/metrics", label: t(locale, "dashboard.systemMetrics") });
+                  setMobileOpen(false);
+                }}
               />
             )}
           </>
@@ -361,7 +418,10 @@ export function AppSidebarNav({
           label={t(locale, "appSidebar.shared")}
           icon={<IconCompare />}
           active={isActive("/shared")}
-          onClick={() => setMobileOpen(false)}
+          onClick={() => {
+            beginNavigationFeedback({ href: "/shared", label: t(locale, "appSidebar.shared") });
+            setMobileOpen(false);
+          }}
           tourId="sidebar-shared"
         />
 
@@ -381,7 +441,10 @@ export function AppSidebarNav({
             label={t(locale, "userSettings.title")}
             icon={<IconProfile />}
             active={isActive(currentUserHref)}
-            onClick={() => setMobileOpen(false)}
+            onClick={() => {
+              beginNavigationFeedback({ href: currentUserHref, label: t(locale, "userSettings.title") });
+              setMobileOpen(false);
+            }}
             tourId="sidebar-user-settings"
           />
         ) : null}
@@ -404,6 +467,14 @@ export function AppSidebarNav({
         </LogoutButton>
       </div>
     </aside>
+
+      {pendingNavigationLabel ? (
+        <div className="app-sidebar-nav__pending-overlay" role="status" aria-live="polite">
+          <div className="app-sidebar-nav__pending-card">
+            <AppLoading subtitle={pendingNavigationLabel} title={loadingTitle} />
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }

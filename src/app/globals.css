@@ -6203,6 +6203,26 @@ body[data-tour-open="true"] .modal::backdrop {
   text-align: center;
 }
 
+.app-sidebar-nav__pending-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 180;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: color-mix(in srgb, var(--background) 58%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.app-sidebar-nav__pending-card {
+  width: min(26rem, calc(100vw - 2rem));
+  padding: 1.15rem;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  box-shadow: var(--shadow-strong);
+}
+
 .icon-loader__message {
   margin: 0;
   font-size: 0.8rem;
