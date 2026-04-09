@@ -95,6 +95,14 @@ const IconLogout = () => (
   </svg>
 );
 
+const IconMenu = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 7h16" />
+    <path d="M4 12h16" />
+    <path d="M4 17h16" />
+  </svg>
+);
+
 // ---------------------------------------------------------------------------
 // Logo mark (sailboat, matches brand.tsx geometry)
 // ---------------------------------------------------------------------------
@@ -191,6 +199,7 @@ export function AppSidebarNav({
   isSuperuser,
   canManageUsers,
   boatId,
+  boatName,
   userName,
   currentUserId,
   canShare,
@@ -203,6 +212,9 @@ export function AppSidebarNav({
   const currentUserHref = currentUserId ? "/account" : null;
   const homeHref = boatId ? `/boats/${boatId}` : "/dashboard";
   const loadingTitle = t(locale, "common.loading");
+  const menuLabel = t(locale, "appSidebar.menu");
+  const mobileTitle = boatName ?? "Sailing Planner";
+  const mobileSubtitle = userName ?? t(locale, "boatLayout.eyebrow");
 
   const isActive = (href: string) =>
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
@@ -257,29 +269,225 @@ export function AppSidebarNav({
     };
   }, [mobileOpen]);
 
+  const renderMobileLink = ({
+    href,
+    label,
+    icon,
+    active = false,
+    target,
+    rel,
+    tourId,
+  }: {
+    href: string;
+    label: string;
+    icon: ReactNode;
+    active?: boolean;
+    target?: string;
+    rel?: string;
+    tourId?: string;
+  }) => (
+    <Link
+      className={`app-mobile-menu__link${active ? " is-active" : ""}`}
+      data-tour={tourId}
+      href={href}
+      onClick={() => {
+        beginNavigationFeedback({ href, label, target });
+        setMobileOpen(false);
+      }}
+      prefetch={false}
+      rel={rel}
+      target={target}
+    >
+      <span className="app-mobile-menu__link-icon">{icon}</span>
+      <span className="app-mobile-menu__link-copy">{label}</span>
+    </Link>
+  );
+
   return (
     <>
-      <button
-        aria-controls="app-sidebar"
-        aria-expanded={mobileOpen}
-        aria-label={t(locale, "appSidebar.openMenu")}
-        className="app-sidebar-mobile-toggle"
-        onClick={() => setMobileOpen(true)}
-        type="button"
-      >
-        <span />
-        <span />
-        <span />
-      </button>
+      <div className="app-mobile-chrome">
+        <button
+          aria-controls="app-mobile-menu"
+          aria-expanded={mobileOpen}
+          aria-label={t(locale, "appSidebar.openMenu")}
+          className="app-mobile-chrome__menu-button"
+          onClick={() => setMobileOpen(true)}
+          type="button"
+        >
+          <IconMenu />
+        </button>
+
+        <Link
+          className="app-mobile-chrome__brand"
+          href={homeHref}
+          onClick={() => beginNavigationFeedback({ href: homeHref, label: t(locale, "appSidebar.plan") })}
+          prefetch={false}
+        >
+          <SidebarLogoMark />
+          <span className="app-mobile-chrome__brand-copy">
+            <span className="app-mobile-chrome__title">{mobileTitle}</span>
+            <span className="app-mobile-chrome__subtitle">{mobileSubtitle}</span>
+          </span>
+        </Link>
+
+        {currentUserHref ? (
+          <Link
+            aria-label={t(locale, "userSettings.title")}
+            className={`app-mobile-chrome__account${isActive(currentUserHref) ? " is-active" : ""}`}
+            href={currentUserHref}
+            onClick={() => beginNavigationFeedback({ href: currentUserHref, label: t(locale, "userSettings.title") })}
+            prefetch={false}
+          >
+            <IconProfile />
+          </Link>
+        ) : (
+          <button
+            aria-controls="app-mobile-menu"
+            aria-expanded={mobileOpen}
+            aria-label={menuLabel}
+            className="app-mobile-chrome__account"
+            onClick={() => setMobileOpen(true)}
+            type="button"
+          >
+            <IconMenu />
+          </button>
+        )}
+      </div>
+
+      <nav aria-label={menuLabel} className="app-mobile-tabbar">
+        <Link
+          className={`app-mobile-tabbar__item${pathname === homeHref ? " is-active" : ""}`}
+          href={homeHref}
+          onClick={() => beginNavigationFeedback({ href: homeHref, label: t(locale, "appSidebar.plan") })}
+          prefetch={false}
+        >
+          <span className="app-mobile-tabbar__icon"><IconRoute /></span>
+          <span className="app-mobile-tabbar__label">{t(locale, "appSidebar.plan")}</span>
+        </Link>
+
+        {boatId ? (
+          <Link
+            className={`app-mobile-tabbar__item${isActive(`/boats/${boatId}/summary`) ? " is-active" : ""}`}
+            href={`/boats/${boatId}/summary`}
+            onClick={() => beginNavigationFeedback({ href: `/boats/${boatId}/summary`, label: t(locale, "boatNav.summary") })}
+            prefetch={false}
+          >
+            <span className="app-mobile-tabbar__icon"><IconChart /></span>
+            <span className="app-mobile-tabbar__label">{t(locale, "boatNav.summary")}</span>
+          </Link>
+        ) : null}
+
+        <Link
+          className={`app-mobile-tabbar__item${isActive(canShare && boatId ? `/boats/${boatId}/share` : "/shared") ? " is-active" : ""}`}
+          href={canShare && boatId ? `/boats/${boatId}/share` : "/shared"}
+          onClick={() =>
+            beginNavigationFeedback({
+              href: canShare && boatId ? `/boats/${boatId}/share` : "/shared",
+              label: canShare && boatId ? t(locale, "appSidebar.invite") : t(locale, "appSidebar.shared"),
+            })
+          }
+          prefetch={false}
+        >
+          <span className="app-mobile-tabbar__icon">{canShare && boatId ? <IconLink /> : <IconCompare />}</span>
+          <span className="app-mobile-tabbar__label">{canShare && boatId ? t(locale, "appSidebar.invite") : t(locale, "appSidebar.shared")}</span>
+        </Link>
+
+        <button
+          aria-controls="app-mobile-menu"
+          aria-expanded={mobileOpen}
+          aria-label={menuLabel}
+          className={`app-mobile-tabbar__item${mobileOpen ? " is-active" : ""}`}
+          onClick={() => setMobileOpen(true)}
+          type="button"
+        >
+          <span className="app-mobile-tabbar__icon"><IconMenu /></span>
+          <span className="app-mobile-tabbar__label">{menuLabel}</span>
+        </button>
+      </nav>
 
       {mobileOpen ? (
         <button
           aria-label={t(locale, "appSidebar.closeMenu")}
-          className="app-sidebar-backdrop"
+          className="app-mobile-menu__backdrop"
           onClick={() => setMobileOpen(false)}
           type="button"
         />
       ) : null}
+
+      <section
+        aria-modal="true"
+        aria-label={menuLabel}
+        className={`app-mobile-menu${mobileOpen ? " is-open" : ""}`}
+        id="app-mobile-menu"
+        role="dialog"
+      >
+        <div className="app-mobile-menu__header">
+          <div className="app-mobile-menu__header-copy">
+            <span className="app-mobile-menu__eyebrow">Sailing Planner</span>
+            <strong>{mobileTitle}</strong>
+            <span>{mobileSubtitle}</span>
+          </div>
+          <button
+            aria-label={t(locale, "appSidebar.closeMenu")}
+            className="app-mobile-menu__close"
+            onClick={() => setMobileOpen(false)}
+            type="button"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="app-mobile-menu__content">
+          <div className="app-mobile-menu__section">
+            <p className="app-mobile-menu__section-label">{boatId ? t(locale, "appSidebar.boatSection") : t(locale, "common.dashboard")}</p>
+            {boatId
+              ? (
+                <>
+                  {renderMobileLink({ href: `/boats/${boatId}`, label: t(locale, "appSidebar.plan"), icon: <IconRoute />, active: pathname === `/boats/${boatId}`, tourId: "sidebar-plan" })}
+                  {renderMobileLink({ href: `/boats/${boatId}/summary`, label: t(locale, "boatNav.summary"), icon: <IconChart />, active: isActive(`/boats/${boatId}/summary`), tourId: "sidebar-summary" })}
+                  {canShare
+                    ? renderMobileLink({ href: `/boats/${boatId}/share`, label: t(locale, "appSidebar.invite"), icon: <IconLink />, active: isActive(`/boats/${boatId}/share`), tourId: "sidebar-invite" })
+                    : null}
+                  {settingsSlot ? <div className="app-mobile-menu__slot">{settingsSlot}</div> : null}
+                </>
+              )
+              : renderMobileLink({ href: "/dashboard", label: t(locale, "common.dashboard"), icon: <IconGrid />, active: pathname === "/dashboard" })}
+          </div>
+
+          {(isSuperuser || canManageUsers) ? (
+            <div className="app-mobile-menu__section">
+              <p className="app-mobile-menu__section-label">Admin</p>
+              {isSuperuser ? renderMobileLink({ href: "/admin/boats", label: t(locale, "common.boats"), icon: <IconBoat />, active: isActive("/admin/boats"), tourId: "sidebar-admin-boats" }) : null}
+              {renderMobileLink({ href: "/admin/users", label: t(locale, "appSidebar.members"), icon: <IconUsers />, active: isActive("/admin/users"), tourId: "sidebar-users" })}
+              {isSuperuser ? renderMobileLink({ href: "/admin/metrics", label: t(locale, "dashboard.systemMetrics"), icon: <IconChart />, active: isActive("/admin/metrics") }) : null}
+            </div>
+          ) : null}
+
+          <div className="app-mobile-menu__section">
+            <p className="app-mobile-menu__section-label">{menuLabel}</p>
+            {renderMobileLink({ href: "/shared", label: t(locale, "appSidebar.shared"), icon: <IconCompare />, active: isActive("/shared"), tourId: "sidebar-shared" })}
+            {renderMobileLink({ href: "/manual", label: t(locale, "appSidebar.manual"), icon: <IconHelp />, target: "_blank", rel: "noreferrer", tourId: "sidebar-manual" })}
+            {currentUserHref ? renderMobileLink({ href: currentUserHref, label: t(locale, "userSettings.title"), icon: <IconProfile />, active: isActive(currentUserHref), tourId: "sidebar-user-settings" }) : null}
+          </div>
+
+          <div className="app-mobile-menu__section">
+            <p className="app-mobile-menu__section-label">{t(locale, "userSettings.appearanceEyebrow")}</p>
+            <div className="app-mobile-menu__controls">
+              <ThemeSwitcher />
+              <LanguageSwitcher />
+            </div>
+          </div>
+        </div>
+
+        <div className="app-mobile-menu__footer">
+          <LogoutButton className="app-mobile-menu__logout">
+            <span className="app-mobile-menu__link-icon">
+              <IconLogout />
+            </span>
+            <span className="app-mobile-menu__link-copy">{signOutLabel}</span>
+          </LogoutButton>
+        </div>
+      </section>
 
     <aside className={`app-sidebar${mobileOpen ? " is-mobile-open" : ""}`} id="app-sidebar">
       {/* Brand */}
