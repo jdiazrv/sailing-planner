@@ -112,7 +112,7 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
   );
   const [shouldRenderMap, setShouldRenderMap] = useState(false);
   const [layoutMode, setLayoutMode] = useState<"split" | "table" | "map">("map");
-  const [timeScale, setTimeScale] = useState<"season" | "month" | "week">("season");
+  const [timeScale, setTimeScale] = useState<"season" | "month" | "week">("week");
   const regularVisits = visits.filter(
     (visit) => visit.status !== "blocked" && hasVisitDateRange(visit),
   );

@@ -189,7 +189,7 @@ export function GuestOnboardingTour({
       target.matches('[data-tour="planning-control-bar"]')
         ? target.closest<HTMLElement>(".timeline-card__controls, .planning-control-bar") ?? target
         : target.closest<HTMLElement>(
-            ".timeline-card, .dashboard-card, .modal__inner, .section-nav, .workspace-selector, .boat-header, .app-sidebar__item, .app-sidebar__settings-slot, .workspace-main, .stack",
+            ".timeline-card, .dashboard-card, .modal__inner, .section-nav, .workspace-selector, .boat-header, .app-sidebar__item, .app-sidebar__settings-slot, .app-mobile-tabbar__item, .app-mobile-chrome__account, .app-mobile-menu__link, .workspace-main, .stack",
           ) ?? target;
 
     document
@@ -223,7 +223,7 @@ export function GuestOnboardingTour({
           bottom: bounds.bottom,
           width: bounds.width,
           height: bounds.height,
-          inSidebar: Boolean(element.closest(".app-sidebar")),
+          inSidebar: Boolean(element.closest(".app-sidebar, .app-mobile-tabbar, .app-mobile-chrome, .app-mobile-menu")),
         };
 
         const popoverHeight = popoverHeightRef.current;
@@ -293,7 +293,12 @@ export function GuestOnboardingTour({
     };
 
     const tryActivateTarget = () => {
-      const element = selector ? document.querySelector<HTMLElement>(selector) : null;
+      const element = selector
+        ? Array.from(document.querySelectorAll<HTMLElement>(selector)).find((candidate) => {
+            const rect = candidate.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0;
+          }) ?? null
+        : null;
       if (element) {
         activateTarget(element);
         return;
@@ -316,13 +321,18 @@ export function GuestOnboardingTour({
     };
   }, [isOpen, isWaitingForRequiredView, stepIndex, steps, targetRequiresTableLayout]);
 
-  const dismissTour = async () => {
+  const closeTourUi = () => {
     document
       .querySelectorAll<HTMLElement>("[data-tour-active='true']")
       .forEach((node) => node.setAttribute("data-tour-active", "false"));
 
+    document.body.removeAttribute("data-tour-open");
     document.body.removeAttribute("data-tour-sidebar-open");
     setIsOpen(false);
+  };
+
+  const dismissTour = async () => {
+    closeTourUi();
 
     if (variant === "guest") {
       const nextParams = new URLSearchParams(searchParams.toString());
@@ -347,8 +357,9 @@ export function GuestOnboardingTour({
   const isPhaseAction = isConfigureBoatPhase || isCreateSeasonPhase;
 
   const handleMemberPhaseAction = () => {
+    closeTourUi();
+
     if (isConfigureBoatPhase) {
-      setIsOpen(false);
       if (isSuperuser) {
         router.replace("/admin/boats", { scroll: false });
         return;
@@ -363,7 +374,6 @@ export function GuestOnboardingTour({
     if (isCreateSeasonPhase) {
       const nextParams = new URLSearchParams(searchParams.toString());
       nextParams.set("setup", "create-season");
-      setIsOpen(false);
       router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
     }
   };
@@ -401,13 +411,15 @@ export function GuestOnboardingTour({
                 return;
               }
               if (isLastStep) {
+                closeTourUi();
+
                 if (onComplete) {
                   onComplete();
                   return;
                 }
 
                 void fetch("/api/onboarding/complete", { method: "POST" }).then(() => {
-                  setIsOpen(false);
+                  closeTourUi();
                 });
               } else {
                 setStepIndex((value) => value + 1);

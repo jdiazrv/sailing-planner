@@ -1685,6 +1685,19 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
     var(--surface);
 }
 
+.manual-hero__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.manual-hero__action,
+.manual-hero__action-link {
+  min-height: 2.5rem;
+}
+
 .manual-eyebrow {
   margin: 0;
   font-size: 0.75rem;
@@ -1894,6 +1907,11 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
 @media (max-width: 720px) {
   .manual-page {
     padding: 1.25rem 0.85rem 3rem;
+  }
+
+  .manual-hero__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .manual-hero,
@@ -5658,7 +5676,7 @@ body[data-tour-open="true"] .modal::backdrop {
 
 .tour-popover {
   position: fixed;
-  z-index: 122;
+  z-index: 230;
   width: min(360px, calc(100vw - 2rem));
   padding: 1rem 1.05rem;
   border-radius: 20px;
@@ -6057,7 +6075,11 @@ body[data-tour-open="true"] .modal::backdrop {
   .tour-popover {
     left: 1rem !important;
     right: 1rem;
+    top: auto !important;
+    bottom: calc(6.5rem + env(safe-area-inset-bottom));
     width: auto;
+    max-height: min(50dvh, 28rem);
+    overflow: auto;
   }
 
   .section-nav a,

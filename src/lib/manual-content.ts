@@ -15,6 +15,8 @@ type ManualContent = {
   heroEyebrow: string;
   heroTitle: string;
   heroLead: string;
+  backLabel: string;
+  openAppLabel: string;
   heroPills: string[];
   tocTitle: string;
   tocNoteTitle: string;
@@ -23,14 +25,12 @@ type ManualContent = {
     purpose: ManualSection;
     flow: ManualSection;
     concepts: ManualSection;
-    tour: ManualSection;
     access: ManualSection;
     practices: ManualSection;
   };
   purposeCards: ManualCard[];
   flowSteps: Array<[string, string]>;
   conceptCards: Array<[string, string]>;
-  tourCards: ManualCard[];
   accessCards: ManualCard[];
   practiceItems: string[];
 };
@@ -41,6 +41,8 @@ const manualContent: Record<Locale, ManualContent> = {
     heroTitle: "Sailing Planner en una sola lectura",
     heroLead:
       "Sailing Planner ordena la temporada del barco en un único espacio de trabajo. Aquí preparas la temporada, defines la ruta por tramos, registras visitas, bloqueas periodos no disponibles y compartes la información con el nivel de acceso correcto.",
+    backLabel: "Volver",
+    openAppLabel: "Ir al panel",
     heroPills: [
       "Orientado a gestores y editores operativos",
       "Válido también como referencia para lectores e invitados",
@@ -63,12 +65,6 @@ const manualContent: Record<Locale, ManualContent> = {
       concepts: {
         eyebrow: "Conceptos",
         title: "Qué significa cada pieza",
-      },
-      tour: {
-        eyebrow: "Onboarding",
-        title: "Cómo funciona la guía inicial de la app",
-        body:
-          "La guía no aparece como una entrada fija del menú lateral. Se muestra automáticamente cuando la cuenta sigue en onboarding pendiente y, en acceso guest, después de la pantalla de bienvenida.",
       },
       access: {
         eyebrow: "Acceso",
@@ -109,20 +105,6 @@ const manualContent: Record<Locale, ManualContent> = {
       ["Bloqueo", "Un periodo no operativo que se excluye de la disponibilidad."],
       ["Timeline", "La vista que combina ruta, visitas y disponibilidad."],
     ],
-    tourCards: [
-      {
-        title: "Cuándo aparece",
-        body: "Se lanza durante la incorporación inicial de miembros con onboarding pendiente. En acceso guest, primero aparece la bienvenida y después el recorrido guiado del espacio guest.",
-      },
-      {
-        title: "Qué recorre",
-        body: "Repasa las entradas principales del producto y los bloques operativos del espacio de trabajo, como timeline, controles, escalas, visitas, mapa, compartidos y manual.",
-      },
-      {
-        title: "Qué usar después",
-        body: "Una vez completado el onboarding, este manual queda como referencia estable. Para confirmar tu alcance real, revisa Configuración y el bloque Rol y permisos.",
-      },
-    ],
     accessCards: [
       {
         title: "Lectores e invitados",
@@ -150,6 +132,8 @@ const manualContent: Record<Locale, ManualContent> = {
     heroTitle: "Sailing Planner at a glance",
     heroLead:
       "Sailing Planner keeps the boat season inside one workspace. Here you prepare the season, define the route by segments, register visits, block unavailable periods, and share information with the right access level.",
+    backLabel: "Go back",
+    openAppLabel: "Open app",
     heroPills: [
       "Designed for managers and operational editors",
       "Also useful as a reference for viewers and guests",
@@ -172,12 +156,6 @@ const manualContent: Record<Locale, ManualContent> = {
       concepts: {
         eyebrow: "Concepts",
         title: "What each piece means",
-      },
-      tour: {
-        eyebrow: "Onboarding",
-        title: "How the initial walkthrough works",
-        body:
-          "The guide is not a fixed entry in the sidebar. It appears automatically when an account is still marked as onboarding pending and, for guest access, after the welcome screen.",
       },
       access: {
         eyebrow: "Access",
@@ -217,20 +195,6 @@ const manualContent: Record<Locale, ManualContent> = {
       ["Visit", "A guest or crew stay with boarding and disembark dates."],
       ["Blocked period", "A non-operational period excluded from availability."],
       ["Timeline", "The view that combines route, visits, and availability."],
-    ],
-    tourCards: [
-      {
-        title: "When it appears",
-        body: "It runs during the initial onboarding for members whose account is still marked as pending. For guest access, the welcome screen appears first and the guided walkthrough starts afterwards.",
-      },
-      {
-        title: "What it covers",
-        body: "It introduces the main product entries and the core workspace blocks such as timeline, controls, route segments, visits, map, shared views, and the manual.",
-      },
-      {
-        title: "What to use afterwards",
-        body: "Once onboarding is complete, this manual becomes the stable reference. To confirm your actual reach inside the product, review Settings and the Role and permissions block.",
-      },
     ],
     accessCards: [
       {

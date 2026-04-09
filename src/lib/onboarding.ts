@@ -8,6 +8,8 @@ export type TourStep = {
   requiredView?: "trip" | "visits";
 };
 
+export const REPLAY_TOUR_EVENT = "sailingplanner:replay-guide";
+
 type EffectiveOnboardingStateInput = {
   onboardingPending: boolean;
   onboardingStep?: OnboardingStep | null;
@@ -379,16 +381,6 @@ export const buildMemberTourSteps = ({
         body: copy.summaryReadOnlyBody,
       },
       {
-        target: '[data-tour="sidebar-shared"]',
-        title: copy.sharedTitle,
-        body: copy.sharedReadOnlyBody,
-      },
-      {
-        target: '[data-tour="sidebar-manual"]',
-        title: copy.manualTitle,
-        body: copy.manualReadOnlyBody,
-      },
-      {
         target: '[data-tour="sidebar-user-settings"]',
         title: copy.settingsTitle,
         body: copy.settingsReadOnlyBody,
@@ -411,20 +403,8 @@ export const buildMemberTourSteps = ({
         body: copy.tripDetailReadOnly,
         requiredView: "trip",
       },
-      {
-        target: '[data-tour="boat-map"]',
-        title: copy.mapTitle,
-        body: copy.mapReadOnly,
-        requiredView: "trip",
-      },
       ...(canViewVisits
         ? [
-            {
-              target: '[data-tour="boat-switch-visits"]',
-              title: copy.visitsSwitchTitle,
-              body: copy.visitsSwitchReadOnlyBody,
-              requiredView: "trip" as const,
-            },
             {
               target: '[data-tour="boat-visits-card"]',
               title: copy.visitsCardTitle,
@@ -481,16 +461,6 @@ export const buildMemberTourSteps = ({
         ]
       : []),
     {
-      target: '[data-tour="sidebar-shared"]',
-      title: copy.sharedTitle,
-      body: copy.sharedBody,
-    },
-    {
-      target: '[data-tour="sidebar-manual"]',
-      title: copy.manualTitle,
-      body: copy.manualBody,
-    },
-    {
       target: '[data-tour="sidebar-user-settings"]',
       title: copy.settingsTitle,
       body: copy.settingsBody,
@@ -508,11 +478,6 @@ export const buildMemberTourSteps = ({
       body: copy.controlsBody,
     },
     {
-      target: '[data-tour="timeline-layers"]',
-      title: copy.layersTitle,
-      body: copy.layersBody,
-    },
-    {
       target: '[data-tour="boat-detail"]',
       title: copy.tripDetailTitle,
       body: canEditBoat
@@ -520,20 +485,8 @@ export const buildMemberTourSteps = ({
         : copy.tripDetailViewer,
       requiredView: "trip",
     },
-    {
-      target: '[data-tour="boat-map"]',
-      title: copy.mapTitle,
-      body: copy.mapBody,
-      requiredView: "trip",
-    },
     ...(canViewVisits
       ? [
-          {
-            target: '[data-tour="boat-switch-visits"]',
-            title: copy.visitsSwitchTitle,
-            body: copy.visitsSwitchBody,
-            requiredView: "trip" as const,
-          },
           {
             target: '[data-tour="boat-visits-card"]',
             title: copy.visitsCardTitle,
@@ -546,12 +499,6 @@ export const buildMemberTourSteps = ({
           },
         ]
       : []),
-    {
-      target: '[data-tour="availability-section"]',
-      title: copy.availabilityTitle,
-      body: copy.availabilityBody,
-      requiredView: "trip",
-    },
   ];
 };
 
@@ -641,11 +588,6 @@ export const buildGuestTourSteps = ({
   },
   ...(canViewVisits
     ? [
-        {
-          target: '[data-tour="boat-nav"]',
-          title: copy.visitsViewTitle,
-          body: copy.visitsViewBody,
-        },
         {
           target: '[data-tour="boat-visits-card"]',
           title: copy.visitsCardTitle,

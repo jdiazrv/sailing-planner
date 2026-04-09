@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 
 import { LogoutButton } from "@/components/auth/logout-button";
@@ -9,6 +9,7 @@ import { ThemeSwitcher } from "@/components/ui/theme-switcher";
 import { AppLoading } from "@/components/ui/app-loading";
 import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 import { t, type Locale } from "@/lib/i18n";
+import { REPLAY_TOUR_EVENT } from "@/lib/onboarding";
 
 // ---------------------------------------------------------------------------
 // Icons — 18×18, stroke-based, consistent 1.75 stroke-width
@@ -176,6 +177,28 @@ function BoatSettingsItem({
   );
 }
 
+function ActionItem({
+  label,
+  icon,
+  onClick,
+}: {
+  label: string;
+  icon: ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className="app-sidebar__item"
+      data-label={label}
+      onClick={onClick}
+      type="button"
+    >
+      <span className="app-sidebar__icon">{icon}</span>
+      <span className="app-sidebar__label">{label}</span>
+    </button>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Main export
 // ---------------------------------------------------------------------------
@@ -205,6 +228,7 @@ export function AppSidebarNav({
   canShare,
   settingsSlot,
 }: AppSidebarNavProps) {
+  const router = useRouter();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pendingNavigationLabel, setPendingNavigationLabel] = useState<string | null>(null);
@@ -215,6 +239,7 @@ export function AppSidebarNav({
   const menuLabel = t(locale, "appSidebar.menu");
   const mobileTitle = boatName ?? "Sailing Planner";
   const mobileSubtitle = userName ?? t(locale, "boatLayout.eyebrow");
+  const replayGuideLabel = t(locale, "appSidebar.replayGuide");
 
   const isActive = (href: string) =>
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
@@ -269,6 +294,25 @@ export function AppSidebarNav({
     };
   }, [mobileOpen]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const closeTransientNavigationUi = () => {
+      setMobileOpen(false);
+      setPendingNavigationLabel(null);
+    };
+
+    window.addEventListener("pageshow", closeTransientNavigationUi);
+    window.addEventListener("popstate", closeTransientNavigationUi);
+
+    return () => {
+      window.removeEventListener("pageshow", closeTransientNavigationUi);
+      window.removeEventListener("popstate", closeTransientNavigationUi);
+    };
+  }, []);
+
   const renderMobileLink = ({
     href,
     label,
@@ -303,6 +347,34 @@ export function AppSidebarNav({
     </Link>
   );
 
+  const renderMobileAction = ({
+    label,
+    icon,
+    onClick,
+  }: {
+    label: string;
+    icon: ReactNode;
+    onClick: () => void;
+  }) => (
+    <button className="app-mobile-menu__link" onClick={onClick} type="button">
+      <span className="app-mobile-menu__link-icon">{icon}</span>
+      <span className="app-mobile-menu__link-copy">{label}</span>
+    </button>
+  );
+
+  const handleReplayGuide = () => {
+    if (boatId && pathname !== homeHref) {
+      setMobileOpen(false);
+      setPendingNavigationLabel(replayGuideLabel);
+      router.push(`${homeHref}?replayGuide=1`);
+      return;
+    }
+
+    window.dispatchEvent(new Event(REPLAY_TOUR_EVENT));
+    setMobileOpen(false);
+    setPendingNavigationLabel(null);
+  };
+
   return (
     <>
       <div className="app-mobile-chrome">
@@ -334,6 +406,7 @@ export function AppSidebarNav({
           <Link
             aria-label={t(locale, "userSettings.title")}
             className={`app-mobile-chrome__account${isActive(currentUserHref) ? " is-active" : ""}`}
+            data-tour="sidebar-user-settings"
             href={currentUserHref}
             onClick={() => beginNavigationFeedback({ href: currentUserHref, label: t(locale, "userSettings.title") })}
             prefetch={false}
@@ -357,6 +430,7 @@ export function AppSidebarNav({
       <nav aria-label={menuLabel} className="app-mobile-tabbar">
         <Link
           className={`app-mobile-tabbar__item${pathname === homeHref ? " is-active" : ""}`}
+          data-tour="sidebar-plan"
           href={homeHref}
           onClick={() => beginNavigationFeedback({ href: homeHref, label: t(locale, "appSidebar.plan") })}
           prefetch={false}
@@ -368,6 +442,7 @@ export function AppSidebarNav({
         {boatId ? (
           <Link
             className={`app-mobile-tabbar__item${isActive(`/boats/${boatId}/summary`) ? " is-active" : ""}`}
+            data-tour="sidebar-summary"
             href={`/boats/${boatId}/summary`}
             onClick={() => beginNavigationFeedback({ href: `/boats/${boatId}/summary`, label: t(locale, "boatNav.summary") })}
             prefetch={false}
@@ -379,6 +454,7 @@ export function AppSidebarNav({
 
         <Link
           className={`app-mobile-tabbar__item${isActive(canShare && boatId ? `/boats/${boatId}/share` : "/shared") ? " is-active" : ""}`}
+          data-tour={canShare && boatId ? "sidebar-invite" : undefined}
           href={canShare && boatId ? `/boats/${boatId}/share` : "/shared"}
           onClick={() =>
             beginNavigationFeedback({
@@ -466,7 +542,8 @@ export function AppSidebarNav({
           <div className="app-mobile-menu__section">
             <p className="app-mobile-menu__section-label">{menuLabel}</p>
             {renderMobileLink({ href: "/shared", label: t(locale, "appSidebar.shared"), icon: <IconCompare />, active: isActive("/shared"), tourId: "sidebar-shared" })}
-            {renderMobileLink({ href: "/manual", label: t(locale, "appSidebar.manual"), icon: <IconHelp />, target: "_blank", rel: "noreferrer", tourId: "sidebar-manual" })}
+            {boatId ? renderMobileAction({ label: replayGuideLabel, icon: <IconHelp />, onClick: handleReplayGuide }) : null}
+            {renderMobileLink({ href: "/manual", label: t(locale, "appSidebar.manual"), icon: <IconHelp />, tourId: "sidebar-manual" })}
             {currentUserHref ? renderMobileLink({ href: currentUserHref, label: t(locale, "userSettings.title"), icon: <IconProfile />, active: isActive(currentUserHref), tourId: "sidebar-user-settings" }) : null}
           </div>
 
@@ -637,11 +714,20 @@ export function AppSidebarNav({
           href="/manual"
           label={t(locale, "appSidebar.manual")}
           icon={<IconHelp />}
-          onClick={() => setMobileOpen(false)}
-          rel="noreferrer"
-          target="_blank"
+          onClick={() => {
+            beginNavigationFeedback({ href: "/manual", label: t(locale, "appSidebar.manual") });
+            setMobileOpen(false);
+          }}
           tourId="sidebar-manual"
         />
+
+        {boatId ? (
+          <ActionItem
+            icon={<IconHelp />}
+            label={replayGuideLabel}
+            onClick={handleReplayGuide}
+          />
+        ) : null}
 
         {currentUserHref ? (
           <NavItem

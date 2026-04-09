@@ -1,3 +1,4 @@
+import { ManualPageActions } from "@/components/layout/manual-page-actions";
 import { getRequestLocale } from "@/lib/i18n-server";
 import { getManualContent } from "@/lib/manual-content";
 
@@ -9,7 +10,6 @@ export default async function ManualPage() {
     ["#purpose", copy.sections.purpose.title],
     ["#flow", copy.sections.flow.title],
     ["#concepts", copy.sections.concepts.title],
-    ["#tour", copy.sections.tour.title],
     ["#access", copy.sections.access.title],
     ["#practices", copy.sections.practices.title],
   ] as const;
@@ -18,6 +18,10 @@ export default async function ManualPage() {
     <main className="manual-page">
       <div className="manual-shell">
         <section className="manual-hero">
+          <ManualPageActions
+            appLabel={copy.openAppLabel}
+            backLabel={copy.backLabel}
+          />
           <p className="manual-eyebrow">{copy.heroEyebrow}</p>
           <h1 className="manual-hero__title">{copy.heroTitle}</h1>
           <p className="manual-hero__lead">{copy.heroLead}</p>
@@ -86,19 +90,6 @@ export default async function ManualPage() {
               <div className="manual-grid">
                 {copy.conceptCards.map(([title, body]) => (
                   <InfoCard body={body} key={title} title={title} />
-                ))}
-              </div>
-            </section>
-
-            <section className="manual-section" id="tour">
-              <SectionHeader
-                body={copy.sections.tour.body}
-                eyebrow={copy.sections.tour.eyebrow}
-                title={copy.sections.tour.title}
-              />
-              <div className="manual-grid manual-grid--three">
-                {copy.tourCards.map((card) => (
-                  <InfoCard body={card.body} key={card.title} title={card.title} />
                 ))}
               </div>
             </section>

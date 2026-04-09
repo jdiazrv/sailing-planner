@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { GuestOnboardingTour } from "@/components/guest/guest-onboarding-tour";
 import { MemberWelcomeModal } from "@/components/guest/member-welcome-modal";
-import { getStartTourStep } from "@/lib/onboarding";
+import { getStartTourStep, REPLAY_TOUR_EVENT } from "@/lib/onboarding";
 import type { OnboardingStep } from "@/types/database";
 
 type MemberFirstAccessProps = {
@@ -19,6 +20,7 @@ type MemberFirstAccessProps = {
   hasSeason?: boolean;
   hasSegments?: boolean;
   hasVisits?: boolean;
+  replayGuide?: boolean;
 };
 
 export function MemberFirstAccess({
@@ -33,15 +35,58 @@ export function MemberFirstAccess({
   hasSeason = false,
   hasSegments = false,
   hasVisits = false,
+  replayGuide = false,
 }: MemberFirstAccessProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const isReadOnly = !canEditBoat && !canManageUsers && !canShare;
   const [currentStep, setCurrentStep] = useState<OnboardingStep | null>(onboardingStep ?? null);
+  const [manualReplayStep, setManualReplayStep] = useState<OnboardingStep | null>(null);
 
   useEffect(() => {
     setCurrentStep(onboardingStep ?? null);
   }, [onboardingStep, viewerId]);
 
+  useEffect(() => {
+    setManualReplayStep(null);
+  }, [viewerId]);
+
+  useEffect(() => {
+    const handleReplayTour = () => {
+      if (currentStep) {
+        return;
+      }
+
+      setManualReplayStep(getStartTourStep({ canEditBoat, hasSeason }));
+    };
+
+    window.addEventListener(REPLAY_TOUR_EVENT, handleReplayTour);
+
+    return () => {
+      window.removeEventListener(REPLAY_TOUR_EVENT, handleReplayTour);
+    };
+  }, [canEditBoat, currentStep, hasSeason]);
+
+  useEffect(() => {
+    if (!replayGuide || currentStep) {
+      return;
+    }
+
+    setManualReplayStep(getStartTourStep({ canEditBoat, hasSeason }));
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete("replayGuide");
+    const nextUrl = nextParams.toString() ? `${pathname}?${nextParams.toString()}` : pathname;
+    router.replace(nextUrl, { scroll: false });
+  }, [canEditBoat, currentStep, hasSeason, pathname, replayGuide, router, searchParams]);
+
   const dismissTour = async () => {
+    if (manualReplayStep) {
+      setManualReplayStep(null);
+      return;
+    }
+
     await fetch("/api/onboarding/progress", {
       method: "POST",
       headers: {
@@ -67,7 +112,19 @@ export function MemberFirstAccess({
     setCurrentStep(nextStep);
   };
 
-  const tourEnabled = Boolean(currentStep && currentStep !== "welcome");
+  const activeStep = manualReplayStep ?? currentStep;
+  const tourEnabled = Boolean(activeStep && activeStep !== "welcome");
+
+  const completeTour = () => {
+    if (manualReplayStep) {
+      setManualReplayStep(null);
+      return;
+    }
+
+    void fetch("/api/onboarding/complete", { method: "POST" }).then(() => {
+      setCurrentStep(null);
+    });
+  };
 
   return (
     <>
@@ -94,14 +151,12 @@ export function MemberFirstAccess({
         hasSegments={hasSegments}
         hasVisits={hasVisits}
         enabled={tourEnabled}
-        memberPhase={currentStep}
+        memberPhase={activeStep}
         onDismiss={() => {
           void dismissTour();
         }}
         onComplete={() => {
-          void fetch("/api/onboarding/complete", { method: "POST" }).then(() => {
-            setCurrentStep(null);
-          });
+          completeTour();
         }}
         resetKey={viewerId}
         variant="member"

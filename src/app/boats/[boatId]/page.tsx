@@ -27,11 +27,12 @@ export default async function BoatWorkspacePage({
     status?: string;
     q?: string;
     setup?: string;
+    replayGuide?: string;
   }>;
 }) {
   const { boatId } = await params;
   const locale = await getRequestLocale();
-  const { view, season: requestedSeasonId, status, q, setup } =
+  const { view, season: requestedSeasonId, status, q, setup, replayGuide } =
     await searchParams;
   const workspace = await getBoatWorkspace(boatId, requestedSeasonId);
   const canEdit =
@@ -63,21 +64,20 @@ export default async function BoatWorkspacePage({
 
   return (
     <>
-      {workspace.viewer.onboardingPending ? (
-        <MemberFirstAccess
-          boatName={workspace.boat.name}
-          canEditBoat={canEdit}
-          canManageUsers={canManageUsers}
-          canShare={canShare}
-          canViewVisits={canViewVisits}
-          isSuperuser={workspace.viewer.isSuperuser}
-          hasSeason={Boolean(workspace.selectedSeason)}
-          hasSegments={workspace.tripSegments.length > 0}
-          hasVisits={workspace.visits.filter((v) => v.status !== "blocked").length > 0}
-          onboardingStep={effectiveOnboardingStep}
-          viewerId={`${workspace.viewer.profile?.id ?? boatId}:${workspace.selectedSeason?.id ?? "no-season"}`}
-        />
-      ) : null}
+      <MemberFirstAccess
+        boatName={workspace.boat.name}
+        canEditBoat={canEdit}
+        canManageUsers={canManageUsers}
+        canShare={canShare}
+        canViewVisits={canViewVisits}
+        isSuperuser={workspace.viewer.isSuperuser}
+        hasSeason={Boolean(workspace.selectedSeason)}
+        hasSegments={workspace.tripSegments.length > 0}
+        hasVisits={workspace.visits.filter((v) => v.status !== "blocked").length > 0}
+        onboardingStep={workspace.viewer.onboardingPending ? effectiveOnboardingStep : null}
+        replayGuide={replayGuide === "1"}
+        viewerId={`${workspace.viewer.profile?.id ?? boatId}:${workspace.selectedSeason?.id ?? "no-season"}`}
+      />
 
       <SeasonBar
         basePath={`/boats/${boatId}?view=${currentView}`}
