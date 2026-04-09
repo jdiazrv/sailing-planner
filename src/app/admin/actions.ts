@@ -28,35 +28,15 @@ import {
   resolveVisitPanelDisplayMode,
   throwIfError,
 } from "@/lib/server-action-helpers";
+import {
+  getImageExtension,
+  removeStoragePaths,
+  validateImageUpload,
+} from "@/lib/storage-helpers";
 import type {
   PermissionLevel,
   PreferredLanguage,
 } from "@/types/database";
-
-const getBoatImageExtension = (file: File) => {
-  if (file.type === "image/png") return "png";
-  if (file.type === "image/webp") return "webp";
-  if (file.type === "image/gif") return "gif";
-  if (file.type === "image/svg+xml") return "svg";
-  return "jpg";
-};
-
-const removeStoragePaths = async (
-  client: any,
-  bucket: string,
-  paths: Array<string | null | undefined>,
-) => {
-  const existingPaths = paths.filter(
-    (path): path is string => typeof path === "string" && path.length > 0,
-  );
-
-  if (!existingPaths.length) {
-    return;
-  }
-
-  const { error } = await client.storage.from(bucket).remove(existingPaths);
-  throwIfError(error);
-};
 
 const toBoolean = (value: FormDataEntryValue | null) => value?.toString() === "on";
 
@@ -342,7 +322,8 @@ export async function uploadBoatImage(formData: FormData) {
     .eq("id", boatId)
     .single();
 
-  const extension = getBoatImageExtension(file);
+  validateImageUpload(file);
+  const extension = getImageExtension(file);
   const nextPath = `${boatId}/cover-${Date.now()}.${extension}`;
 
   const { error: uploadError } = await supabase.storage.from("boat-images").upload(nextPath, file, {

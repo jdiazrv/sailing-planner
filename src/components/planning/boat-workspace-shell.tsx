@@ -111,13 +111,15 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
     searchParams.get("blocked") === "create",
   );
   const [shouldRenderMap, setShouldRenderMap] = useState(false);
-  const [layoutMode, setLayoutMode] = useState<"split" | "table" | "map">("map");
+  const [layoutMode, setLayoutMode] = useState<"split" | "table" | "map">("split");
   const [timeScale, setTimeScale] = useState<"season" | "month" | "week">("week");
-  const regularVisits = visits.filter(
-    (visit) => visit.status !== "blocked" && hasVisitDateRange(visit),
+  const regularVisits = useMemo(
+    () => visits.filter((visit) => visit.status !== "blocked" && hasVisitDateRange(visit)),
+    [visits],
   );
-  const blockedIntervals = visits.filter(
-    (visit) => visit.status === "blocked" && hasVisitDateRange(visit),
+  const blockedIntervals = useMemo(
+    () => visits.filter((visit) => visit.status === "blocked" && hasVisitDateRange(visit)),
+    [visits],
   );
   const conflicts = computeVisitConflicts(season, tripSegments, regularVisits);
   const filteredSegments = useMemo(
@@ -309,7 +311,12 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
                     </select>
                   </label>
                   <div className="planning-chip-group planning-chip-group--compact" data-tour="timeline-layers">
-                    <button className="planning-chip is-locked" type="button">
+                    <button
+                      className="planning-chip is-locked"
+                      disabled
+                      title={t("planning.tripSegmentsAlwaysVisible")}
+                      type="button"
+                    >
                       <LayerFilterIcon />
                       {t("planning.tripSegments")}
                     </button>
@@ -479,6 +486,7 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
             data-tour={currentView === "visits" ? "boat-visits-card" : "boat-detail"}
             data-tour-detail={currentView === "visits" ? "boat-detail" : undefined}
           >
+
             {currentView === "trip" ? (
               <>
                 <div className="card-header card-header--workspace">
@@ -486,23 +494,22 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
                     <h2>{t("planning.seasonPlanTitle")}</h2>
                     <p className="workspace-panel__meta">{currentViewCountLabel}</p>
                   </div>
-                  <div className="card-header__actions">
-                    {selectedEntityLabel ? (
-                      <span className="workspace-selection-chip">
-                        {t("planning.selectedItem")}: {selectedEntityLabel}
-                      </span>
-                    ) : null}
-                    {selectedEntityId ? (
-                      <button
-                        className="link-button"
-                        onClick={() => setSelectedEntityId(null)}
-                        type="button"
-                      >
-                        {t("planning.clearSelection")}
-                      </button>
-                    ) : null}
-                  </div>
                 </div>
+
+                {selectedEntityId ? (
+                  <div className="workspace-selection-strip">
+                    <span className="workspace-selection-chip">
+                      {t("planning.selectedItem")}: {selectedEntityLabel}
+                    </span>
+                    <button
+                      className="link-button"
+                      onClick={() => setSelectedEntityId(null)}
+                      type="button"
+                    >
+                      {t("planning.clearSelection")}
+                    </button>
+                  </div>
+                ) : null}
 
                 <TripSegmentsManager
                   boatId={boatId}
@@ -525,23 +532,22 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
                     <h2>{t("planning.visitsPlanTitle")}</h2>
                     <p className="workspace-panel__meta">{currentViewCountLabel}</p>
                   </div>
-                  <div className="card-header__actions">
-                    {selectedEntityLabel ? (
-                      <span className="workspace-selection-chip">
-                        {t("planning.selectedItem")}: {selectedEntityLabel}
-                      </span>
-                    ) : null}
-                    {selectedEntityId ? (
-                      <button
-                        className="link-button"
-                        onClick={() => setSelectedEntityId(null)}
-                        type="button"
-                      >
-                        {t("planning.clearSelection")}
-                      </button>
-                    ) : null}
-                  </div>
                 </div>
+
+                {selectedEntityId ? (
+                  <div className="workspace-selection-strip">
+                    <span className="workspace-selection-chip">
+                      {t("planning.selectedItem")}: {selectedEntityLabel}
+                    </span>
+                    <button
+                      className="link-button"
+                      onClick={() => setSelectedEntityId(null)}
+                      type="button"
+                    >
+                      {t("planning.clearSelection")}
+                    </button>
+                  </div>
+                ) : null}
 
                 <VisitsManager
                   boatId={boatId}
@@ -645,7 +651,6 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
             </details>
           </article>
 
-          {conflicts.length > 0 ? <WarningsCard conflicts={conflicts} /> : null}
         </div>
         ) : null}
 
@@ -673,6 +678,12 @@ export function BoatWorkspaceShell(props: BoatWorkspaceShellProps) {
         </aside>
         ) : null}
       </section>
+
+      {conflicts.length > 0 ? (
+        <section className="workspace-grid workspace-grid--single">
+          <WarningsCard conflicts={conflicts} />
+        </section>
+      ) : null}
     </>
   );
 }

@@ -1,6 +1,5 @@
 import { BoatNav } from "@/components/boats/boat-nav";
 import { BoatSeasonSummary } from "@/components/planning/boat-season-summary";
-import { NextStepCard } from "@/components/planning/next-step-card";
 import { SeasonBar } from "@/components/planning/season-bar";
 import { getBoatWorkspace } from "@/lib/boat-data";
 import { t } from "@/lib/i18n";
@@ -17,7 +16,7 @@ export default async function BoatSummaryPage({
 }) {
   const { boatId } = await params;
   const locale = await getRequestLocale();
-  const { season: requestedSeasonId, setup } = await searchParams;
+  const { season: requestedSeasonId } = await searchParams;
   const workspace = await getBoatWorkspace(boatId, requestedSeasonId);
   const canEdit =
     workspace.viewer.isSuperuser ||
@@ -45,8 +44,8 @@ export default async function BoatSummaryPage({
       <SeasonBar
         basePath={`/boats/${boatId}/summary`}
         boatId={boatId}
-        canEdit={canEdit}
-        initiallyOpenAdd={setup === "create-season"}
+        canEdit={false}
+        initiallyOpenAdd={false}
         onDelete={deleteSeason}
         onSave={saveSeason}
         seasons={workspace.seasons}
@@ -69,14 +68,10 @@ export default async function BoatSummaryPage({
           visits={workspace.visits}
         />
       ) : (
-        <NextStepCard
-          actionHref={`/boats/${boatId}/summary?setup=create-season`}
-          actionLabel={t(locale, "planning.nextStepCreateSeasonAction")}
-          body={t(locale, "planning.nextStepCreateSeasonBody")}
-          eyebrow={t(locale, "planning.nextStepEyebrow")}
-          locale={locale}
-          title={t(locale, "planning.nextStepCreateSeasonTitle")}
-        />
+        <div className="route-summary__empty">
+          <p className="eyebrow">{t(locale, "summary.noSeasonTitle")}</p>
+          <p className="muted">{t(locale, "summary.noSeasonBody")}</p>
+        </div>
       )}
     </>
   );

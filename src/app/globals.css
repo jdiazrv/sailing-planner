@@ -2432,8 +2432,8 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
     linear-gradient(180deg, color-mix(in srgb, var(--surface-raised) 90%, transparent), var(--surface));
 }
 
-.route-summary__hero-copy h1 {
-  margin-bottom: 0.25rem;
+.route-summary__hero-copy .route-summary__hero-meta {
+  margin-top: 0.35rem;
 }
 
 .route-summary__season-name {
@@ -2491,6 +2491,19 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
   line-height: 1.15;
 }
 
+.route-summary__stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.55rem;
+  background: color-mix(in srgb, var(--accent-soft) 80%, transparent);
+  color: var(--accent);
+  margin-bottom: 0.45rem;
+  flex-shrink: 0;
+}
+
 .route-summary__grid {
   display: grid;
   gap: 1rem;
@@ -2523,6 +2536,16 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
   align-items: start;
 }
 
+/* Stepper: column that holds the number badge + vertical connector */
+.route-summary__route-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  /* stretch to fill so the connector reaches the next item */
+  align-self: stretch;
+}
+
 .route-summary__route-order {
   display: inline-flex;
   align-items: center;
@@ -2533,6 +2556,18 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
   background: var(--accent-soft);
   color: var(--accent);
   font-weight: 700;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.route-summary__route-connector {
+  flex: 1;
+  width: 2px;
+  min-height: 1rem;
+  background: color-mix(in srgb, var(--accent) 25%, var(--border));
+  border-radius: 1px;
+  margin: 0.3rem 0;
 }
 
 .route-summary__route-body {
@@ -2654,10 +2689,10 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
 
 .route-summary__visit-image,
 .route-summary__visit-badge {
-  width: min(150px, 100%);
-  max-width: 150px;
+  width: min(180px, 100%);
+  max-width: 180px;
   min-width: 96px;
-  max-height: 200px;
+  max-height: 220px;
   min-height: 120px;
   border-radius: 0.9rem;
   border: 1px solid var(--border);
@@ -2666,8 +2701,16 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
 }
 
 .route-summary__visit-image {
-  object-fit: contain;
-  padding: 0.2rem;
+  object-fit: cover;
+}
+
+.route-summary__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem 1rem;
+  text-align: center;
 }
 
 .route-summary__visit-badge {
@@ -2711,11 +2754,16 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
   .route-summary__visit-image,
   .route-summary__visit-badge {
     width: 100%;
-    max-width: 150px;
+    max-width: 180px;
   }
 
+  /* En mobile el item colapsa a 1 col: ocultar el connector lateral */
   .route-summary__route-item {
-    grid-template-columns: 1fr;
+    grid-template-columns: 2.4rem minmax(0, 1fr);
+  }
+
+  .route-summary__route-connector {
+    display: none;
   }
 }
 
@@ -2736,6 +2784,44 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
 .next-step-card {
   display: grid;
   gap: 0.9rem;
+}
+
+.error-boundary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60dvh;
+  padding: 2rem 1rem;
+}
+
+.error-boundary__card {
+  display: grid;
+  gap: 0.85rem;
+  max-width: 480px;
+  width: 100%;
+  padding: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  background: color-mix(in srgb, var(--surface-raised) 85%, transparent);
+  box-shadow: 0 4px 24px color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.error-boundary__card h1 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.error-boundary__digest {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-family: monospace;
+}
+
+.error-boundary__actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
 }
 
 .workspace-panel {
@@ -2840,6 +2926,18 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
   font-size: 0.84rem;
 }
 
+.workspace-selection-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.95rem;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--accent-soft) 18%, var(--surface-raised));
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
 .workspace-selection-chip {
   display: inline-flex;
   align-items: center;
@@ -2853,6 +2951,11 @@ body[data-tour-sidebar-open="true"] .app-sidebar__utils {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.planning-chip.is-locked:disabled {
+  opacity: 0.75;
+  pointer-events: none;
 }
 
 .timeline-card__meta {

@@ -13,14 +13,9 @@ import { recordCurrentUserAccess as recordCurrentUserAccessInternal } from "@/li
 import {
   asOptionalString,
   resolveVisitPanelDisplayMode,
+  throwIfError,
 } from "@/lib/server-action-helpers";
 import { createClient } from "@/lib/supabase/server";
-
-const throwIfError = (error: { message?: string } | null) => {
-  if (error) {
-    throw new Error(error.message ?? "Unexpected Supabase error.");
-  }
-};
 
 export async function updateLanguagePreference(locale: Locale) {
   if (!isLocale(locale)) {

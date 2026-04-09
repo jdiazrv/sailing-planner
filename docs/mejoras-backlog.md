@@ -353,3 +353,281 @@ Este archivo se usa para registrar propuestas de mejora funcional, UX y tecnica 
 - Relacionadas: M-013, M-014
 - Historial:
   - 2026-04-08: alta inicial tras auditoria senior al medir aprox. 1700 lineas en `UsersAdmin`, 500+ en `BoatsAdmin` y casi 400 en `manual/page`.
+
+## M-016 - Centralizar utilidades duplicadas de storage y errores en server actions
+
+- Fecha: 2026-04-09
+- Estado: implantada
+- Fuente: copilot
+- Area: arquitectura
+- Contexto: `src/app/boats/[boatId]/actions.ts`, `src/app/admin/actions.ts`, `src/app/actions.ts`
+- Problema u oportunidad: tres funciones están duplicadas entre ficheros de acciones: `getImageExtension()` (en boats/actions y admin/actions), `removeStoragePaths()` (ídem) y `throwIfError` (en app/actions y en server-action-helpers, donde ya existe). Cualquier cambio hay que aplicarlo en múltiples sitios con riesgo de divergencia.
+- Propuesta: extraer `getImageExtension` y `removeStoragePaths` a `src/lib/storage-helpers.ts` (nuevo módulo) y eliminar la redefinición de `throwIfError` en `app/actions.ts` importando desde `server-action-helpers`.
+- Riesgo:
+  - Impacto: bajo
+  - Probabilidad: baja
+  - Notas: refactorizacion mecanica sin cambio de comportamiento; el riesgo es olvidar alguna referencia si no se hace con busqueda global.
+- Opinion de Copilot: deuda de bajo coste y alto retorno en mantenibilidad; conviene hacerlo antes de ampliar la superficie de acciones.
+- Recomendacion: implantar ahora
+- Relacionadas: M-005
+- Historial:
+  - 2026-04-09: detectada en auditoria de produccion.
+
+## M-017 - Descomponer BoatWorkspaceShell y extraer estado a hook propio
+
+- Fecha: 2026-04-09
+- Estado: propuesta
+- Fuente: copilot
+- Area: arquitectura
+- Contexto: `src/components/planning/boat-workspace-shell.tsx`
+- Problema u oportunidad: el componente tiene 748 lineas, 7 useState, 5 useEffect y 3 useMemo. Gestiona a la vez: capas del timeline, seleccion de entidad, modo de layout, escala de tiempo, apertura de secciones colapsables, lazy-load del mapa y sincronizacion con searchParams. Es el fichero mas costoso de leer, probar y modificar del proyecto.
+- Propuesta: (1) extraer todo el estado y efectos a un hook `useWorkspaceState()`; (2) dividir el JSX en sub-componentes `WorkspaceControlBar`, `WorkspaceTablePanel`, `WorkspaceMapPanel`; (3) valorar Context API para evitar prop-drilling de 14 props hacia TripSegmentsManager, VisitsManager y Timeline.
+- Riesgo:
+  - Impacto: alto
+  - Probabilidad: media
+  - Notas: cambio estructural amplio; requiere tests de regresion manual en todos los modos de layout y vista antes de mergear.
+- Opinion de Copilot: la mejora tecnica con mayor retorno en velocidad de cambio y legibilidad. Relacionada con M-015 pero independiente.
+- Recomendacion: preparar y luego implantar
+- Relacionadas: M-015, M-004
+- Historial:
+  - 2026-04-09: detectada en auditoria de produccion. Componente ya identificado en M-015 pero este ticket cubre especificamente el shell de planificacion.
+
+## M-018 - Añadir error boundaries en rutas criticas
+
+- Fecha: 2026-04-09
+- Estado: implantada
+- Fuente: copilot
+- Area: arquitectura
+- Contexto: `src/app/`, `src/app/boats/[boatId]/`, `src/app/admin/`
+- Problema u oportunidad: no existe ningun fichero `error.tsx` en las rutas principales. Un error de render en el timeline, el mapa o cualquier componente del workspace hace caer toda la pantalla sin fallback. El usuario ve una pagina rota sin mensaje accionable.
+- Propuesta: crear `error.tsx` en `src/app/`, `src/app/boats/[boatId]/` y `src/app/admin/` con mensaje de error amigable, boton de reintento (`reset()`) y enlace de escape al dashboard.
+- Riesgo:
+  - Impacto: bajo
+  - Probabilidad: baja
+  - Notas: los error boundaries de Next.js son aislados por ruta; no hay riesgo de regresion funcional.
+- Opinion de Copilot: mejora defensiva de bajo coste y alta percepcion de calidad en produccion.
+- Recomendacion: implantar ahora
+- Relacionadas: ninguna
+- Historial:
+  - 2026-04-09: detectada en auditoria de produccion.
+
+## M-019 - Validar inputs de FormData en server actions antes de operar en DB
+
+- Fecha: 2026-04-09
+- Estado: propuesta
+- Fuente: copilot
+- Area: seguridad
+- Contexto: `src/app/boats/[boatId]/actions.ts`, `src/app/admin/actions.ts`
+- Problema u oportunidad: varios valores de FormData se usan directamente sin validacion: coordenadas lat/lng sin rango (-90/90, -180/180), año sin verificar que sea numero valido, boat_id con fallback a string vacio que llega a la query. Un input malformado puede producir errores silenciosos o datos corruptos en DB.
+- Propuesta: añadir una capa de validacion ligera (con Zod o validacion manual) antes de cualquier escritura en DB. Minimo: (1) coordenadas con rango, (2) IDs no vacios, (3) año como entero positivo, (4) fechas con formato ISO.
+- Riesgo:
+  - Impacto: medio
+  - Probabilidad: media
+  - Notas: los server actions son solo accesibles desde cliente autenticado pero eso no garantiza datos validos; un bug en cliente o un request directo pueden enviar valores fuera de rango.
+- Opinion de Copilot: mejora de seguridad y robustez necesaria antes de abrir el producto a mas usuarios.
+- Recomendacion: preparar y luego implantar
+- Relacionadas: M-005
+- Historial:
+  - 2026-04-09: detectada en auditoria de produccion.
+
+## M-020 - Validar MIME type y tamaño en uploads de imagen
+
+- Fecha: 2026-04-09
+- Estado: implantada
+- Fuente: copilot
+- Area: seguridad
+- Contexto: `src/app/boats/[boatId]/actions.ts` — `uploadBoatProfileImage()` y equivalente en admin
+- Problema u oportunidad: el servidor acepta cualquier fichero en el upload sin verificar MIME type ni tamaño maximo en codigo. Aunque `sharp` procesa la imagen y Supabase tiene limites de storage, un fichero no-imagen o muy pesado puede causar errores inesperados o consumo de recursos.
+- Propuesta: antes de pasar el buffer a `sharp`, verificar: (1) MIME type en lista blanca (image/jpeg, image/png, image/webp, image/gif), (2) tamaño maximo (p.ej. 10 MB). Rechazar con error claro si no cumple.
+- Riesgo:
+  - Impacto: bajo
+  - Probabilidad: baja
+  - Notas: actualmente solo usuarios autenticados con permisos pueden subir imagenes; el riesgo es bajo pero la validacion es trivial de añadir.
+- Opinion de Copilot: mejora defensiva recomendable antes de escalar usuarios.
+- Recomendacion: implantar ahora
+- Relacionadas: M-019
+- Historial:
+  - 2026-04-09: detectada en auditoria de produccion.
+
+## M-021 - Auditar y documentar politicas RLS de Supabase
+
+- Fecha: 2026-04-09
+- Estado: propuesta
+- Fuente: copilot
+- Area: seguridad
+- Contexto: tablas `seasons`, `port_stops`, `visits`, `user_boat_permissions`, `season_access_links`
+- Problema u oportunidad: el codigo asume que RLS esta activo y correctamente configurado para todas las tablas criticas, pero no existe documentacion ni test que lo verifique. Un cambio de migracion o un error de configuracion en Supabase podria exponer datos de otros usuarios o barcos sin que el codigo lo detecte.
+- Propuesta: (1) documentar en `docs/` las politicas RLS esperadas por tabla; (2) añadir al menos un test de integracion que verifique que un usuario sin permisos no puede leer datos de otro barco; (3) revisar acceso de invitados (season_access_links) con usuario anonimo.
+- Riesgo:
+  - Impacto: alto
+  - Probabilidad: media
+  - Notas: si RLS falla, el impacto es critico en privacidad y seguridad de datos de todos los usuarios.
+- Opinion de Copilot: la deuda de seguridad con mayor impacto potencial del proyecto. Debe resolverse antes de crecer en usuarios.
+- Recomendacion: implantar ahora
+- Relacionadas: ninguna
+- Historial:
+  - 2026-04-09: detectada en auditoria de produccion.
+
+## M-022 - Ajustar umbral combo vs cards en BoatSelector a >10 barcos
+
+- Fecha: 2026-04-09
+- Estado: implantada
+- Fuente: usuario + copilot
+- Area: ux
+- Contexto: `src/components/boats/boat-selector.tsx`
+- Problema u oportunidad: el `BoatSelector` ya implementa un modo compacto (lista + buscador en lugar de cards) cuando hay muchos barcos, pero el umbral actual es >12 en desktop y >6 en movil. La decision de producto es que el cambio ocurra a partir de >10 en todos los viewports para que la experiencia sea predecible.
+- Propuesta: cambiar `useCompactList` para que use el umbral 10 de forma uniforme: `boats.length > 10`.
+- Riesgo:
+  - Impacto: bajo
+  - Probabilidad: baja
+  - Notas: cambio de una constante; sin riesgo de regresion funcional.
+- Opinion de Copilot: decision de producto correcta; la vista en cards con >10 elementos es densa y dificil de escanear.
+- Recomendacion: implantar ahora
+- Relacionadas: ninguna
+- Historial:
+  - 2026-04-09: revisada en auditoria; auditoria inicial identifico mal el problema como falta de paginacion; el mecanismo ya existe, solo el umbral es incorrecto.
+
+## M-023 - Cachear URLs firmadas de imagenes de Supabase Storage
+
+- Fecha: 2026-04-09
+- Estado: propuesta
+- Fuente: copilot
+- Area: rendimiento
+- Contexto: `src/lib/boat-data-core.ts` — `getVisitImageUrls()`
+- Problema u oportunidad: por cada render de pagina que incluya visitas con imagen, se generan URLs firmadas de Supabase Storage sin ninguna capa de cache. Si la misma imagen se solicita en multiples renders (resumen, plan, PDF), se consumen llamadas a la API de storage de forma redundante.
+- Propuesta: usar `unstable_cache` de Next.js o un Map server-side con TTL para cachear las URLs firmadas durante el tiempo de expiracion del token (actualmente configurado en 3600s). Alternativamente, cambiar a URLs publicas permanentes si la politica de privacidad lo permite.
+- Riesgo:
+  - Impacto: bajo
+  - Probabilidad: media
+  - Notas: las URLs firmadas tienen expiracion; la cache debe respetar ese TTL para no servir URLs caducadas.
+- Opinion de Copilot: mejora de rendimiento y reduccion de consumo de API de storage; especialmente relevante cuando el numero de visitas con imagen crece.
+- Recomendacion: preparar y luego implantar
+- Relacionadas: ninguna
+- Historial:
+  - 2026-04-09: detectada en auditoria de produccion.
+
+## M-024 - Añadir cache server-side para geometria de zonas costeras
+
+- Fecha: 2026-04-09
+- Estado: propuesta
+- Fuente: copilot
+- Area: rendimiento
+- Contexto: `src/lib/coastal-zones-runtime.ts`
+- Problema u oportunidad: la geometria de zonas costeras se descarga en cada cliente de forma independiente, con solo un Map en memoria como cache de sesion. No hay cache server-side ni header `cache: "force-cache"`. Cada usuario descarga los mismos datos estaticos desde cero.
+- Propuesta: servir la geometria como asset estatico desde `/public/` o añadir `cache: "force-cache"` en el fetch, de forma que el CDN de Vercel/Next.js cachee el recurso y los clientes lo reciban desde el edge.
+- Riesgo:
+  - Impacto: bajo
+  - Probabilidad: baja
+  - Notas: si la geometria cambia, hay que invalidar la cache manualmente o usar un parametro de version en la URL.
+- Opinion de Copilot: quick win de rendimiento si la geometria es estatica o cambia muy raramente.
+- Recomendacion: preparar y luego implantar
+- Relacionadas: ninguna
+- Historial:
+  - 2026-04-09: detectada en auditoria de produccion.
+
+## M-025 - Paralelizar checks de permisos en requireBoatEditor
+
+- Fecha: 2026-04-09
+- Estado: implantada
+- Fuente: copilot
+- Area: rendimiento
+- Contexto: `src/app/boats/[boatId]/actions.ts` — `requireBoatEditor()`
+- Problema u oportunidad: la funcion hace dos queries secuenciales a Supabase (perfil de superuser + permisos de barco) con await encadenado. Podrian ejecutarse en paralelo con `Promise.all()`, reduciendo la latencia de cada server action que requiere autorizacion.
+- Propuesta: convertir las dos queries en `Promise.all([profileQuery, permissionQuery])` y evaluar el resultado combinado.
+- Riesgo:
+  - Impacto: bajo
+  - Probabilidad: baja
+  - Notas: cambio mecanico; hay que asegurarse de que ambas queries son independientes (lo son).
+- Opinion de Copilot: micro-optimizacion de latencia facil de implantar; especialmente util en acciones frecuentes como guardar escalas o visitas.
+- Recomendacion: implantar ahora
+- Relacionadas: ninguna
+- Historial:
+  - 2026-04-09: detectada en auditoria de produccion.
+
+## M-026 - Memoizar filtros de regularVisits y blockedIntervals en WorkspaceShell
+
+- Fecha: 2026-04-09
+- Estado: implantada
+- Fuente: copilot
+- Area: rendimiento
+- Contexto: `src/components/planning/boat-workspace-shell.tsx` lineas 116-121
+- Problema u oportunidad: `regularVisits` y `blockedIntervals` se calculan filtrando el array de visitas en cada render sin useMemo. Con listas largas de visitas y renders frecuentes (interaccion con timeline, cambio de seleccion), esto es trabajo redundante en el hilo principal.
+- Propuesta: envolver ambos filtros en `useMemo` con `[visits]` como dependencia.
+- Riesgo:
+  - Impacto: bajo
+  - Probabilidad: baja
+  - Notas: cambio trivial de dos lineas; sin riesgo de regresion.
+- Opinion de Copilot: quick win de rendimiento; aunque el impacto es bajo hoy, se vuelve relevante cuando el numero de visitas crece.
+- Recomendacion: implantar ahora
+- Relacionadas: M-017
+- Historial:
+  - 2026-04-09: detectada en auditoria de produccion.
+
+## M-027 - ~~Eliminar componente huerfano DashboardOpenBoatPanel~~
+
+- Fecha: 2026-04-09
+- Estado: descartada
+- Fuente: copilot
+- Area: DX
+- Contexto: `src/components/dashboard/dashboard-open-boat-panel.tsx`
+- Problema u oportunidad: falso positivo de la auditoria automatica. El componente si esta en uso: es importado en el flujo del dashboard de barcos abiertos.
+- Historial:
+  - 2026-04-09: detectada en auditoria de produccion.
+  - 2026-04-09: descartada tras verificacion manual — el componente si tiene usos activos en el proyecto.
+
+## M-028 - Centralizar estrategia de revalidatePath por familia de mutacion
+
+- Fecha: 2026-04-09
+- Estado: en-evaluacion
+- Fuente: copilot
+- Area: arquitectura
+- Contexto: `src/app/boats/[boatId]/actions.ts`, `src/app/actions.ts`, `src/app/admin/actions.ts`
+- Problema u oportunidad: cada fichero de acciones llama a `revalidatePath()` con rutas ligeramente distintas y sin coordinacion: algunos invalidan `/dashboard`, otros no; algunos usan la ruta con parametros interpolados, otros con patrones. Esto produce invalidaciones excesivas o incompletas segun la accion.
+- Propuesta: crear una funcion `revalidateBoatRoutes(boatId)` centralizada que invalide exactamente las rutas necesarias para ese barco, y usarla en todas las acciones de mutacion de barco. Equivalente para admin.
+- Riesgo:
+  - Impacto: medio
+  - Probabilidad: alta
+  - Notas: ya identificado en M-014; este ticket es el seguimiento especifico de la estrategia de revalidacion, separado de los router.refresh() de cliente.
+- Opinion de Copilot: necesario para cerrar M-014 completamente y evitar regressiones de cache en produccion.
+- Recomendacion: preparar y luego implantar
+- Relacionadas: M-014, M-004
+- Historial:
+  - 2026-04-09: detectada en auditoria de produccion como extension de M-014.
+
+## M-029 - Consolidar strings hardcodeados en componentes de admin y auth
+
+- Fecha: 2026-04-09
+- Estado: propuesta
+- Fuente: copilot
+- Area: arquitectura
+- Contexto: `boat-settings-dialog.tsx`, `set-password-form.tsx`, `users-admin.tsx`, `boats-admin.tsx`, `season-access-panel.tsx`, `blocked-intervals-manager.tsx`
+- Problema u oportunidad: al menos 6 componentes tienen strings de UI hardcodeados en ingles o español fuera del sistema i18n: labels de botones ("Save changes", "Save password", "Save access", "Delete"), mensajes de error ("Error al guardar", "Error al eliminar") y textos de confirmacion multilinea en ingles. Usuarios en español ven mezcla de idiomas.
+- Propuesta: mapear cada string hardcodeado a una clave existente en i18n (la mayoria ya existen: `common.save`, `common.delete`, `planning.saveSegmentError`, etc.) o añadir las claves que falten. Extensi­on natural de M-013.
+- Riesgo:
+  - Impacto: bajo
+  - Probabilidad: baja
+  - Notas: cambio mecanico de sustitucion de strings; sin riesgo funcional si se verifica en ambos idiomas.
+- Opinion de Copilot: cierre natural de M-013 para las superficies que quedaron pendientes.
+- Recomendacion: preparar y luego implantar
+- Relacionadas: M-013
+- Historial:
+  - 2026-04-09: detectada en auditoria de produccion.
+
+## M-030 - Validar variables de entorno requeridas en tiempo de build
+
+- Fecha: 2026-04-09
+- Estado: implantada
+- Fuente: copilot
+- Area: DX
+- Contexto: configuracion de entorno — `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, etc.
+- Problema u oportunidad: si una variable de entorno requerida no esta definida, el error ocurre en runtime (primera llamada que la usa) en lugar de en build time. Esto puede causar fallos silenciosos en produccion dificiles de diagnosticar.
+- Propuesta: añadir un modulo `src/lib/env.ts` que valide en startup todas las variables requeridas con un mensaje de error claro, o usar una libreria como `@t3-oss/env-nextjs` que integra validacion con Zod en el build.
+- Riesgo:
+  - Impacto: bajo
+  - Probabilidad: baja
+  - Notas: mejora de DX pura; sin riesgo funcional.
+- Opinion de Copilot: especialmente util en deploys automatizados donde un env var olvidado puede pasar desapercibido hasta que un usuario tropieza con el error.
+- Recomendacion: implantar ahora
+- Relacionadas: ninguna
+- Historial:
+  - 2026-04-09: detectada en auditoria de produccion.

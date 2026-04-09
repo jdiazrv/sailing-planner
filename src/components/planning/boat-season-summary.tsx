@@ -46,7 +46,7 @@ const formatDateRange = (
     return t(locale, "summary.tbd");
   }
 
-  return `${formatDate(start, locale)} - ${formatDate(end, locale)}`;
+  return `${formatDate(start, locale)} – ${formatDate(end, locale)}`;
 };
 
 const getLocationTypeLabel = (
@@ -56,6 +56,53 @@ const getLocationTypeLabel = (
 
 const getStatusLabel = (locale: Locale, status: string) =>
   t(locale, `status.${status}` as never);
+
+// Inline SVG icons — no extra dependency
+function IconCalendar() {
+  return (
+    <svg aria-hidden="true" fill="none" height="16" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" viewBox="0 0 24 24" width="16">
+      <rect height="18" rx="2" width="18" x="3" y="4" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+    </svg>
+  );
+}
+
+function IconClock() {
+  return (
+    <svg aria-hidden="true" fill="none" height="16" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" viewBox="0 0 24 24" width="16">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 3" />
+    </svg>
+  );
+}
+
+function IconAnchor() {
+  return (
+    <svg aria-hidden="true" fill="none" height="16" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" viewBox="0 0 24 24" width="16">
+      <circle cx="12" cy="5" r="2" />
+      <path d="M12 7v14M5 11h14M5 21c0-3 3-5 7-5s7 2 7 5" />
+    </svg>
+  );
+}
+
+function IconCompass() {
+  return (
+    <svg aria-hidden="true" fill="none" height="16" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" viewBox="0 0 24 24" width="16">
+      <circle cx="12" cy="12" r="9" />
+      <path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z" />
+    </svg>
+  );
+}
+
+function IconUsers() {
+  return (
+    <svg aria-hidden="true" fill="none" height="16" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" viewBox="0 0 24 24" width="16">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
 
 export function BoatSeasonSummary({
   canViewVisits,
@@ -96,33 +143,59 @@ export function BoatSeasonSummary({
 
   return (
     <section className="stack route-summary">
+
+      {/* ── Hero ── */}
+      <header className="dashboard-card route-summary__hero" role="banner">
+        <div className="route-summary__hero-copy">
+          <p className="eyebrow">{t(locale, "summary.eyebrow")}</p>
+          <div className="route-summary__hero-meta">
+            <span>{seasonWindow}</span>
+            <span>
+              {t(locale, "summary.daysCount").replace("{count}", String(seasonDays))}
+            </span>
+            <span>
+              {t(locale, "summary.trackedLocations").replace("{count}", String(routeLocations))}
+            </span>
+            <span>{Math.round(totalDistanceNm)} nm</span>
+          </div>
+        </div>
+      </header>
+
+
+      {/* ── Stats ── */}
       <section className="route-summary__stats" aria-label={t(locale, "summary.snapshot")}>
         <article className="dashboard-card route-summary__stat-card">
+          <div className="route-summary__stat-icon"><IconCalendar /></div>
           <p className="eyebrow">{t(locale, "summary.window")}</p>
           <strong>{seasonWindow}</strong>
         </article>
         <article className="dashboard-card route-summary__stat-card">
+          <div className="route-summary__stat-icon"><IconClock /></div>
           <p className="eyebrow">{t(locale, "summary.duration")}</p>
           <strong>{t(locale, "summary.daysCount").replace("{count}", String(seasonDays))}</strong>
         </article>
         <article className="dashboard-card route-summary__stat-card">
+          <div className="route-summary__stat-icon"><IconAnchor /></div>
           <p className="eyebrow">{t(locale, "summary.routeBlocks")}</p>
           <strong>
             {t(locale, "summary.trackedLocations").replace("{count}", String(routeLocations))}
           </strong>
         </article>
         <article className="dashboard-card route-summary__stat-card">
+          <div className="route-summary__stat-icon"><IconCompass /></div>
           <p className="eyebrow">{t(locale, "summary.totalMiles")}</p>
           <strong>{Math.round(totalDistanceNm)} nm</strong>
         </article>
         {canViewVisits ? (
           <article className="dashboard-card route-summary__stat-card">
+            <div className="route-summary__stat-icon"><IconUsers /></div>
             <p className="eyebrow">{t(locale, "summary.visits")}</p>
             <strong>{visibleVisits.length}</strong>
           </article>
         ) : null}
       </section>
 
+      {/* ── Ruta + Mapa ── */}
       <section className="route-summary__grid">
         <article className="dashboard-card route-summary__panel">
           <div className="card-header">
@@ -138,10 +211,16 @@ export function BoatSeasonSummary({
             >
               {orderedSegments.map((segment, index) => {
                 const leg = routeLegs[index];
+                const isLast = index === orderedSegments.length - 1;
 
                 return (
                   <article className="route-summary__route-item" key={segment.id}>
-                    <div className="route-summary__route-order">{index + 1}</div>
+                    {/* Stepper column */}
+                    <div className="route-summary__route-step">
+                      <div className="route-summary__route-order">{index + 1}</div>
+                      {!isLast && <div className="route-summary__route-connector" aria-hidden="true" />}
+                    </div>
+
                     <div className="route-summary__route-body">
                       <div className="route-summary__route-top">
                         <div className="route-summary__route-line route-summary__route-line--primary">
@@ -172,7 +251,9 @@ export function BoatSeasonSummary({
               })}
             </div>
           ) : (
-            <p className="muted">{t(locale, "summary.noRoute")}</p>
+            <div className="route-summary__empty">
+              <p className="muted">{t(locale, "summary.noRoute")}</p>
+            </div>
           )}
         </article>
 
@@ -186,6 +267,7 @@ export function BoatSeasonSummary({
         </div>
       </section>
 
+      {/* ── Visitas ── */}
       {canViewVisits ? (
         <article className="dashboard-card route-summary__panel">
           <div className="card-header">
@@ -197,17 +279,18 @@ export function BoatSeasonSummary({
 
           {visibleVisits.length ? (
             <div className="route-summary__visit-grid">
-              {visibleVisits.map((visit) => (
+              {visibleVisits.map((visit, index) => (
                 <article className="route-summary__visit-card" key={visit.id}>
                   <div className="route-summary__visit-header">
                     {visit.image_url ? (
                       <Image
                         alt={getVisitDisplayName(visit, t(locale, "planning.visit"))}
                         className="route-summary__visit-image"
-                        height={200}
-                        sizes="150px"
+                        height={220}
+                        priority={index === 0}
+                        sizes="(max-width: 720px) 100vw, 180px"
                         src={visit.image_url}
-                        width={150}
+                        width={180}
                       />
                     ) : (
                       <div className={`route-summary__visit-badge is-${visit.status}`}>
@@ -247,7 +330,9 @@ export function BoatSeasonSummary({
               ))}
             </div>
           ) : (
-            <p className="muted">{t(locale, "planning.noVisitsEmpty")}</p>
+            <div className="route-summary__empty">
+              <p className="muted">{t(locale, "planning.noVisitsEmpty")}</p>
+            </div>
           )}
         </article>
       ) : null}

@@ -16,6 +16,11 @@ import {
   parseOptionalYear,
   throwIfError,
 } from "@/lib/server-action-helpers";
+import {
+  getImageExtension,
+  removeStoragePaths,
+  validateImageUpload,
+} from "@/lib/storage-helpers";
 import { createClient } from "@/lib/supabase/server";
 import type {
   Database,
@@ -70,14 +75,6 @@ type SeasonMutationResult = {
   nextSelectedSeasonId: string | null;
 };
 
-const getImageExtension = (file: File) => {
-  if (file.type === "image/png") return "png";
-  if (file.type === "image/webp") return "webp";
-  if (file.type === "image/gif") return "gif";
-  if (file.type === "image/svg+xml") return "svg";
-  return "jpg";
-};
-
 const VISIT_IMAGE_MAX_WIDTH = 150;
 const VISIT_IMAGE_MAX_HEIGHT = 200;
 
@@ -110,24 +107,6 @@ const normalizeVisitUploadImage = async (file: File) => {
   }
 };
 
-const removeStoragePaths = async (
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  bucket: string,
-  paths: Array<string | null | undefined>,
-) => {
-  const existingPaths = paths.filter(
-    (path): path is string => typeof path === "string" && path.length > 0,
-  );
-
-  if (!existingPaths.length) {
-    return;
-  }
-
-  const { error } = await supabase.storage.from(bucket).remove(existingPaths);
-  throwIfError(error);
-};
-
-
 const requireBoatEditor = async (boatId: string) => {
   const supabase = await createClient();
   const db = supabase as any;
@@ -139,26 +118,18 @@ const requireBoatEditor = async (boatId: string) => {
     throw new Error("Authentication required.");
   }
 
-  const { data: profile, error: profileError } = await db
-    .from("profiles")
-    .select("is_superuser")
-    .eq("id", user.id)
-    .maybeSingle();
+  const [
+    { data: profile, error: profileError },
+    { data: permission, error: permissionError },
+  ] = await Promise.all([
+    db.from("profiles").select("is_superuser").eq("id", user.id).maybeSingle(),
+    db.from("user_boat_permissions").select("can_edit").eq("boat_id", boatId).eq("user_id", user.id).maybeSingle(),
+  ]);
+
   throwIfError(profileError);
-
-  if (profile?.is_superuser) {
-    return { supabase, db, user };
-  }
-
-  const { data: permission, error: permissionError } = await db
-    .from("user_boat_permissions")
-    .select("can_edit")
-    .eq("boat_id", boatId)
-    .eq("user_id", user.id)
-    .maybeSingle();
   throwIfError(permissionError);
 
-  if (!permission?.can_edit) {
+  if (!profile?.is_superuser && !permission?.can_edit) {
     throw new Error("You do not have permission to edit this boat.");
   }
 
@@ -501,6 +472,7 @@ export async function saveVisit(formData: FormData) {
     }
 
     if (shouldUseImage && hasNewImage) {
+      validateImageUpload(imageFile as File);
       const normalizedImage = await normalizeVisitUploadImage(imageFile);
       const extension = normalizedImage.extension;
       const nextPath = `${boatId}/${resolvedId}/badge-${Date.now()}.${extension}`;
@@ -601,6 +573,8 @@ export async function uploadBoatProfileImage(formData: FormData) {
   if (!(file instanceof File) || file.size === 0) {
     return;
   }
+
+  validateImageUpload(file);
 
   const { data: boat } = await db
     .from("boats")

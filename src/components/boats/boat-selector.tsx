@@ -30,20 +30,11 @@ export const BoatSelector = ({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
-  const [isMobile, setIsMobile] = useState(false);
   const [isExpanded, setIsExpanded] = useState(
     initiallyExpanded || !(collapsible && activeBoatId),
   );
-  const useCompactList = boats.length > (isMobile ? 6 : 12);
+  const useCompactList = boats.length > 10;
   const hasQuery = query.trim().length > 0;
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(max-width: 680px)");
-    const update = () => setIsMobile(mediaQuery.matches);
-    update();
-    mediaQuery.addEventListener("change", update);
-    return () => mediaQuery.removeEventListener("change", update);
-  }, []);
 
   useEffect(() => {
     setIsExpanded(initiallyExpanded || !(collapsible && activeBoatId));
