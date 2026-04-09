@@ -195,33 +195,17 @@ const loadSeasonWorkspaceData = async (
   return result;
 };
 
-const ensureAccessibleBoat = (boats: BoatSummary[], boatId: string) => {
-  const boat = boats.find((entry) => entry.boat_id === boatId);
-  if (!boat) {
-    redirect("/dashboard");
-  }
-
-  return boat;
-};
-
-const getBoatWorkspaceBase = cache(async (boatId: string) => {
-  const timing = startServerTiming("boatData.getBoatWorkspaceBase", { boatId });
+const getBoatWorkspaceContext = cache(async (boatId: string) => {
+  const timing = startServerTiming("boatData.getBoatWorkspaceContext", { boatId });
   const { supabase, user, viewer } = await measureServerTiming(
-    "boatData.getBoatWorkspaceBase.requireViewer",
+    "boatData.getBoatWorkspaceContext.requireViewer",
     () => requireViewer(),
     { boatId },
   );
   const db = supabase as any;
-  const boats = await measureServerTiming(
-    "boatData.getBoatWorkspaceBase.accessibleBoats",
-    () => getAccessibleBoatBase(supabase, viewer),
-    { boatId, isSuperuser: viewer.isSuperuser },
-    (result) => ({ boats: result.length }),
-  );
-  ensureAccessibleBoat(boats, boatId);
 
   const { boatRow, permission, seasons } = await measureServerTiming(
-    "boatData.getBoatWorkspaceBase.context",
+    "boatData.getBoatWorkspaceContext.context",
     () =>
       loadBoatContext({
         db,
@@ -243,14 +227,12 @@ const getBoatWorkspaceBase = cache(async (boatId: string) => {
   const result = {
     supabase,
     viewer,
-    boats,
     boatRow,
     permission,
     seasons,
   };
 
   timing.end({
-    boats: boats.length,
     seasons: seasons.length,
     hasPermission: Boolean(permission),
   });
@@ -452,7 +434,7 @@ export const getBoatShareWorkspace = cache(async (
     boatId,
     requestedSeasonId: requestedSeasonId ?? null,
   });
-  const { supabase, viewer, boatRow, permission, seasons } = await getBoatWorkspaceBase(boatId);
+  const { supabase, viewer, boatRow, permission, seasons } = await getBoatWorkspaceContext(boatId);
 
   if (!viewer.isSuperuser && !permission) {
     redirect("/dashboard");
@@ -481,7 +463,7 @@ export const getBoatTimelineSnapshot = cache(async (
   boatId: string,
   requestedSeasonId?: string,
 ) => {
-  const { supabase, viewer, boatRow, permission, seasons } = await getBoatWorkspaceBase(boatId);
+  const { supabase, viewer, boatRow, permission, seasons } = await getBoatWorkspaceContext(boatId);
   const db = supabase as any;
   const selectedSeason = getSelectedSeasonFromList(seasons, requestedSeasonId);
   const { tripSegments } = await loadSeasonWorkspaceData(db, selectedSeason, {
@@ -532,11 +514,11 @@ export const getBoatWorkspace = cache(async (
     boatId,
     requestedSeasonId: requestedSeasonId ?? null,
   });
-  const { supabase, viewer, boats, boatRow, permission, seasons } = await measureServerTiming(
+  const { supabase, viewer, boatRow, permission, seasons } = await measureServerTiming(
     "boatData.getBoatWorkspace.base",
-    () => getBoatWorkspaceBase(boatId),
+    () => getBoatWorkspaceContext(boatId),
     { boatId },
-    (result) => ({ boats: result.boats.length, seasons: result.seasons.length }),
+    (result) => ({ seasons: result.seasons.length }),
   );
   const db = supabase as any;
 
@@ -558,14 +540,12 @@ export const getBoatWorkspace = cache(async (
     viewer,
     boat: buildBoatDetails(supabase, boatRow),
     permission,
-    boats,
     seasons,
     selectedSeason,
     tripSegments,
     visits,
   } satisfies BoatWorkspace;
   timing.end({
-    boats: boats.length,
     seasonId: selectedSeason?.id ?? null,
     seasons: seasons.length,
     tripSegments: tripSegments.length,
@@ -576,7 +556,15 @@ export const getBoatWorkspace = cache(async (
 
 export const getBoatLayoutSnapshot = cache(async (boatId: string) => {
   const timing = startServerTiming("boatData.getBoatLayoutSnapshot", { boatId });
-  const { supabase, viewer, boatRow, permission, boats } = await getBoatWorkspaceBase(boatId);
+  const { supabase, viewer, boatRow, permission } = await getBoatWorkspaceContext(boatId);
+  const boats = viewer.isSuperuser
+    ? await measureServerTiming(
+        "boatData.getBoatLayoutSnapshot.accessibleBoats",
+        () => getAccessibleBoatBase(supabase, viewer),
+        { boatId, isSuperuser: viewer.isSuperuser },
+        (result) => ({ boats: result.length }),
+      )
+    : [];
 
   const result = {
     viewer,
@@ -669,22 +657,6 @@ export const getSeasonGuestWorkspace = async (
       image_url: getBoatImageUrl(admin as any, session.boat.image_path, session.boat.updated_at),
     } as BoatDetails,
     permission: null,
-    boats: [
-      {
-        boat_id: session.boat.id,
-        boat_name: session.boat.name,
-        permission_level: "viewer",
-        can_edit: false,
-        can_manage_boat_users: false,
-        description: session.boat.description,
-        home_port: session.boat.home_port,
-        image_path: session.boat.image_path,
-        image_url: getBoatImageUrl(admin as any, session.boat.image_path, session.boat.updated_at),
-        model: session.boat.model,
-        year_built: session.boat.year_built,
-        is_active: session.boat.is_active,
-      },
-    ] as BoatSummary[],
     seasons: [session.season],
     selectedSeason: session.season,
     tripSegments,

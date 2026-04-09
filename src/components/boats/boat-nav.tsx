@@ -26,12 +26,14 @@ export const BoatNav = async ({
       <Link
         className={active === "trip" ? "is-active" : undefined}
         href={`${workspaceBasePath}?view=trip`}
+        prefetch={false}
       >
         {t(locale, "boatNav.trip")}
       </Link>
       <Link
         className={active === "summary" ? "is-active" : undefined}
         href={`${workspaceBasePath}/summary`}
+        prefetch={false}
       >
         {t(locale, "boatNav.summary")}
       </Link>
@@ -39,6 +41,7 @@ export const BoatNav = async ({
         <Link
           className={active === "visits" ? "is-active" : undefined}
           href={`${workspaceBasePath}?view=visits`}
+          prefetch={false}
         >
           {t(locale, "boatNav.visits")}
         </Link>
@@ -47,6 +50,7 @@ export const BoatNav = async ({
         <Link
           className={active === "share" ? "is-active" : undefined}
           href={`${workspaceBasePath}/share`}
+          prefetch={false}
         >
           {t(locale, "boatNav.share")}
         </Link>

@@ -86,7 +86,6 @@ export type BoatWorkspace = {
   viewer: ViewerContext;
   boat: BoatDetails;
   permission: PermissionRow | null;
-  boats: BoatSummary[];
   seasons: SeasonRow[];
   selectedSeason: SeasonRow | null;
   tripSegments: PortStopView[];

@@ -62,7 +62,7 @@ export default async function BoatLayout({
 
   const settingsSlot = canEditBoat ? (
     isSuperuser ? (
-      <Link className="app-sidebar__item" data-tour="sidebar-admin-boats" href="/admin/boats">
+      <Link className="app-sidebar__item" data-tour="sidebar-admin-boats" href="/admin/boats" prefetch={false}>
         <span className="app-sidebar__icon">{settingsIcon}</span>
         <span className="app-sidebar__label">{t(locale, "boatLayout.boatSettingsAction")}</span>
       </Link>
@@ -123,16 +123,16 @@ export default async function BoatLayout({
 
             <div className="workspace-header__actions">
               {isSuperuser && (
-                <Link className="secondary-button sidebar-hidden" href="/admin/boats">
+                <Link className="secondary-button sidebar-hidden" href="/admin/boats" prefetch={false}>
                   {t(locale, "boatLayout.editBoats")}
                 </Link>
               )}
               {canManageUsers && (
-                <Link className="secondary-button sidebar-hidden" href="/admin/users">
+                <Link className="secondary-button sidebar-hidden" href="/admin/users" prefetch={false}>
                   {t(locale, "boatLayout.editUsers")}
                 </Link>
               )}
-              <Link className="secondary-button sidebar-hidden" href="/shared">
+              <Link className="secondary-button sidebar-hidden" href="/shared" prefetch={false}>
                 {t(locale, "boatLayout.sharedTimelines")}
               </Link>
               <span className="sidebar-hidden">

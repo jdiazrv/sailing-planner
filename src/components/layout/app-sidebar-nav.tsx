@@ -145,6 +145,7 @@ function NavItem({
       data-tour={tourId}
       href={href}
       onClick={onClick}
+      prefetch={false}
       rel={rel}
       target={target}
     >
@@ -248,7 +249,7 @@ export function AppSidebarNav({
 
     <aside className={`app-sidebar${mobileOpen ? " is-mobile-open" : ""}`} id="app-sidebar">
       {/* Brand */}
-      <Link className="app-sidebar__brand" href={homeHref}>
+      <Link className="app-sidebar__brand" href={homeHref} prefetch={false}>
         <SidebarLogoMark />
         <span className="app-sidebar__brand-copy">
           <span className="app-sidebar__brand-label">Sailing Planner</span>

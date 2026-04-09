@@ -125,7 +125,7 @@ export const BoatSelector = ({
           </div>
           <div className="workspace-header__actions">
             {selectionOnly ? (
-              <Link className="secondary-button" href={`/boats/${selectedBoat.boat_id}/trip`}>
+              <Link className="secondary-button" href={`/boats/${selectedBoat.boat_id}/trip`} prefetch={false}>
                 {t("boatSelector.openWorkspace")}
               </Link>
             ) : null}
@@ -169,6 +169,7 @@ export const BoatSelector = ({
                         className={`data-row boat-list-row ${boat.boat_id === activeBoatId ? "is-active" : ""}`}
                         href={getBoatHref(boat.boat_id)}
                         key={boat.boat_id}
+                        prefetch={false}
                       >
                         <div className="table-stack">
                           <strong>{boat.boat_name}</strong>
@@ -200,6 +201,7 @@ export const BoatSelector = ({
               className={`boat-card ${boat.boat_id === activeBoatId ? "is-active" : ""}`}
               href={getBoatHref(boat.boat_id)}
               key={boat.boat_id}
+              prefetch={false}
             >
               {boat.image_url ? (
                 <img
